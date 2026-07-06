@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories - LUNA BELLE Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <img src="../images/logo.svg" alt="LUNA BELLE" style="width:32px;height:32px">
+        <h2>LUNA <span>BELLE</span></h2>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-label">Main</div>
+        <a href="dashboard.html"><i class="fas fa-th-large"></i> Dashboard</a>
+        <a href="products.html"><i class="fas fa-box"></i> Products</a>
+        <a href="categories.html" class="active"><i class="fas fa-tags"></i> Categories</a>
+        <a href="collections.html"><i class="fas fa-layer-group"></i> Collections</a>
+
+        <div class="nav-label">Sales</div>
+        <a href="orders.html"><i class="fas fa-shopping-cart"></i> Orders</a>
+        <a href="customers.html"><i class="fas fa-users"></i> Customers</a>
+
+        <div class="nav-label">Operations</div>
+        <a href="inventory.html"><i class="fas fa-warehouse"></i> Inventory</a>
+        <a href="analytics.html"><i class="fas fa-chart-bar"></i> Analytics</a>
+        <a href="settings.html"><i class="fas fa-cog"></i> Settings</a>
+
+        <a href="/admin/logout" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+    </nav>
+</aside>
+
+<header class="topbar">
+    <div class="topbar-left">
+        <button class="hamburger" id="hamburger-btn"><i class="fas fa-bars"></i></button>
+        <div class="topbar-search">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search categories...">
+        </div>
+    </div>
+    <div class="topbar-right">
+        <button class="topbar-btn"><i class="fas fa-bell"></i><span class="badge">3</span></button>
+        <button class="topbar-btn"><i class="fas fa-envelope"></i><span class="badge">1</span></button>
+        <div class="topbar-profile">
+            <img src="https://ui-avatars.com/api/?name=Admin&background=c9a96e&color=fff&size=32" alt="">
+            <div class="info">
+                <div class="name">Admin</div>
+                <div class="role">Administrator</div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="main-content">
+    <div class="page-header">
+        <div>
+            <h1>Categories</h1>
+            <p id="cat-count">Organize your products into categories</p>
+        </div>
+        <button class="btn btn-primary btn-sm" id="add-category-btn"><i class="fas fa-plus"></i> Add Category</button>
+    </div>
+
+    <div class="card">
+        <div class="card-body" style="padding:0;">
+            <div class="table-container">
+                <table id="categories-table">
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>Category</th>
+                            <th>Slug</th>
+                            <th>Description</th>
+                            <th>Products</th>
+                            <th>Status</th>
+                            <th style="text-align:right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Category Modal -->
+<div class="modal-overlay" id="category-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="cat-modal-title">Add Category</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="category-form">
+                <input type="hidden" id="cat-id">
+
+                <div class="form-group">
+                    <label>Category Image</label>
+                    <div class="cat-image-upload" id="cat-image-upload">
+                        <img id="cat-image-preview" src="" style="display:none;width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:8px;">
+                        <div class="upload-zone" id="cat-upload-zone" style="padding:20px;">
+                            <i class="fas fa-cloud-upload-alt" style="font-size:1.5rem;"></i>
+                            <p style="font-size:0.8rem;">Drop image or <a href="#" id="cat-upload-link">browse</a></p>
+                            <input type="file" id="cat-file-input" accept=".jpg,.jpeg,.png,.webp" style="display:none">
+                        </div>
+                        <input type="hidden" id="cat-image">
+                        <button type="button" id="cat-remove-image" class="btn btn-outline btn-sm" style="display:none;margin-top:4px;">Remove Image</button>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Category Name</label>
+                        <input type="text" id="cat-name" class="form-control" placeholder="e.g. Dresses" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Slug</label>
+                        <input type="text" id="cat-slug" class="form-control" placeholder="e.g. dresses">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="cat-desc" class="form-control" placeholder="Category description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="cat-status" class="form-control">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline modal-close">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="js/admin.js"></script>
+</body>
+</html>

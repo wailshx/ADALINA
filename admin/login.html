@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - LUNA BELLE Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <div class="login-page">
+        <div class="login-box">
+            <div class="brand">
+                <img src="../images/logo.svg" alt="LUNA BELLE" style="width:32px;height:32px">
+                <h2>LUNA BELLE</h2>
+                <p>Admin Dashboard</p>
+            </div>
+            <div class="login-error" id="login-error">Invalid username or password.</div>
+            <form id="login-form" action="/admin/login" method="POST">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" class="form-control" placeholder="admin" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
+                </div>
+                <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+                    <input type="checkbox" id="remember" name="remember" value="on" style="width:16px;height:16px;">
+                    <label for="remember" style="margin:0;font-size:0.8rem;">Remember me</label>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
+            </form>
+            <script>
+                if (window.location.search.includes('error=1')) {
+                    document.getElementById('login-error').classList.add('show');
+                }
+            </script>
+            <div class="form-footer">
+                <a href="#">Forgot password?</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

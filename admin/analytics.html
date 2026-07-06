@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - LUNA BELLE Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <img src="../images/logo.svg" alt="LUNA BELLE" style="width:32px;height:32px">
+        <h2>LUNA <span>BELLE</span></h2>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-label">Main</div>
+        <a href="dashboard.html"><i class="fas fa-th-large"></i> Dashboard</a>
+        <a href="products.html"><i class="fas fa-box"></i> Products</a>
+        <a href="categories.html"><i class="fas fa-tags"></i> Categories</a>
+        <a href="collections.html"><i class="fas fa-layer-group"></i> Collections</a>
+
+        <div class="nav-label">Sales</div>
+        <a href="orders.html"><i class="fas fa-shopping-cart"></i> Orders</a>
+        <a href="customers.html"><i class="fas fa-users"></i> Customers</a>
+
+        <div class="nav-label">Operations</div>
+        <a href="inventory.html"><i class="fas fa-warehouse"></i> Inventory</a>
+        <a href="analytics.html" class="active"><i class="fas fa-chart-bar"></i> Analytics</a>
+        <a href="settings.html"><i class="fas fa-cog"></i> Settings</a>
+
+        <a href="/admin/logout" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+    </nav>
+</aside>
+
+<header class="topbar">
+    <div class="topbar-left">
+        <button class="hamburger" id="hamburger-btn"><i class="fas fa-bars"></i></button>
+        <div class="topbar-search">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search analytics...">
+        </div>
+    </div>
+    <div class="topbar-right">
+        <button class="topbar-btn"><i class="fas fa-bell"></i><span class="badge">3</span></button>
+        <button class="topbar-btn"><i class="fas fa-envelope"></i><span class="badge">1</span></button>
+        <div class="topbar-profile">
+            <img src="https://ui-avatars.com/api/?name=Admin&background=c9a96e&color=fff&size=32" alt="">
+            <div class="info">
+                <div class="name">Admin</div>
+                <div class="role">Administrator</div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="main-content">
+    <div class="page-header">
+        <div>
+            <h1>Analytics</h1>
+            <p id="ana-subtitle">Track your store's performance</p>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="exportAnalytics()"><i class="fas fa-download"></i> Export Report</button>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="fas fa-dollar-sign"></i></div>
+            <div class="stat-info">
+                <h3 id="ana-revenue">$0</h3>
+                <p>Revenue</p>
+                <span class="stat-change" id="ana-change-revenue"></span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="fas fa-shopping-bag"></i></div>
+            <div class="stat-info">
+                <h3 id="ana-orders">0</h3>
+                <p>Orders</p>
+                <span class="stat-change" id="ana-change-orders"></span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon purple"><i class="fas fa-users"></i></div>
+            <div class="stat-info">
+                <h3 id="ana-customers">0</h3>
+                <p>Customers</p>
+                <span class="stat-change" id="ana-change-customers"></span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon yellow"><i class="fas fa-percent"></i></div>
+            <div class="stat-info">
+                <h3 id="ana-avg-order">$0</h3>
+                <p>Avg. Order Value</p>
+                <span class="stat-change" id="ana-change-avg"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-header">
+                <h2>Monthly Sales <span id="ana-monthly-range" style="font-size:0.75rem;font-weight:400;color:var(--text-muted);"></span></h2>
+            </div>
+            <div class="card-body">
+                <div id="ana-monthly-chart" style="display:flex;align-items:flex-end;gap:6px;height:200px;padding-top:20px;"></div>
+                <div id="ana-monthly-labels" style="display:flex;gap:6px;margin-top:6px;"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Sales by Category</h2>
+            </div>
+            <div class="card-body" id="ana-category-chart">
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-header">
+                <h2>Best Selling Products</h2>
+            </div>
+            <div class="card-body" style="padding:0;">
+                <div class="table-container">
+                    <table id="ana-best-sellers">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Price</th>
+                                <th>Sold</th>
+                                <th>Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <h2>Daily Sales <span id="ana-daily-range" style="font-size:0.75rem;font-weight:400;color:var(--text-muted);"></span></h2>
+            </div>
+            <div class="card-body">
+                <div id="ana-daily-chart" style="display:flex;align-items:flex-end;gap:3px;height:150px;padding-top:16px;"></div>
+                <div id="ana-daily-labels" style="display:flex;gap:3px;margin-top:4px;overflow-x:auto;"></div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script src="js/admin.js"></script>
+</body>
+</html>

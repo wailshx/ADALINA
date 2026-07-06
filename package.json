@@ -1,0 +1,16 @@
+{
+  "name": "luna-belle-website",
+  "version": "1.0.0",
+  "description": "Luxury women's fashion and fragrance e-commerce website",
+  "main": "server.py",
+  "scripts": {
+    "start": "python3 server.py",
+    "server": "python3 server.py",
+    "run-server": "python3 server.py",
+    "dev": "python3 server.py",
+    "serve": "python3 server.py"
+  },
+  "keywords": ["e-commerce", "fashion", "luxury", "website"],
+  "author": "",
+  "license": "MIT"
+}

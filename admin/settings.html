@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - LUNA BELLE Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <img src="../images/logo.svg" alt="LUNA BELLE" style="width:32px;height:32px">
+        <h2>LUNA <span>BELLE</span></h2>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-label">Main</div>
+        <a href="dashboard.html"><i class="fas fa-th-large"></i> Dashboard</a>
+        <a href="products.html"><i class="fas fa-box"></i> Products</a>
+        <a href="categories.html"><i class="fas fa-tags"></i> Categories</a>
+        <a href="collections.html"><i class="fas fa-layer-group"></i> Collections</a>
+
+        <div class="nav-label">Sales</div>
+        <a href="orders.html"><i class="fas fa-shopping-cart"></i> Orders</a>
+        <a href="customers.html"><i class="fas fa-users"></i> Customers</a>
+
+        <div class="nav-label">Operations</div>
+        <a href="inventory.html"><i class="fas fa-warehouse"></i> Inventory</a>
+        <a href="analytics.html"><i class="fas fa-chart-bar"></i> Analytics</a>
+        <a href="settings.html" class="active"><i class="fas fa-cog"></i> Settings</a>
+
+        <a href="/admin/logout" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+    </nav>
+</aside>
+
+<header class="topbar">
+    <div class="topbar-left">
+        <button class="hamburger" id="hamburger-btn"><i class="fas fa-bars"></i></button>
+        <div class="topbar-search">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Search settings...">
+        </div>
+    </div>
+    <div class="topbar-right">
+        <button class="topbar-btn"><i class="fas fa-bell"></i><span class="badge">3</span></button>
+        <button class="topbar-btn"><i class="fas fa-envelope"></i><span class="badge">1</span></button>
+        <div class="topbar-profile">
+            <img src="https://ui-avatars.com/api/?name=Admin&background=c9a96e&color=fff&size=32" alt="">
+            <div class="info">
+                <div class="name">Admin</div>
+                <div class="role">Administrator</div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="main-content">
+    <div class="page-header">
+        <div>
+            <h1>Settings</h1>
+            <p>Configure your store preferences</p>
+        </div>
+        <button class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Save Changes</button>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>General Settings</h2>
+        </div>
+        <div class="card-body">
+            <form id="settings-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Store Name</label>
+                        <input type="text" class="form-control" value="LUNA BELLE">
+                    </div>
+                    <div class="form-group">
+                        <label>Store Email</label>
+                        <input type="email" class="form-control" value="hello@lunabelle.com">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Currency</label>
+                        <select class="form-control">
+                            <option>USD ($)</option>
+                            <option>EUR (€)</option>
+                            <option>GBP (£)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Time Zone</label>
+                        <select class="form-control">
+                            <option>UTC-8 (PST)</option>
+                            <option>UTC-5 (EST)</option>
+                            <option selected>UTC+0 (GMT)</option>
+                            <option>UTC+1 (CET)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Store Description</label>
+                    <textarea class="form-control">Your destination for curated fashion and beauty essentials.</textarea>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>Shipping Settings</h2>
+        </div>
+        <div class="card-body">
+            <form>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Free Shipping Threshold</label>
+                        <input type="number" class="form-control" value="100" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Standard Shipping Rate</label>
+                        <input type="number" class="form-control" value="9.99" step="0.01">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Express Shipping Rate</label>
+                        <input type="number" class="form-control" value="19.99" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Estimated Delivery (days)</label>
+                        <input type="number" class="form-control" value="5">
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>Notifications</h2>
+        </div>
+        <div class="card-body">
+            <form>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div><strong style="font-size:0.85rem;">New Order Alerts</strong><p style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">Receive notifications for new orders</p></div>
+                        <div style="position:relative;"><input type="checkbox" checked style="width:18px;height:18px;"></div>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div><strong style="font-size:0.85rem;">Low Stock Alerts</strong><p style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">Get notified when stock is running low</p></div>
+                        <div><input type="checkbox" checked style="width:18px;height:18px;"></div>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div><strong style="font-size:0.85rem;">Customer Registration</strong><p style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">Email when new customers sign up</p></div>
+                        <div><input type="checkbox" style="width:18px;height:18px;"></div>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div><strong style="font-size:0.85rem;">Weekly Reports</strong><p style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">Receive weekly analytics summary</p></div>
+                        <div><input type="checkbox" checked style="width:18px;height:18px;"></div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</main>
+
+<script src="js/admin.js"></script>
+</body>
+</html>
