@@ -83,7 +83,7 @@
                 <span class="announcement-item"><span class="announcement-sep">•</span> BIENVENUE À NOTRE ATELIER À CHLEF <span class="announcement-sep">•</span></span>
                 <span class="announcement-item"><span class="announcement-sep">•</span> TISSUS DE QUALITÉ <span class="announcement-sep">•</span></span>
                 <span class="announcement-item"><span class="announcement-sep">•</span> COLLECTION EXCLUSIVE <span class="announcement-sep">•</span></span>
-                <span class="announcement-item"><span class="announcement-sep">•</span> LIVRAISON DANS LES 69 WILAYAS <span class="announcement-sep">•</span></span>
+                <span class="announcement-item"><span class="announcement-sep">•</span> LIVRAISON DANS LES 58 WILAYAS <span class="announcement-sep">•</span></span>
                 <span class="announcement-item"><span class="announcement-sep">•</span> BIENVENUE À NOTRE ATELIER À CHLEF <span class="announcement-sep">•</span></span>
                 <span class="announcement-item"><span class="announcement-sep">•</span> TISSUS DE QUALITÉ <span class="announcement-sep">•</span></span>
                 <span class="announcement-item"><span class="announcement-sep">•</span> COLLECTION EXCLUSIVE <span class="announcement-sep">•</span></span>
@@ -369,6 +369,27 @@
             }
         }, 100);
     });
+
+    /* Announcement bar — update text from settings */
+    fetch('/api/public/settings')
+        .then(function (r) { return r.json(); })
+        .then(function (settings) {
+            var text = settings.announcement_text;
+            if (!text) return;
+            var items = text.split('|').map(function (s) { return s.trim(); }).filter(Boolean);
+            if (items.length === 0) return;
+            var speed = settings.announcement_speed || 5000;
+            var track = document.querySelector('.announcement-track');
+            if (!track) return;
+            var sep = '<span class="announcement-sep">•</span>';
+            var html = items.map(function (item) {
+                return '<span class="announcement-item">' + sep + ' ' + esc(item) + ' ' + sep + '</span>';
+            }).join('');
+            /* Duplicate for seamless scroll */
+            track.innerHTML = html + html;
+            track.style.animationDuration = (speed * items.length / 1000) + 's';
+        })
+        .catch(function () { /* keep hardcoded fallback */ });
     </script>
 </body>
 </html>
