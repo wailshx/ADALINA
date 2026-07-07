@@ -351,34 +351,41 @@
             container.innerHTML = '<p class="collection-empty">Aucun produit disponible dans cette catégorie.</p>';
             return;
         }
-        container.innerHTML = '';
-        filtered.forEach(function (product) {
-            var inWishlist = wishlist.indexOf(product.id) !== -1;
-            var images = product.images && product.images.length > 0 ? product.images : [product.image];
-            var secondImg = images.length > 1 ? images[1] : null;
-            container.innerHTML +=
-                '<div class="product-card">' +
-                    '<div class="product-image">' +
-                        '<img src="' + images[0] + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy">' +
-                        (secondImg ? '<img src="' + secondImg + '" alt="' + esc(product.name) + '" class="img-secondary" loading="lazy">' : '') +
-                        (product.badge ? '<div class="product-badge">' + esc(product.badge) + '</div>' : '') +
-                        '<button class="product-wishlist' + (inWishlist ? ' active' : '') + '" onclick="toggleWishlistItem(this, ' + product.id + ')">' +
-                            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
-                                '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>' +
-                            '</svg>' +
-                        '</button>' +
-                        '<div class="product-image-overlay">' +
-                            '<button class="btn-overlay" onclick="quickView(' + product.id + ')">Aperçu rapide</button>' +
-                            '<button class="btn-overlay btn-overlay-primary" onclick="addToCart(' + product.id + ')">Acheter</button>' +
-                        '</div>' +
+        container.innerHTML = filtered.map(function (product) {
+            var inW = wishlist.indexOf(product.id) !== -1;
+            var imgs = product.images && product.images.length > 0 ? product.images : [product.image];
+            var second = imgs.length > 1 ? imgs[1] : null;
+            var ribbons = '';
+            if (product.sale_price) ribbons += '<span class="product-ribbon ribbon-sale">SALE</span>';
+            else if (product.new_arrival) ribbons += '<span class="product-ribbon ribbon-new">NOUVEAU</span>';
+            else if (product.featured) ribbons += '<span class="product-ribbon ribbon-featured">EXCLUSIF</span>';
+            if (product.badge && !product.sale_price && !product.new_arrival && !product.featured)
+                ribbons += '<span class="product-ribbon ribbon-badge">' + esc(product.badge) + '</span>';
+            var priceHtml = product.sale_price
+                ? '<span class="original-price">$' + product.price.toFixed(2) + '</span><span class="sale-price">$' + product.sale_price.toFixed(2) + '</span>'
+                : '$' + product.price.toFixed(2);
+            return '<div class="product-card">' +
+                '<div class="product-image">' +
+                    '<img src="' + imgs[0] + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy">' +
+                    (second ? '<img src="' + second + '" alt="' + esc(product.name) + '" class="img-secondary" loading="lazy">' : '') +
+                    '<div class="product-ribbons">' + ribbons + '</div>' +
+                    '<button class="product-wishlist' + (inW ? ' active' : '') + '" onclick="toggleWishlistItem(this, ' + product.id + ')" aria-label="Wishlist">' +
+                        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                            '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>' +
+                        '</svg>' +
+                    '</button>' +
+                    '<div class="product-overlay">' +
+                        '<button class="btn-overlay" onclick="quickView(' + product.id + ')">Aperçu rapide</button>' +
+                        '<button class="btn-overlay btn-overlay-primary" onclick="addToCart(' + product.id + ')">Acheter</button>' +
                     '</div>' +
-                    '<div class="product-info">' +
-                        '<div class="product-category">' + esc(product.category) + '</div>' +
-                        '<h3 class="product-title"><a href="product.html?id=' + product.id + '" style="text-decoration:none;color:inherit">' + esc(product.name) + '</a></h3>' +
-                        '<div class="product-price">' + (product.sale_price ? '<span class="original-price">$' + product.price.toFixed(2) + '</span> <span class="sale-price">$' + product.sale_price.toFixed(2) + '</span>' : '$' + product.price.toFixed(2)) + '</div>' +
-                    '</div>' +
-                '</div>';
-        });
+                '</div>' +
+                '<div class="product-info">' +
+                    '<div class="product-category">' + esc(product.category) + '</div>' +
+                    '<h3 class="product-title"><a href="product.html?id=' + product.id + '">' + esc(product.name) + '</a></h3>' +
+                    '<div class="product-price">' + priceHtml + '</div>' +
+                '</div>' +
+            '</div>';
+        }).join('');
     }
 
     /* Initialize collection when products are loaded */
@@ -387,7 +394,20 @@
             if (productsLoaded && products.length > 0) {
                 clearInterval(checkProducts);
                 renderCollection();
-                setTimeout(function () { if (window.initScrollTracks) initScrollTracks(); }, 200);
+                setTimeout(function () {
+                    if (window.initScrollTracks) initScrollTracks();
+                    /* Auto-scroll the collection track */
+                    var track = document.getElementById('collection-products');
+                    if (track && track.scrollWidth > track.clientWidth) {
+                        var scrollAmount = 330 + 24;
+                        setInterval(function () {
+                            var maxScroll = track.scrollWidth - track.clientWidth;
+                            var next = track.scrollLeft + scrollAmount;
+                            if (next >= maxScroll) next = 0;
+                            track.scrollTo({ left: next, behavior: 'smooth' });
+                        }, 4000);
+                    }
+                }, 200);
             }
         }, 100);
     });

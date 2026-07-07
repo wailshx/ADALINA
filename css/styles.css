@@ -603,30 +603,31 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .product-card {
-    background-color: #fff;
+    background: #fff;
     overflow: hidden;
-    border-radius: 14px;
-    box-shadow: none;
-    transition: box-shadow 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    transition: transform 0.5s cubic-bezier(0.23,1,0.32,1), box-shadow 0.5s cubic-bezier(0.23,1,0.32,1);
+    will-change: transform;
 }
 
 .product-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.10);
+    transform: translateY(-10px) scale(1.01);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.12), 0 10px 20px rgba(0,0,0,0.06);
 }
 
 .product-image {
     position: relative;
     height: 500px;
     overflow: hidden;
-    background: #f8f8f8;
+    background: #f5f5f0;
 }
 
 .product-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s ease;
+    transition: transform 0.7s cubic-bezier(0.23,1,0.32,1), opacity 0.5s ease;
 }
 
 .product-image .img-secondary {
@@ -637,7 +638,7 @@ h1, h2, h3, h4, h5, h6 {
     height: 100%;
     object-fit: cover;
     opacity: 0;
-    transition: opacity 0.4s ease;
+    transition: opacity 0.5s ease;
 }
 
 .product-card:hover .product-image .img-secondary {
@@ -649,44 +650,47 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .product-card:hover .product-image img {
-    transform: scale(1.05);
+    transform: scale(1.08);
 }
 
-.product-image-overlay {
+.product-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 50%);
+    background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.1) 50%, transparent 100%);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 0.75rem;
     opacity: 0;
-    transition: opacity 0.35s ease;
+    transition: opacity 0.4s ease;
 }
 
-.product-card:hover .product-image-overlay {
+.product-card:hover .product-overlay {
     opacity: 1;
 }
 
 .btn-overlay {
     padding: 10px 28px;
     font-family: 'Manrope', sans-serif;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 600;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     background: transparent;
     color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255,255,255,0.85);
     cursor: pointer;
     transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease;
     min-width: 140px;
+    backdrop-filter: blur(4px);
+    border-radius: 2px;
 }
 
 .btn-overlay:hover {
     background: #fff;
     color: #111;
+    transform: translateY(-1px);
 }
 
 .btn-overlay-primary {
@@ -699,27 +703,55 @@ h1, h2, h3, h4, h5, h6 {
     background: #222;
     color: #fff;
     border-color: #222;
-    transform: translateY(-2px);
 }
 
-.product-badge {
+/* ── Ribbons ── */
+.product-ribbons {
     position: absolute;
-    top: 14px;
-    left: 14px;
-    background-color: var(--primary);
-    color: #fff;
-    padding: 4px 12px;
-    font-size: 0.7rem;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.product-ribbon {
+    display: inline-block;
+    padding: 3px 10px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    z-index: 1;
+    color: #fff;
+    border-radius: 2px;
+    line-height: 1.4;
+}
+
+.ribbon-sale {
+    background: #c0392b;
+}
+
+.ribbon-new {
+    background: #2d6a4f;
+}
+
+.ribbon-featured {
+    background: #b8860b;
+}
+
+.ribbon-badge {
+    background: var(--primary);
 }
 
 .product-wishlist {
     position: absolute;
-    top: 14px;
-    right: 14px;
-    background: rgba(255, 255, 255, 0);
+    top: 12px;
+    right: 12px;
+    background: rgba(0,0,0,0.15);
+    backdrop-filter: blur(6px);
     border: none;
     width: 36px;
     height: 36px;
@@ -728,18 +760,20 @@ h1, h2, h3, h4, h5, h6 {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 2;
+    z-index: 3;
     opacity: 0;
-    transition: opacity 0.3s ease, background 0.3s ease, transform 0.3s ease;
+    transform: translateY(-4px);
+    transition: opacity 0.35s ease, transform 0.35s ease, background 0.3s ease;
 }
 
 .product-card:hover .product-wishlist {
     opacity: 1;
+    transform: translateY(0);
 }
 
 .product-wishlist:hover {
-    background: rgba(255, 255, 255, 0.9);
-    transform: scale(1.1);
+    background: rgba(255,255,255,0.9);
+    transform: scale(1.12);
 }
 
 .product-wishlist svg {
@@ -756,40 +790,51 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .product-info {
-    padding: 1.25rem 1rem 1.5rem;
+    padding: 1.25rem 1.25rem 1.5rem;
 }
 
 .product-category {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: var(--text-light);
     text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 0.35rem;
+    letter-spacing: 2px;
+    margin-bottom: 0.3rem;
     font-weight: 500;
 }
 
 .product-title {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 1.15rem;
-    margin-bottom: 0.4rem;
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
     color: var(--secondary);
     line-height: 1.3;
     font-weight: 600;
 }
 
+.product-title a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.product-title a:hover {
+    color: var(--primary);
+}
+
 .product-price {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 600;
     color: var(--secondary);
     font-family: 'Manrope', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .product-price .original-price {
     text-decoration: line-through;
-    color: var(--text-light);
+    color: var(--text-lighter);
     font-weight: 400;
-    margin-right: 0.5rem;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 .product-price .sale-price {

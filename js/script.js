@@ -42,34 +42,47 @@ let cart = JSON.parse(localStorage.getItem('adalinaCart')) || [];
 let slideIndex = 0;
 let _initialized = false;
 
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderProductCard(product) {
+    var inW = wishlist.indexOf(product.id) !== -1;
+    var imgs = product.images && product.images.length > 0 ? product.images : [product.image];
+    var second = imgs.length > 1 ? imgs[1] : null;
+    var ribbons = '';
+    if (product.sale_price) ribbons += '<span class="product-ribbon ribbon-sale">SALE</span>';
+    else if (product.new_arrival) ribbons += '<span class="product-ribbon ribbon-new">NOUVEAU</span>';
+    else if (product.featured) ribbons += '<span class="product-ribbon ribbon-featured">EXCLUSIF</span>';
+    if (product.badge && !product.sale_price && !product.new_arrival && !product.featured)
+        ribbons += '<span class="product-ribbon ribbon-badge">' + esc(product.badge) + '</span>';
+    var priceHtml = product.sale_price
+        ? '<span class="original-price">$' + product.price.toFixed(2) + '</span><span class="sale-price">$' + product.sale_price.toFixed(2) + '</span>'
+        : '$' + product.price.toFixed(2);
+    return '<div class="product-card">' +
+        '<div class="product-image">' +
+            '<img src="' + imgs[0] + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy">' +
+            (second ? '<img src="' + second + '" alt="' + esc(product.name) + '" class="img-secondary" loading="lazy">' : '') +
+            '<div class="product-ribbons">' + ribbons + '</div>' +
+            '<button class="product-wishlist' + (inW ? ' active' : '') + '" onclick="toggleWishlistItem(this,' + product.id + ')" aria-label="Wishlist">' +
+                '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                    '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>' +
+                '</svg>' +
+            '</button>' +
+            '<div class="product-overlay">' +
+                '<button class="btn-overlay" onclick="quickView(' + product.id + ')">Aperçu rapide</button>' +
+                '<button class="btn-overlay btn-overlay-primary" onclick="addToCart(' + product.id + ')">Acheter</button>' +
+            '</div>' +
+        '</div>' +
+        '<div class="product-info">' +
+            '<div class="product-category">' + esc(product.category) + '</div>' +
+            '<h3 class="product-title"><a href="product.html?id=' + product.id + '">' + esc(product.name) + '</a></h3>' +
+            '<div class="product-price">' + priceHtml + '</div>' +
+        '</div>' +
+    '</div>';
+}
+
 function renderProducts(productsToRender, container) {
     if (!container) return;
-    container.innerHTML = '';
-    productsToRender.forEach(product => {
-        const inWishlist = wishlist.includes(product.id);
-        container.innerHTML += `
-            <div class="product-card">
-                <div class="product-image">
-                    <img src="${product.image}" alt="${product.name}">
-                    ${product.badge ? `<div class="product-badge">${product.badge}</div>` : ''}
-                    <button class="product-wishlist${inWishlist ? ' active' : ''}" onclick="toggleWishlistItem(this, ${product.id})">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                        </svg>
-                    </button>
-                    <div class="product-overlay">
-                        <button class="btn-overlay" onclick="quickView(${product.id})">Aperçu rapide</button>
-                        <button class="btn-overlay btn-overlay-primary" onclick="addToCart(${product.id})">Acheter</button>
-                    </div>
-                </div>
-                <div class="product-info">
-                    <div class="product-category">${product.category}</div>
-                    <h3 class="product-title"><a href="product.html?id=${product.id}" style="text-decoration:none;color:inherit">${product.name}</a></h3>
-                    <div class="product-price">$${product.price.toFixed(2)}</div>
-                </div>
-            </div>
-        `;
-    });
+    container.innerHTML = productsToRender.map(renderProductCard).join('');
 }
 
 function searchProducts(query) {
@@ -333,34 +346,12 @@ function renderWishlistPage() {
         return;
     }
     if (emptyEl) emptyEl.style.display = 'none';
-    container.innerHTML = '';
-    wishlist.forEach(id => {
-        const p = products.find(pr => pr.id === id);
-        if (p) {
-        container.innerHTML += `
-            <div class="product-card">
-                <div class="product-image">
-                    <img src="${p.image}" alt="${p.name}">
-                    ${p.badge ? `<div class="product-badge">${p.badge}</div>` : ''}
-                    <button class="product-wishlist active" onclick="toggleWishlistItem(this, ${p.id})">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                        </svg>
-                    </button>
-                    <div class="product-overlay">
-                        <button class="btn-overlay" onclick="quickView(${p.id})">Aperçu rapide</button>
-                        <button class="btn-overlay btn-overlay-primary" onclick="addToCart(${p.id})">Acheter</button>
-                    </div>
-                </div>
-                <div class="product-info">
-                    <div class="product-category">${p.category}</div>
-                    <h3 class="product-title"><a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit">${p.name}</a></h3>
-                    <div class="product-price">$${p.price.toFixed(2)}</div>
-                </div>
-            </div>
-        `;
-        }
+    var html = '';
+    wishlist.forEach(function(id) {
+        var p = products.find(function(pr) { return pr.id === id; });
+        if (p) html += renderProductCard(p);
     });
+    container.innerHTML = html;
 }
 
 function addToCartFromWishlist(productId) {
@@ -1579,42 +1570,15 @@ function ppNextImage() {
 function renderRelatedProducts(currentProduct) {
     const grid = document.getElementById('related-products-grid');
     if (!grid) return;
-
     const related = products
         .filter(p => p.category === currentProduct.category && p.id !== currentProduct.id)
         .slice(0, 4);
-
     if (related.length === 0) {
         const section = document.getElementById('related-products');
         if (section) section.style.display = 'none';
         return;
     }
-
-    grid.innerHTML = related.map(p => {
-        const inWishlist = wishlist.includes(p.id);
-        return `
-            <div class="product-card">
-                <div class="product-image">
-                    <img src="${p.images[0]}" alt="${p.name}" loading="lazy">
-                    ${p.badge ? `<div class="product-badge">${p.badge}</div>` : ''}
-                    <button class="product-wishlist${inWishlist ? ' active' : ''}" onclick="toggleWishlistItem(this, ${p.id})">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                        </svg>
-                    </button>
-                    <div class="product-overlay">
-                        <button class="btn-overlay" onclick="quickView(${p.id})">Aperçu rapide</button>
-                        <button class="btn-overlay btn-overlay-primary" onclick="addToCart(${p.id})">Acheter</button>
-                    </div>
-                </div>
-                <div class="product-info">
-                    <div class="product-category">${p.category}</div>
-                    <h3 class="product-title"><a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit">${p.name}</a></h3>
-                    <div class="product-price">$${p.price.toFixed(2)}</div>
-                </div>
-            </div>
-        `;
-    }).join('');
+    grid.innerHTML = related.map(renderProductCard).join('');
 }
 
 async function init() {
@@ -1820,7 +1784,7 @@ window.addToCartFromWishlist = addToCartFromWishlist;
 window.renderWishlistPage = renderWishlistPage;
 window.updateWishlistCounter = updateWishlistCounter;
 window.emptyCart = emptyCart;
-window.esc = function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
+window.esc = window.esc || function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
 function decreaseQty(productId) { changeQty(productId, -1); }
 function increaseQty(productId) { changeQty(productId, 1); }
 function updateCartItem(productId) { setQty(productId); }
