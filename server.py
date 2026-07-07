@@ -180,6 +180,30 @@ class LunaBelleServer(SimpleHTTPRequestHandler):
                 send_json(self, {'error': str(e)}, 500)
             return
 
+        # GET /api/public/settings — public settings
+        if path == '/api/public/settings':
+            try:
+                db = get_db()
+                cur = db.cursor()
+                cur.execute("SELECT setting_key, setting_value, setting_type FROM settings")
+                rows = cur.fetchall()
+                result = {}
+                for r in rows:
+                    key = r['setting_key']
+                    val = r['setting_value']
+                    t = r['setting_type']
+                    if t == 'boolean':
+                        val = val == '1'
+                    elif t == 'number':
+                        try: val = float(val)
+                        except: pass
+                    result[key] = val
+                send_json(self, result)
+                db.close()
+            except Exception as e:
+                send_json(self, {'error': str(e)}, 500)
+            return
+
         # GET /api/public/collections
         if path == '/api/public/collections':
             try:
