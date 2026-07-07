@@ -598,36 +598,47 @@ h1, h2, h3, h4, h5, h6 {
 
 .products-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 2rem;
+}
+
+@media (max-width: 1024px) {
+    .products-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+    .products-grid { grid-template-columns: 1fr; }
 }
 
 .product-card {
     background: #fff;
     overflow: hidden;
-    border-radius: 16px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-    transition: transform 0.5s cubic-bezier(0.23,1,0.32,1), box-shadow 0.5s cubic-bezier(0.23,1,0.32,1);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
     will-change: transform;
 }
 
 .product-card:hover {
-    transform: translateY(-10px) scale(1.01);
-    box-shadow: 0 30px 60px rgba(0,0,0,0.12), 0 10px 20px rgba(0,0,0,0.06);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.08);
 }
 
 .product-image {
     position: relative;
-    height: 500px;
+    aspect-ratio: 3 / 4;
     overflow: hidden;
     background: #f5f5f0;
 }
 
 .product-image img {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.7s cubic-bezier(0.23,1,0.32,1), opacity 0.5s ease;
+    transition: transform 0.25s ease, opacity 0.4s ease;
 }
 
 .product-image .img-secondary {
@@ -638,7 +649,7 @@ h1, h2, h3, h4, h5, h6 {
     height: 100%;
     object-fit: cover;
     opacity: 0;
-    transition: opacity 0.5s ease;
+    transition: opacity 0.4s ease;
 }
 
 .product-card:hover .product-image .img-secondary {
@@ -650,20 +661,21 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .product-card:hover .product-image img {
-    transform: scale(1.08);
+    transform: scale(1.04);
 }
 
 .product-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.1) 50%, transparent 100%);
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
     gap: 0.75rem;
+    padding-bottom: 2rem;
     opacity: 0;
-    transition: opacity 0.4s ease;
+    background: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 60%);
+    transition: opacity 0.25s ease;
 }
 
 .product-card:hover .product-overlay {
@@ -681,16 +693,20 @@ h1, h2, h3, h4, h5, h6 {
     color: #fff;
     border: 1px solid rgba(255,255,255,0.85);
     cursor: pointer;
-    transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease;
+    transition: transform 0.25s ease, background 0.25s ease, color 0.25s ease;
     min-width: 140px;
     backdrop-filter: blur(4px);
     border-radius: 2px;
+    transform: translateY(10px);
+}
+
+.product-card:hover .btn-overlay {
+    transform: translateY(0);
 }
 
 .btn-overlay:hover {
     background: #fff;
     color: #111;
-    transform: translateY(-1px);
 }
 
 .btn-overlay-primary {
@@ -705,45 +721,25 @@ h1, h2, h3, h4, h5, h6 {
     border-color: #222;
 }
 
-/* ── Ribbons ── */
 .product-ribbons {
     position: absolute;
     top: 12px;
     left: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
     z-index: 3;
     pointer-events: none;
 }
 
 .product-ribbon {
     display: inline-block;
-    padding: 3px 10px;
+    padding: 4px 12px;
     font-family: 'Manrope', sans-serif;
     font-size: 0.6rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #fff;
-    border-radius: 2px;
+    background: #c9a96e;
+    color: #111;
     line-height: 1.4;
-}
-
-.ribbon-sale {
-    background: #c0392b;
-}
-
-.ribbon-new {
-    background: #2d6a4f;
-}
-
-.ribbon-featured {
-    background: #b8860b;
-}
-
-.ribbon-badge {
-    background: var(--primary);
 }
 
 .product-wishlist {
@@ -763,7 +759,7 @@ h1, h2, h3, h4, h5, h6 {
     z-index: 3;
     opacity: 0;
     transform: translateY(-4px);
-    transition: opacity 0.35s ease, transform 0.35s ease, background 0.3s ease;
+    transition: opacity 0.25s ease, transform 0.25s ease, background 0.25s ease;
 }
 
 .product-card:hover .product-wishlist {
@@ -773,7 +769,6 @@ h1, h2, h3, h4, h5, h6 {
 
 .product-wishlist:hover {
     background: rgba(255,255,255,0.9);
-    transform: scale(1.12);
 }
 
 .product-wishlist svg {
@@ -781,7 +776,7 @@ h1, h2, h3, h4, h5, h6 {
     height: 18px;
     fill: none;
     stroke: #fff;
-    transition: stroke 0.3s ease;
+    transition: stroke 0.25s ease;
 }
 
 .product-wishlist.active svg {
@@ -790,25 +785,20 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .product-info {
-    padding: 1.25rem 1.25rem 1.5rem;
-}
-
-.product-category {
-    font-size: 0.65rem;
-    color: var(--text-light);
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 0.3rem;
-    font-weight: 500;
+    padding: 1rem 1.25rem 1.25rem;
 }
 
 .product-title {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 1.2rem;
-    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+    margin-bottom: 0.35rem;
     color: var(--secondary);
     line-height: 1.3;
     font-weight: 600;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .product-title a {
@@ -820,10 +810,18 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--primary);
 }
 
+.product-sizes {
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.75rem;
+    color: var(--text-lighter);
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.02em;
+}
+
 .product-price {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--secondary);
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111;
     font-family: 'Manrope', sans-serif;
     display: flex;
     align-items: center;
@@ -832,20 +830,17 @@ h1, h2, h3, h4, h5, h6 {
 
 .product-price .original-price {
     text-decoration: line-through;
-    color: var(--text-lighter);
+    color: #999;
     font-weight: 400;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
 .product-price .sale-price {
     color: var(--primary);
 }
 
-.product-stock {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--primary);
-    margin: 0.25rem 0;
+.product-price .current-price {
+    color: #111;
 }
 
 /* Promo Banner */
@@ -2420,10 +2415,6 @@ input[type="checkbox"] {
 }
 
 @media (max-width: 768px) {
-    .product-image {
-        height: 380px;
-    }
-
     .scroll-track {
         gap: 1rem;
     }
@@ -2483,10 +2474,6 @@ input[type="checkbox"] {
         font-size: 1.6rem;
     }
     
-    .product-image {
-        height: 400px;
-    }
-
     .scroll-track > * {
         width: 85vw;
     }

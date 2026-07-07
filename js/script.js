@@ -44,24 +44,36 @@ let _initialized = false;
 
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+function formatPriceDA(price) {
+    var num = Math.round(price);
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' DA';
+}
+
 function renderProductCard(product) {
     var inW = wishlist.indexOf(product.id) !== -1;
     var imgs = product.images && product.images.length > 0 ? product.images : [product.image];
     var second = imgs.length > 1 ? imgs[1] : null;
-    var ribbons = '';
-    if (product.sale_price) ribbons += '<span class="product-ribbon ribbon-sale">SALE</span>';
-    else if (product.new_arrival) ribbons += '<span class="product-ribbon ribbon-new">NOUVEAU</span>';
-    else if (product.featured) ribbons += '<span class="product-ribbon ribbon-featured">EXCLUSIF</span>';
-    if (product.badge && !product.sale_price && !product.new_arrival && !product.featured)
-        ribbons += '<span class="product-ribbon ribbon-badge">' + esc(product.badge) + '</span>';
+    var ribbon = '';
+    var allowed = ['Nouveau', 'Promotion', 'Pas disponible', 'Édition limitée', 'Best Seller'];
+    if (product.badge && allowed.indexOf(product.badge) !== -1) {
+        ribbon = '<span class="product-ribbon">' + esc(product.badge) + '</span>';
+    }
+    var sizesHtml = '';
+    if (product.sizes && product.sizes.length > 0) {
+        var available = product.sizes.filter(function(s) { return s.stock > 0; });
+        if (available.length > 0) {
+            var sizeLabels = available.map(function(s) { return esc(s.size); }).join(' \u2022 ');
+            sizesHtml = '<div class="product-sizes">Disponible : ' + sizeLabels + '</div>';
+        }
+    }
     var priceHtml = product.sale_price
-        ? '<span class="original-price">$' + product.price.toFixed(2) + '</span><span class="sale-price">$' + product.sale_price.toFixed(2) + '</span>'
-        : '$' + product.price.toFixed(2);
+        ? '<span class="original-price">' + formatPriceDA(product.price) + '</span><span class="sale-price">' + formatPriceDA(product.sale_price) + '</span>'
+        : '<span class="current-price">' + formatPriceDA(product.price) + '</span>';
     return '<div class="product-card">' +
         '<div class="product-image">' +
             '<img src="' + imgs[0] + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy">' +
             (second ? '<img src="' + second + '" alt="' + esc(product.name) + '" class="img-secondary" loading="lazy">' : '') +
-            '<div class="product-ribbons">' + ribbons + '</div>' +
+            '<div class="product-ribbons">' + ribbon + '</div>' +
             '<button class="product-wishlist' + (inW ? ' active' : '') + '" onclick="toggleWishlistItem(this,' + product.id + ')" aria-label="Wishlist">' +
                 '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
                     '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>' +
@@ -69,12 +81,12 @@ function renderProductCard(product) {
             '</button>' +
             '<div class="product-overlay">' +
                 '<button class="btn-overlay" onclick="quickView(' + product.id + ')">Aperçu rapide</button>' +
-                '<button class="btn-overlay btn-overlay-primary" onclick="addToCart(' + product.id + ')">Acheter</button>' +
+                '<button class="btn-overlay btn-overlay-primary" onclick="addToCart(' + product.id + ')">Ajouter au panier</button>' +
             '</div>' +
         '</div>' +
         '<div class="product-info">' +
-            '<div class="product-category">' + esc(product.category) + '</div>' +
             '<h3 class="product-title"><a href="product.html?id=' + product.id + '">' + esc(product.name) + '</a></h3>' +
+            sizesHtml +
             '<div class="product-price">' + priceHtml + '</div>' +
         '</div>' +
     '</div>';
