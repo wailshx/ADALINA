@@ -31,6 +31,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
     <div id="root">
@@ -81,7 +82,6 @@
                     <ul class="nav-list">
                         <li class="nav-item"><a href="index.html" class="nav-link active">HOME</a></li>
                         <li class="nav-item"><a href="shop.html" class="nav-link">SHOP</a></li>
-                        <li class="nav-item"><a href="contact.html" class="nav-link">CONTACTEZ-NOUS</a></li>
                     </ul>
                 </nav>
                 <span class="header-nav-location" data-setting="atelier_address">𝐀𝐓𝐄𝐋𝐈𝐄𝐑 𝐀𝐃𝐀𝐋𝐈𝐍𝐀 • 𝐂𝐇𝐋𝐄𝐅</span>
@@ -133,27 +133,22 @@
 
         <footer class="footer">
             <div class="container">
-                <div class="footer-grid">
-                    <div class="footer-column">
-                        <h3>ADALINA</h3>
-                        <p>Mode féminine de luxe et parfums pour la femme moderne.</p>
+                <div class="footer-inner">
+                    <div class="footer-brand">
+                        <h3 class="footer-logo">ADALINA</h3>
+                        <p class="footer-tagline">Vêtements prêt-à-porter pour femmes</p>
+                        <p class="footer-slogan">Découvrez une collection pensée pour sublimer chaque femme avec élégance.</p>
                     </div>
-                    <div class="footer-column">
-                        <h3>Liens rapides</h3>
-                        <ul>
-                            <li><a href="privacy.html">Politique de confidentialité</a></li>
-                            <li><a href="terms.html">Conditions d'utilisation</a></li>
-                        </ul>
-                    </div>
-                    
-                    <div class="footer-column">
-                        <h3>Suivez-nous</h3>
-                        <ul class="social-links">
-                            <li><a href="#">Instagram</a></li>
-                            <li><a href="#">Pinterest</a></li>
-                            <li><a href="#">Facebook</a></li>
-                            <li><a href="#">TikTok</a></li>
-                        </ul>
+                    <div class="footer-social">
+                        <a href="#" target="_blank" rel="noopener noreferrer" class="footer-social-icon" data-setting-href="instagram_url" aria-label="Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" target="_blank" rel="noopener noreferrer" class="footer-social-icon" data-setting-href="whatsapp_url" aria-label="WhatsApp">
+                            <i class="fab fa-whatsapp"></i>
+                        </a>
+                        <a href="#" target="_blank" rel="noopener noreferrer" class="footer-social-icon" data-setting-href="tiktok_url" aria-label="TikTok">
+                            <i class="fab fa-tiktok"></i>
+                        </a>
                     </div>
                 </div>
                 <div class="footer-bottom">
