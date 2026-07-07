@@ -29,22 +29,55 @@ def send_json(handler, data, status=200):
     handler.send_response(status)
     handler.send_header('Content-Type', 'application/json; charset=utf-8')
     handler.send_header('Access-Control-Allow-Origin', '*')
+    handler.send_header('Cache-Control', 'no-store, must-revalidate')
     handler.end_headers()
     handler.wfile.write(json.dumps(data, default=str, ensure_ascii=False).encode('utf-8'))
 
 def format_product(row, cur=None):
     p = dict(row)
-    if isinstance(p.get('images'), str):
+    if p.get('images') is None:
+        p['images'] = []
+    elif isinstance(p['images'], str):
         p['images'] = json.loads(p['images'])
     if cur:
-        cur.execute("SELECT color_name, color_hex, stock FROM product_colors WHERE product_id=? ORDER BY id", (p['id'],))
-        color_rows = cur.fetchall()
-        p['colors'] = [{'name': r['color_name'], 'hex': r['color_hex'], 'stock': r['stock']} for r in color_rows]
-        cur.execute("SELECT size, stock FROM product_sizes WHERE product_id=? ORDER BY id", (p['id'],))
-        size_rows = cur.fetchall()
-        p['sizes'] = [{'size': r['size'], 'stock': r['stock']} for r in size_rows]
-        cur.execute("SELECT color_name, size_name, stock FROM product_variants WHERE product_id=? ORDER BY id", (p['id'],))
-        p['variants'] = [{'color_name': r['color_name'], 'size_name': r['size_name'], 'stock': r['stock']} for r in cur.fetchall()]
+        cur.execute("""
+            SELECT id, color_name, color_hex, sku, stock FROM product_variants
+            WHERE product_id=? ORDER BY sort_order, id
+        """, (p['id'],))
+        variant_rows = cur.fetchall()
+        if variant_rows:
+            variants = []
+            all_colors = {}
+            all_sizes = set()
+            images_seen = set()
+            merged_sizes = []
+            for v in variant_rows:
+                vdict = {'id': v['id'], 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock']}
+                cur.execute("SELECT image_path FROM variant_images WHERE variant_id=? ORDER BY sort_order", (v['id'],))
+                vdict['images'] = [r['image_path'] for r in cur.fetchall()]
+                cur.execute("SELECT size_name, stock FROM variant_sizes WHERE variant_id=? ORDER BY id", (v['id'],))
+                vdict['sizes'] = [{'size': r['size_name'], 'stock': r['stock']} for r in cur.fetchall()]
+                variants.append(vdict)
+                if v['color_name'] and v['color_name'] not in all_colors:
+                    all_colors[v['color_name']] = {'name': v['color_name'], 'hex': v['color_hex'], 'stock': v['stock']}
+                for s in vdict['sizes']:
+                    if s['size'] not in all_sizes:
+                        all_sizes.add(s['size'])
+                        merged_sizes.append(s)
+                for img in vdict['images']:
+                    if img not in images_seen:
+                        images_seen.add(img)
+            p['colors'] = list(all_colors.values()) if all_colors else []
+            p['sizes'] = merged_sizes if merged_sizes else []
+            p['variants'] = variants
+            p['images'] = list(images_seen) if images_seen else (p.get('images') or [])
+        else:
+            cur.execute("SELECT color_name, color_hex, stock FROM product_colors WHERE product_id=? ORDER BY id", (p['id'],))
+            p['colors'] = [dict(r) for r in cur.fetchall()]
+            cur.execute("SELECT size, stock FROM product_sizes WHERE product_id=? ORDER BY id", (p['id'],))
+            p['sizes'] = [{'size': r['size'], 'stock': r['stock']} for r in cur.fetchall()]
+            cur.execute("SELECT color_name, size_name, stock FROM product_variants WHERE product_id=? ORDER BY id", (p['id'],))
+            p['variants'] = [dict(r) for r in cur.fetchall()]
     p['featured'] = bool(p.get('featured', 0))
     p['new_arrival'] = bool(p.get('new_arrival', 0))
     p['category'] = p.get('category_name') or ''
