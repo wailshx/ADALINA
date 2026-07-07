@@ -149,15 +149,34 @@ def init_db():
     for table, col, typ in [
         ('product_colors', 'stock', 'INTEGER DEFAULT 0'),
         ('product_sizes', 'stock', 'INTEGER DEFAULT 0'),
-        ('orders', 'customer_name', 'TEXT DEFAULT \'\''),
-        ('orders', 'customer_phone', 'TEXT DEFAULT \'\''),
-        ('orders', 'wilaya', 'TEXT DEFAULT \'\''),
-        ('orders', 'commune', 'TEXT DEFAULT \'\''),
+        ('product_variants', 'sku', "TEXT DEFAULT ''"),
+        ('product_variants', 'color_hex', "TEXT DEFAULT ''"),
+        ('product_variants', 'sort_order', "INTEGER DEFAULT 0"),
+        ('orders', 'customer_name', "TEXT DEFAULT ''"),
+        ('orders', 'customer_phone', "TEXT DEFAULT ''"),
+        ('orders', 'wilaya', "TEXT DEFAULT ''"),
+        ('orders', 'commune', "TEXT DEFAULT ''"),
     ]:
         try:
             cur.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
         except Exception:
             pass  # column already exists
+
+    cur.execute("""CREATE TABLE IF NOT EXISTS variant_images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        variant_id INTEGER NOT NULL,
+        image_path TEXT NOT NULL,
+        sort_order INTEGER DEFAULT 0,
+        FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE
+    )""")
+
+    cur.execute("""CREATE TABLE IF NOT EXISTS variant_sizes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        variant_id INTEGER NOT NULL,
+        size_name TEXT NOT NULL,
+        stock INTEGER DEFAULT 0,
+        FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE
+    )""")
 
     conn.commit()
     conn.close()

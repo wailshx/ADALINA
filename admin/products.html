@@ -132,34 +132,14 @@
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-top:8px;">
-                    <label>Available Sizes</label>
-                    <div id="size-picker-container" style="margin-top:4px;">
-                        <div style="display:flex;gap:8px;align-items:center;">
-                            <input type="text" id="custom-size-input" placeholder="e.g. Taille 1 (36/38/40)" style="flex:1;padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:0.85rem;">
-                            <button type="button" class="btn btn-outline btn-sm" id="add-custom-size-btn">Add</button>
-                        </div>
-                        <div id="selected-sizes" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
-                    </div>
-                </div>
-
-                <div class="form-group" style="margin-top:8px;">
-                    <label>Available Colors</label>
-                    <div id="color-picker-container" style="margin-top:4px;">
-                        <div style="display:flex;flex-wrap:wrap;gap:6px;" id="predefined-colors"></div>
-                        <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
-                            <input type="color" id="custom-color-picker" value="#000000" style="width:40px;height:36px;padding:0;border:1px solid #ddd;border-radius:4px;cursor:pointer;">
-                            <input type="text" id="custom-color-name" placeholder="Color name" style="flex:1;padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:0.85rem;">
-                            <button type="button" class="btn btn-outline btn-sm" id="add-custom-color-btn">Add</button>
-                        </div>
-                        <div id="selected-colors" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;"></div>
-                    </div>
-                </div>
-
-                <div class="form-group" style="margin-top:8px;">
-                    <label>Variant Stock</label>
-                    <div id="variant-matrix" style="margin-top:4px;overflow-x:auto;">
-                        <p style="color:var(--text-muted);font-size:0.85rem;padding:12px;">Add at least one color and one size to manage variant stock.</p>
+                <div class="form-group" style="margin-top:12px;">
+                    <label>Variants <small style="font-weight:400;color:var(--text-muted);">(colors with per-variant images, sizes, SKU)</small></label>
+                    <div id="variants-container" style="margin-top:6px;"></div>
+                    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center;">
+                        <input type="text" id="new-variant-name" placeholder="Color name" style="padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:0.85rem;flex:1;min-width:120px;">
+                        <input type="color" id="new-variant-color" value="#000000" style="width:40px;height:36px;padding:0;border:1px solid #ddd;border-radius:4px;cursor:pointer;">
+                        <input type="text" id="new-variant-sku" placeholder="SKU (optional)" style="padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:0.85rem;flex:1;min-width:100px;">
+                        <button type="button" class="btn btn-primary btn-sm" id="add-variant-btn">+ Add Variant</button>
                     </div>
                 </div>
 

@@ -378,10 +378,38 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 pid = d['id']
                 if d.get('images') and isinstance(d['images'], str):
                     d['images'] = json.loads(d['images'])
-                cur.execute("SELECT size FROM product_sizes WHERE product_id=%s ORDER BY id", (pid,))
-                d['sizes'] = [s['size'] for s in cur.fetchall()]
-                cur.execute("SELECT color_name FROM product_colors WHERE product_id=%s ORDER BY id", (pid,))
-                d['colors'] = [c['color_name'] for c in cur.fetchall()]
+                # Read variants with images, sizes, sku
+                cur.execute("SELECT id, color_name, color_hex, sku FROM product_variants WHERE product_id=%s ORDER BY sort_order, id", (pid,))
+                variant_rows = cur.fetchall()
+                variants = []
+                all_sizes = set()
+                all_colors = []
+                for v in variant_rows:
+                    vid = v['id']
+                    cur.execute("SELECT image_path FROM variant_images WHERE variant_id=%s ORDER BY sort_order", (vid,))
+                    images = [row['image_path'] for row in cur.fetchall()]
+                    cur.execute("SELECT size_name, stock FROM variant_sizes WHERE variant_id=%s ORDER BY id", (vid,))
+                    sizes = [{'size': row['size_name'], 'stock': row['stock']} for row in cur.fetchall()]
+                    variants.append({
+                        'color_name': v['color_name'],
+                        'color_hex': v['color_hex'],
+                        'sku': v['sku'],
+                        'images': images,
+                        'sizes': sizes,
+                    })
+                    all_colors.append({'name': v['color_name'], 'hex': v['color_hex']})
+                    for s in sizes:
+                        all_sizes.add(s['size'])
+                # Fallback to old tables if no advanced variants exist
+                if not variant_rows:
+                    cur.execute("SELECT size FROM product_sizes WHERE product_id=%s ORDER BY id", (pid,))
+                    d['sizes'] = [s['size'] for s in cur.fetchall()]
+                    cur.execute("SELECT color_name FROM product_colors WHERE product_id=%s ORDER BY id", (pid,))
+                    d['colors'] = [c['color_name'] for c in cur.fetchall()]
+                else:
+                    d['sizes'] = list(all_sizes)
+                    d['colors'] = all_colors
+                    d['variants'] = variants
                 result.append(d)
             send_json(self, result)
             return True
@@ -397,13 +425,36 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             data = dict(row)
             if data.get('images') and isinstance(data['images'], str):
                 data['images'] = json.loads(data['images'])
-            # Read sizes and colors from normalized tables
-            cur.execute("SELECT size, stock FROM product_sizes WHERE product_id=%s ORDER BY id", (pid,))
-            data['sizes'] = [{'size': r['size'], 'stock': r['stock']} for r in cur.fetchall()]
-            cur.execute("SELECT color_name, color_hex, stock FROM product_colors WHERE product_id=%s ORDER BY id", (pid,))
-            data['colors'] = [{'name': r['color_name'], 'hex': r['color_hex'], 'stock': r['stock']} for r in cur.fetchall()]
-            cur.execute("SELECT color_name, size_name, stock FROM product_variants WHERE product_id=%s ORDER BY id", (pid,))
-            data['variants'] = [{'color_name': r['color_name'], 'size_name': r['size_name'], 'stock': r['stock']} for r in cur.fetchall()]
+            # Read variants with images, sizes, sku
+            cur.execute("SELECT id, color_name, color_hex, sku FROM product_variants WHERE product_id=%s ORDER BY sort_order, id", (pid,))
+            variant_rows = cur.fetchall()
+            variants = []
+            all_colors = []
+            for v in variant_rows:
+                vid = v['id']
+                cur.execute("SELECT image_path FROM variant_images WHERE variant_id=%s ORDER BY sort_order", (vid,))
+                images = [row['image_path'] for row in cur.fetchall()]
+                cur.execute("SELECT size_name, stock FROM variant_sizes WHERE variant_id=%s ORDER BY id", (vid,))
+                sizes = [{'size': row['size_name'], 'stock': row['stock']} for row in cur.fetchall()]
+                variants.append({
+                    'color_name': v['color_name'],
+                    'color_hex': v['color_hex'],
+                    'sku': v['sku'],
+                    'images': images,
+                    'sizes': sizes,
+                })
+                all_colors.append({'name': v['color_name'], 'hex': v['color_hex']})
+            # Fallback to old tables if no advanced variants exist
+            if not variant_rows:
+                cur.execute("SELECT size, stock FROM product_sizes WHERE product_id=%s ORDER BY id", (pid,))
+                data['sizes'] = [{'size': r['size'], 'stock': r['stock']} for r in cur.fetchall()]
+                cur.execute("SELECT color_name, color_hex, stock FROM product_colors WHERE product_id=%s ORDER BY id", (pid,))
+                data['colors'] = [{'name': r['color_name'], 'hex': r['color_hex'], 'stock': r['stock']} for r in cur.fetchall()]
+                cur.execute("SELECT color_name, size_name, stock FROM product_variants WHERE product_id=%s ORDER BY id", (pid,))
+                data['variants'] = [{'color_name': r['color_name'], 'size_name': r['size_name'], 'stock': r['stock']} for r in cur.fetchall()]
+            else:
+                data['colors'] = all_colors
+                data['variants'] = variants
             send_json(self, data)
             return True
 
@@ -625,34 +676,59 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 row = cur.fetchone()
                 if row:
                     cat_id = row['id']
-            sizes = data.get('sizes', [])
-            colors = data.get('colors', [])
             status = data.get('status', 'active')
-            colorNames = [c.get('name', c) if isinstance(c, dict) else c for c in colors]
-            sizeNames = [s.get('size', s) if isinstance(s, dict) else s for s in sizes]
+            variants = data.get('variants', [])
+            colors = data.get('colors', [])
+            sizes = data.get('sizes', [])
+            # Calculate total stock from variants or fallback
+            total_stock = data.get('stock', 0)
             cur.execute("""INSERT INTO products (name, description, price, sale_price, category_id, image, images, badge, sizes, colors, stock, brand, rating, featured, new_arrival, status)
                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                         (data.get('name',''), data.get('description',''), data.get('price',0),
                          data.get('sale_price'), cat_id, data.get('image',''),
                          json.dumps(data.get('images',[])), data.get('badge'),
-                         json.dumps(sizeNames), json.dumps(colorNames),
-                         data.get('stock',0), data.get('brand',''), data.get('rating',0),
+                         json.dumps(sizes), json.dumps(colors),
+                         total_stock, data.get('brand',''), data.get('rating',0),
                          data.get('featured', 0), data.get('new_arrival', 0), status))
             pid = cur.lastrowid
-            for s in sizes:
-                sname = s.get('size', s) if isinstance(s, dict) else s
-                sstock = s.get('stock', 0) if isinstance(s, dict) else 0
-                cur.execute("INSERT INTO product_sizes (product_id, size, stock) VALUES (%s, %s, %s)", (pid, sname, sstock))
-            for c in colors:
-                cname = c.get('name', c) if isinstance(c, dict) else c
-                chex = c.get('hex', '') if isinstance(c, dict) else ''
-                cstock = c.get('stock', 0) if isinstance(c, dict) else 0
-                cur.execute("INSERT INTO product_colors (product_id, color_name, color_hex, stock) VALUES (%s, %s, %s, %s)", (pid, cname, chex, cstock))
-            variants = data.get('variants', [])
-            for v in variants:
-                cur.execute("INSERT INTO product_variants (product_id, color_name, size_name, stock) VALUES (%s, %s, %s, %s)",
-                            (pid, v.get('color_name', ''), v.get('size_name', ''), v.get('stock', 0)))
-            cur.execute("INSERT OR IGNORE INTO inventory (product_id, quantity) VALUES (%s, %s)", (pid, data.get('stock', 0)))
+            # Save old tables for backward compat
+            color_names = [c.get('name', c) if isinstance(c, dict) else c for c in colors] if colors else []
+            size_names = [s.get('size', s) if isinstance(s, dict) else s for s in sizes] if sizes else []
+            for s_name in size_names:
+                cur.execute("INSERT INTO product_sizes (product_id, size, stock) VALUES (%s, %s, 0)", (pid, s_name))
+            for c_name in color_names:
+                _hex = ''
+                for c in (colors or []):
+                    if (c.get('name', c) if isinstance(c, dict) else c) == c_name:
+                        _hex = c.get('hex', '') if isinstance(c, dict) else ''
+                        break
+                cur.execute("INSERT INTO product_colors (product_id, color_name, color_hex, stock) VALUES (%s, %s, %s, 0)", (pid, c_name, _hex))
+            # Save advanced variants
+            if variants and isinstance(variants, list):
+                for idx, v in enumerate(variants):
+                    cur.execute("""INSERT INTO product_variants (product_id, color_name, color_hex, sku, sort_order, stock)
+                                   VALUES (%s,%s,%s,%s,%s,0)""",
+                                (pid, v.get('color_name', ''), v.get('color_hex', ''),
+                                 v.get('sku', ''), idx))
+                    vid = cur.lastrowid
+                    # Insert variant images
+                    for img_idx, img_path in enumerate(v.get('images', [])):
+                        if img_path:
+                            cur.execute("INSERT INTO variant_images (variant_id, image_path, sort_order) VALUES (%s, %s, %s)",
+                                        (vid, img_path, img_idx))
+                    # Insert variant sizes with stock
+                    for s in v.get('sizes', []):
+                        cur.execute("INSERT INTO variant_sizes (variant_id, size_name, stock) VALUES (%s, %s, %s)",
+                                    (vid, s.get('size', s) if isinstance(s, dict) else s,
+                                     s.get('stock', 0) if isinstance(s, dict) else 0))
+                # Calculate total stock from variant sizes
+                total_stock = 0
+                cur.execute("SELECT id FROM product_variants WHERE product_id=%s", (pid,))
+                for vrow in cur.fetchall():
+                    cur.execute("SELECT COALESCE(SUM(stock), 0) FROM variant_sizes WHERE variant_id=%s", (vrow['id'],))
+                    total_stock += cur.fetchone()['COALESCE(SUM(stock), 0)']
+                cur.execute("UPDATE products SET stock=%s WHERE id=%s", (total_stock, pid))
+            cur.execute("INSERT OR IGNORE INTO inventory (product_id, quantity) VALUES (%s, %s)", (pid, total_stock))
             db.commit()
             send_json(self, {'id': pid, 'message': 'Product created'}, 201)
             return True
@@ -760,6 +836,9 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
         if path.startswith('/api/products/'):
             pid = path.split('/')[-1]
+            product_id = pid
+
+            variants_data = data.pop('variants', None)
 
             # Handle sizes via normalized table
             sizes = None
@@ -795,9 +874,6 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 if isinstance(parsed, list) and len(parsed) > 0:
                     data['image'] = parsed[0]
 
-            # Remove non-column keys before building UPDATE
-            variants_data = data.pop('variants', None)
-
             sets = ', '.join(f"{k}=%s" for k in data)
             vals = list(data.values()) + [pid]
             cur.execute(f"UPDATE products SET {sets} WHERE id=%s", vals)
@@ -817,11 +893,43 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     cstock = c.get('stock', 0) if isinstance(c, dict) else 0
                     cur.execute("INSERT INTO product_colors (product_id, color_name, color_hex, stock) VALUES (%s, %s, %s, %s)", (pid, cname, chex, cstock))
 
-            if variants_data is not None:
+            # Sync advanced variants
+            if variants_data is not None and isinstance(variants_data, list):
+                is_advanced = len(variants_data) > 0 and ('images' in variants_data[0] or 'sku' in variants_data[0] or 'sizes' in variants_data[0])
+                # Delete old variant children
+                cur.execute("SELECT id FROM product_variants WHERE product_id=%s", (pid,))
+                old_vids = [r['id'] for r in cur.fetchall()]
+                for vid in old_vids:
+                    cur.execute("DELETE FROM variant_images WHERE variant_id=%s", (vid,))
+                    cur.execute("DELETE FROM variant_sizes WHERE variant_id=%s", (vid,))
                 cur.execute("DELETE FROM product_variants WHERE product_id=%s", (pid,))
-                for v in variants_data:
-                    cur.execute("INSERT INTO product_variants (product_id, color_name, size_name, stock) VALUES (%s, %s, %s, %s)",
-                                (pid, v.get('color_name', ''), v.get('size_name', ''), v.get('stock', 0)))
+                if is_advanced:
+                    for idx, v in enumerate(variants_data):
+                        cur.execute("""INSERT INTO product_variants (product_id, color_name, color_hex, sku, sort_order, stock)
+                                       VALUES (%s,%s,%s,%s,%s,0)""",
+                                    (pid, v.get('color_name', ''), v.get('color_hex', ''),
+                                     v.get('sku', ''), idx))
+                        vid = cur.lastrowid
+                        for img_idx, img_path in enumerate(v.get('images', [])):
+                            if img_path:
+                                cur.execute("INSERT INTO variant_images (variant_id, image_path, sort_order) VALUES (%s, %s, %s)",
+                                            (vid, img_path, img_idx))
+                        for s in v.get('sizes', []):
+                            cur.execute("INSERT INTO variant_sizes (variant_id, size_name, stock) VALUES (%s, %s, %s)",
+                                        (vid, s.get('size', s) if isinstance(s, dict) else s,
+                                         s.get('stock', 0) if isinstance(s, dict) else 0))
+                    # Compute total stock from variant sizes
+                    total_stock = 0
+                    cur.execute("SELECT id FROM product_variants WHERE product_id=%s", (pid,))
+                    for vrow in cur.fetchall():
+                        cur.execute("SELECT COALESCE(SUM(stock), 0) FROM variant_sizes WHERE variant_id=%s", (vrow['id'],))
+                        total_stock += cur.fetchone()['COALESCE(SUM(stock), 0)']
+                    cur.execute("UPDATE products SET stock=%s WHERE id=%s", (total_stock, pid))
+                else:
+                    # Legacy format: simple color_name, size_name, stock
+                    for v in variants_data:
+                        cur.execute("INSERT INTO product_variants (product_id, color_name, size_name, stock) VALUES (%s, %s, %s, %s)",
+                                    (pid, v.get('color_name', ''), v.get('size_name', ''), v.get('stock', 0)))
 
             if 'stock' in data:
                 cur.execute("UPDATE inventory SET quantity=%s, updated_at=CURRENT_TIMESTAMP WHERE product_id=%s", (data['stock'], pid))
