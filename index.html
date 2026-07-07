@@ -3,9 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="ADALINA - Mode féminine de luxe et parfums. Découvrez robes élégantes, parfums de créateurs et accessoires pour la femme moderne.">
-    <title>ADALINA - Mode Féminine de Luxe & Parfums</title>
+    <meta name="description" content="ADALINA - Mode féminine de luxe et parfums. Découvrez robes élégantes, parfums de créateurs et accessoires pour la femme moderne." data-setting-content="meta_description">
+    <title data-setting="site_title">ADALINA - Mode Féminine de Luxe & Parfums</title>
     <link rel="stylesheet" href="css/styles.css">
+    <script>
+    /* Apply store settings from API */
+    fetch('/api/public/settings').then(function(r){return r.json()}).then(function(s){
+        /* Theme colors */
+        var colors = {primary:'primary_color',primaryDark:'primary_dark',secondary:'secondary_color',background:'background_color',text:'text_color',textLight:'text_light_color',border:'border_color'};
+        for (var cssName in colors) {
+            var key = colors[cssName];
+            if (s[key]) document.documentElement.style.setProperty('--'+cssName.replace(/([A-Z])/g,'-$1').toLowerCase(), s[key]);
+        }
+        /* Fonts */
+        if (s.heading_font) document.documentElement.style.setProperty('--font-heading', "'"+s.heading_font+"', serif");
+        if (s.body_font) document.documentElement.style.setProperty('--font-body', "'"+s.body_font+"', sans-serif");
+        /* Page title */
+        var titleEl = document.querySelector('[data-setting="site_title"]');
+        if (titleEl && s.site_title) { titleEl.textContent = s.site_title; document.title = s.site_title; }
+        /* Meta description */
+        var metaEl = document.querySelector('[data-setting-content="meta_description"]');
+        if (metaEl && s.meta_description) metaEl.setAttribute('content', s.meta_description);
+        /* Store name fallback for elements that reference store_name */
+        window.__settings = s;
+    }).catch(function(){});
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -15,16 +37,16 @@
         <header class="header">
             <div class="header-top-row">
                 <div class="header-left">
-                    <a href="https://www.instagram.com/adalina.boutique" target="_blank" rel="noopener noreferrer" class="header-instagram" aria-label="Instagram">
+                    <a href="https://www.instagram.com/adalina.boutique" target="_blank" rel="noopener noreferrer" class="header-instagram" aria-label="Instagram" data-setting-href="instagram_url">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
                         </svg>
                     </a>
-                    <span class="header-availability">𝐃𝐢𝐬𝐩𝐨𝐧𝐢𝐛𝐥𝐞 𝟐𝟒𝐡/𝟐𝟒 𝐞𝐭 𝟕𝐣/𝟕</span>
+                    <span class="header-availability" data-setting="opening_hours">𝐃𝐢𝐬𝐩𝐨𝐧𝐢𝐛𝐥𝐞 𝟐𝟒𝐡/𝟐𝟒 𝐞𝐭 𝟕𝐣/𝟕</span>
                 </div>
                 <a href="index.html" class="logo-block">
-                    <span class="logo">ADALINA</span>
-                    <span class="logo-sub">BOUTIQUE EN LIGNE</span>
+                    <span class="logo" data-setting="store_name">ADALINA</span>
+                    <span class="logo-sub" data-setting="store_tagline">BOUTIQUE EN LIGNE</span>
                 </a>
                 <div class="header-right">
                     <button class="header-icon-btn" onclick="openSearchModal()" aria-label="Rechercher">
@@ -62,7 +84,7 @@
                         <li class="nav-item"><a href="contact.html" class="nav-link">CONTACTEZ-NOUS</a></li>
                     </ul>
                 </nav>
-                <span class="header-nav-location">𝐀𝐓𝐄𝐋𝐈𝐄𝐑 𝐀𝐃𝐀𝐋𝐈𝐍𝐀 • 𝐂𝐇𝐋𝐄𝐅</span>
+                <span class="header-nav-location" data-setting="atelier_address">𝐀𝐓𝐄𝐋𝐈𝐄𝐑 𝐀𝐃𝐀𝐋𝐈𝐍𝐀 • 𝐂𝐇𝐋𝐄𝐅</span>
             </div>
         </header>
         
@@ -390,6 +412,27 @@
             track.style.animationDuration = (speed * items.length / 1000) + 's';
         })
         .catch(function () { /* keep hardcoded fallback */ });
+
+    /* Store settings — apply text and links */
+    (function() {
+        var s = window.__settings;
+        if (!s) return;
+        /* data-setting: element textContent = setting value */
+        document.querySelectorAll('[data-setting]').forEach(function(el) {
+            var key = el.getAttribute('data-setting');
+            if (s[key]) el.textContent = s[key];
+        });
+        /* data-setting-href: element href = setting value */
+        document.querySelectorAll('[data-setting-href]').forEach(function(el) {
+            var key = el.getAttribute('data-setting-href');
+            if (s[key]) el.setAttribute('href', s[key]);
+        });
+        /* data-setting-content: meta content = setting value */
+        document.querySelectorAll('[data-setting-content]').forEach(function(el) {
+            var key = el.getAttribute('data-setting-content');
+            if (s[key]) el.setAttribute('content', s[key]);
+        });
+    })();
     </script>
 </body>
 </html>
