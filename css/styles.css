@@ -888,29 +888,72 @@ h1, h2, h3, h4, h5, h6 {
 
 .footer-social {
     display: flex;
-    gap: 1.5rem;
+    gap: 2.5rem;
     align-items: center;
 }
 
-.footer-social-icon {
+.footer-social-link {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+    color: #fff;
+    transition: color 0.3s ease;
+}
+
+.footer-social-icon-wrap {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
-    font-size: 1.35rem;
-    transition: all 0.3s ease;
-    text-decoration: none;
+    width: 22px;
+    height: 22px;
+    transition: transform 0.3s ease;
 }
 
-.footer-social-icon:hover {
-    background-color: white;
-    color: var(--secondary);
-    border-color: white;
-    transform: translateY(-3px);
+.footer-social-icon-wrap svg {
+    width: 22px;
+    height: 22px;
+    display: block;
+}
+
+.footer-social-label {
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    position: relative;
+    padding-bottom: 2px;
+}
+
+.footer-social-label::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: #D4AF37;
+    transition: width 0.3s ease;
+}
+
+.footer-social-link:hover {
+    color: #D4AF37;
+}
+
+.footer-social-link:hover .footer-social-icon-wrap {
+    transform: translateY(-2px);
+}
+
+.footer-social-link:hover .footer-social-label::after {
+    width: 100%;
+}
+
+@media (max-width: 640px) {
+    .footer-social {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
 }
 
 .footer-bottom {
