@@ -6,6 +6,36 @@
     <title>Collections - LUNA BELLE Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="css/admin.css">
+    <script>
+    fetch('/api/public/settings').then(function(r){return r.json()}).then(function(s){
+        if (s.primary_color) document.documentElement.style.setProperty('--primary', s.primary_color);
+        if (s.primary_dark) document.documentElement.style.setProperty('--primary-dark', s.primary_dark);
+        if (s.secondary_color) {
+            document.documentElement.style.setProperty('--secondary', s.secondary_color);
+            document.documentElement.style.setProperty('--sidebar-bg', s.secondary_color);
+            document.documentElement.style.setProperty('--sidebar-hover', s.secondary_color);
+        }
+        if (s.background_color) document.documentElement.style.setProperty('--content-bg', s.background_color);
+        if (s.text_color) document.documentElement.style.setProperty('--text-dark', s.text_color);
+        var brandEl = document.querySelector('.sidebar-brand h2');
+        if (brandEl && s.store_name) {
+            var parts = s.store_name.trim().split(/\s+/);
+            if (parts.length > 1) { brandEl.innerHTML = parts.slice(0, -1).join(' ') + ' <span>' + parts[parts.length - 1] + '</span>'; }
+            else { brandEl.textContent = s.store_name; }
+        }
+        var loginBrand = document.querySelector('.brand h2');
+        if (loginBrand && s.store_name) loginBrand.textContent = s.store_name;
+        if (s.logo_header) {
+            document.querySelectorAll('.sidebar-brand img, .brand img').forEach(function(img) { img.src = s.logo_header; });
+        }
+        var titleEl = document.querySelector('title');
+        if (titleEl && s.site_title) {
+            var parts = titleEl.textContent.split(' - ');
+            if (parts.length > 1) { titleEl.textContent = s.site_title + ' - ' + parts[parts.length - 1]; }
+        }
+        window.__adminSettings = s;
+    }).catch(function(){});
+    </script>
 </head>
 <body>
 

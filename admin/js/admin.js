@@ -13,8 +13,22 @@ async function api(method, url, data) {
 
 function esc(str) {
     const d = document.createElement('div');
-    d.textContent = str || '';
+    d.textContent = str;
     return d.innerHTML;
+}
+
+function colorVar(name, fallback) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
+function hexToRgba(hex, alpha) {
+    if (!hex || hex.length < 7) return fallbackRgba(alpha);
+    var r = parseInt(hex.slice(1,3), 16);
+    var g = parseInt(hex.slice(3,5), 16);
+    var b = parseInt(hex.slice(5,7), 16);
+    if (isNaN(r) || isNaN(g) || isNaN(b)) return fallbackRgba(alpha);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+    function fallbackRgba(a) { return 'rgba(201,169,110,' + a + ')'; }
 }
 
 function formatDate(dateStr) {
@@ -110,7 +124,7 @@ async function initDashboard() {
                 type: 'bar',
                 data: {
                     labels: months,
-                    datasets: [{ label: 'Orders', data: d.monthly_orders, backgroundColor: 'rgba(201, 169, 110, 0.6)', borderColor: '#c9a96e', borderWidth: 1 }]
+                    datasets: [{ label: 'Orders', data: d.monthly_orders, backgroundColor: hexToRgba(colorVar('--primary', '#c9a96e'), 0.6), borderColor: colorVar('--primary', '#c9a96e'), borderWidth: 1 }]
                 },
                 options: chartOpts
             });
@@ -1294,7 +1308,7 @@ function renderMonthlyChart(months) {
     }
 
     const maxRev = Math.max.apply(null, months.map(function (m) { return m.revenue; })) || 1;
-    const colors = ['#c9a96e', '#48bb78', '#4299e1', '#9f7aea', '#ed8936', '#f56565', '#38b2ac', '#667eea', '#f6ad55', '#68d391', '#fc8181', '#a0aec0'];
+    const colors = [colorVar('--primary', '#c9a96e'), '#48bb78', '#4299e1', '#9f7aea', '#ed8936', '#f56565', '#38b2ac', '#667eea', '#f6ad55', '#68d391', '#fc8181', '#a0aec0'];
 
     container.innerHTML = months.map(function (m, i) {
         var pct = (m.revenue / maxRev) * 100;
@@ -1325,7 +1339,7 @@ function renderCategoryChart(categories) {
     }
 
     const totalRevenue = categories.reduce(function (sum, c) { return sum + c.revenue; }, 0) || 1;
-    const catColors = ['#c9a96e', '#4299e1', '#48bb78', '#ed8936', '#9f7aea', '#f56565', '#38b2ac', '#667eea'];
+    const catColors = [colorVar('--primary', '#c9a96e'), '#4299e1', '#48bb78', '#ed8936', '#9f7aea', '#f56565', '#38b2ac', '#667eea'];
 
     container.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;">' +
         categories.map(function (c, i) {
