@@ -452,9 +452,8 @@ window.editProduct = async function(id) {
     const catSelect = document.getElementById('pm-category');
     if (catSelect) { catSelect.value = p.category_name || ''; }
 
-    // Set ribbon based on flags
-    var ribbonVal = '';
-    if (p.new_arrival) ribbonVal = 'Nouveau';
+    // Set ribbon based on badge column, fall back to new_arrival flag
+    var ribbonVal = p.badge || (p.new_arrival ? 'Nouveau' : '');
     var ribbonRadio = document.querySelector('input[name="pm_ribbon"][value="' + ribbonVal.replace(/"/g, '\\"') + '"]');
     if (ribbonRadio) ribbonRadio.checked = true;
     else {
@@ -910,6 +909,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Veuillez définir un prix promotionnel pour le badge "Promotion".');
                 return;
             }
+            data.badge = ribbon || null;
 
             // Compute aggregate sizes and colors for backward compat
             var allSizes = [];

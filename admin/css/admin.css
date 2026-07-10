@@ -1396,6 +1396,7 @@ input[data-setting]:checked + .toggle-slider {
 .pm-ribbon-sale { background: #fce7f3; color: #be185d; border-color: #f9a8d4; }
 .pm-ribbon-best { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
 .pm-ribbon-limited { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+.pm-ribbon-unavailable { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
 .pm-ribbon-none { background: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
 
 /* Variant cards (Step 3) */

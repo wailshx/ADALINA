@@ -107,17 +107,22 @@ function buildGroupedSizesHtml(availSizes, product, curColor, curSize, hasVarian
     return html;
 }
 
+function productRibbonHtml(product) {
+    var allowed = ['Nouveau', 'Promotion', 'Pas Disponible', 'Édition Limitée', 'Best Seller'];
+    var ribbonClasses = { 'Nouveau': 'ribbon-nouveau', 'Promotion': 'ribbon-promotion', 'Best Seller': 'ribbon-best', 'Édition Limitée': 'ribbon-limited', 'Pas Disponible': 'ribbon-unavailable' };
+    if (product.badge && allowed.indexOf(product.badge) !== -1) {
+        return '<div class="product-ribbons"><span class="product-ribbon ' + (ribbonClasses[product.badge] || '') + '">' + esc(product.badge) + '</span></div>';
+    }
+    return '';
+}
+
 function renderProductCard(product) {
     if (!product) return '';
     var pid = product.id || 0;
     var inW = pid && wishlist.indexOf(pid) !== -1;
     var imgs = product.images && product.images.length > 0 ? product.images : (product.image ? [product.image] : ['data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="533" fill="%23f0f0f0"><rect width="400" height="533"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23ccc" font-size="16">No Image</text></svg>']);
     var second = imgs.length > 1 ? imgs[1] : null;
-    var ribbon = '';
-    var allowed = ['Nouveau', 'Promotion', 'Pas disponible', 'Édition limitée', 'Best Seller'];
-    if (product.badge && allowed.indexOf(product.badge) !== -1) {
-        ribbon = '<span class="product-ribbon">' + esc(product.badge) + '</span>';
-    }
+    var ribbon = productRibbonHtml(product);
     var sizesHtml = '';
     if (product.sizes && product.sizes.length > 0) {
         var available = product.sizes.filter(function(s) { return s.stock > 0; });
@@ -133,7 +138,7 @@ function renderProductCard(product) {
         '<div class="product-image">' +
             '<img src="' + imgs[0] + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy">' +
             (second ? '<img src="' + second + '" alt="' + esc(product.name) + '" class="img-secondary" loading="lazy">' : '') +
-            '<div class="product-ribbons">' + ribbon + '</div>' +
+            ribbon +
             '<button class="product-wishlist' + (inW ? ' active' : '') + '" onclick="toggleWishlistItem(this,' + pid + ')" aria-label="Wishlist">' +
                 '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
                     '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>' +
@@ -725,6 +730,15 @@ function quickView(productId) {
     var images = getQVariantImages();
     var mainImg = document.getElementById('quick-view-main-image');
     if (mainImg) mainImg.src = images[0];
+
+    /* Ribbon */
+    var qvWrap = mainImg ? mainImg.parentElement : null;
+    if (qvWrap) {
+        var existingRibbon = qvWrap.querySelector('.product-ribbons');
+        if (existingRibbon) existingRibbon.remove();
+        var ribbonHtml = productRibbonHtml(product);
+        if (ribbonHtml) qvWrap.insertAdjacentHTML('afterbegin', ribbonHtml);
+    }
 
     var thumbs = document.getElementById('quick-view-thumbs');
     if (thumbs) {
@@ -1623,6 +1637,7 @@ function displayProduct(product) {
 
             <div class="pp-gallery">
                 <div class="pp-main-wrap">
+                    ${productRibbonHtml(product)}
                     <img id="main-product-image" src="${images[0]}" alt="${product.name}">
                     ${images.length > 1 ? '<button class="pp-nav pp-nav-prev" onclick="ppPrevImage()">&#10094;</button><button class="pp-nav pp-nav-next" onclick="ppNextImage()">&#10095;</button>' : ''}
                 </div>

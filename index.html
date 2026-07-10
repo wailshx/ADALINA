@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="css/styles.css">
     <script>
     /* Apply store settings from API */
-    fetch('/api/public/settings').then(function(r){return r.json()}).then(function(s){
+    window.__settingsReady = fetch('/api/public/settings').then(function(r){return r.json()}).then(function(s){
         /* Theme colors */
         var colors = {primary:'primary_color',primaryDark:'primary_dark',secondary:'secondary_color',background:'background_color',text:'text_color',textLight:'text_light_color',border:'border_color'};
         for (var cssName in colors) {
@@ -26,7 +26,8 @@
         if (metaEl && s.meta_description) metaEl.setAttribute('content', s.meta_description);
         /* Store name fallback for elements that reference store_name */
         window.__settings = s;
-    }).catch(function(){});
+        return s;
+    }).catch(function(){ return null; });
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -458,25 +459,34 @@
         })
         .catch(function () { /* keep hardcoded fallback */ });
 
-    /* Store settings — apply text and links */
     (function() {
-        var s = window.__settings;
-        if (!s) return;
-        /* data-setting: element textContent = setting value */
-        document.querySelectorAll('[data-setting]').forEach(function(el) {
-            var key = el.getAttribute('data-setting');
-            if (s[key]) el.textContent = s[key];
-        });
-        /* data-setting-href: element href = setting value */
-        document.querySelectorAll('[data-setting-href]').forEach(function(el) {
-            var key = el.getAttribute('data-setting-href');
-            if (s[key]) { el.setAttribute('href', s[key]); el.style.display = ''; } else if (el.getAttribute('href') === '#') { el.style.display = 'none'; }
-        });
-        /* data-setting-content: meta content = setting value */
-        document.querySelectorAll('[data-setting-content]').forEach(function(el) {
-            var key = el.getAttribute('data-setting-content');
-            if (s[key]) el.setAttribute('content', s[key]);
-        });
+        function applyStoredSettings(s) {
+            if (!s) return;
+            document.querySelectorAll('[data-setting]').forEach(function(el) {
+                var key = el.getAttribute('data-setting');
+                if (s[key]) el.textContent = s[key];
+            });
+            document.querySelectorAll('[data-setting-href]').forEach(function(el) {
+                var key = el.getAttribute('data-setting-href');
+                if (s[key]) {
+                    var url = s[key];
+                    if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
+                    el.setAttribute('href', url);
+                    el.style.display = '';
+                } else if (el.getAttribute('href') === '#') {
+                    el.style.display = 'none';
+                }
+            });
+            document.querySelectorAll('[data-setting-content]').forEach(function(el) {
+                var key = el.getAttribute('data-setting-content');
+                if (s[key]) el.setAttribute('content', s[key]);
+            });
+        }
+        if (window.__settingsReady) {
+            window.__settingsReady.then(applyStoredSettings);
+        } else {
+            applyStoredSettings(window.__settings);
+        }
     })();
     </script>
 </body>
