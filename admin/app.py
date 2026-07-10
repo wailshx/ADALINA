@@ -367,20 +367,19 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         if path == '/api/products':
             search = query.get('search', [''])[0].strip().lower()
             category = query.get('category', [''])[0].strip()
+            params = []
+            where = []
             if category:
-                cur.execute("""SELECT p.*, c.name AS category_name FROM products p
-                         LEFT JOIN categories c ON p.category_id = c.id
-                         WHERE c.slug = %s ORDER BY p.id""", (category,))
-                rows = cur.fetchall()
-            elif search:
-                cur.execute("""SELECT p.*, c.name AS category_name FROM products p
-                         LEFT JOIN categories c ON p.category_id = c.id
-                         WHERE LOWER(p.name) LIKE %s ORDER BY p.id""", (f'%{search}%',))
-                rows = cur.fetchall()
-            else:
-                cur.execute("""SELECT p.*, c.name AS category_name FROM products p
-                         LEFT JOIN categories c ON p.category_id = c.id ORDER BY p.id""")
-                rows = cur.fetchall()
+                where.append("LOWER(c.name) = LOWER(%s)")
+                params.append(category)
+            if search:
+                where.append("LOWER(p.name) LIKE %s")
+                params.append(f'%{search}%')
+            where_clause = " AND ".join(where) if where else "1=1"
+            cur.execute("""SELECT p.*, c.name AS category_name FROM products p
+                     LEFT JOIN categories c ON p.category_id = c.id
+                     WHERE """ + where_clause + " ORDER BY p.id", params)
+            rows = cur.fetchall()
             result = []
             for r in rows:
                 d = dict(r)

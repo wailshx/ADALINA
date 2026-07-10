@@ -180,7 +180,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         FROM products p
                         LEFT JOIN categories c ON p.category_id = c.id
                         WHERE """ + where_clause + """
-                        ORDER BY """ + order_by
+                        ORDER BY """ + order_by, params
                     )
                     rows = cur.fetchall()
                     result = [format_product(r, cur) for r in rows]

@@ -389,8 +389,15 @@ window.printOrder = function (order) {
 };
 
 /* ── Products ── */
+var productFilterState = { search: '', category: '' };
+
 async function initProducts() {
-    const products = await api('GET', '/products');
+    var url = '/products';
+    var params = [];
+    if (productFilterState.search) params.push('search=' + encodeURIComponent(productFilterState.search));
+    if (productFilterState.category) params.push('category=' + encodeURIComponent(productFilterState.category));
+    if (params.length) url += '?' + params.join('&');
+    const products = await api('GET', url);
     if (!products) return;
     const tbody = document.querySelector('#products-table tbody');
     if (!tbody) return;
@@ -435,7 +442,6 @@ window.editProduct = async function(id) {
     document.getElementById('pm-name').value = p.name || '';
     document.getElementById('pm-price').value = p.price || 0;
     document.getElementById('pm-sale-price').value = p.sale_price || '';
-    document.getElementById('pm-stock').value = p.stock || 0;
     document.getElementById('pm-brand').value = p.brand || '';
     document.getElementById('pm-desc').value = p.description || '';
     document.getElementById('pm-status').value = p.status || 'active';
@@ -2218,7 +2224,54 @@ document.addEventListener('DOMContentLoaded', function () {
     /* page init */
     switch (page) {
         case 'dashboard.html': initDashboard(); break;
-        case 'products.html': initProducts(); break;
+        case 'products.html':
+            initProducts();
+            /* Product search (debounced) */
+            var prodSearchInput = document.getElementById('products-search-input');
+            if (prodSearchInput) {
+                var prodSearchTimer;
+                prodSearchInput.addEventListener('input', function () {
+                    clearTimeout(prodSearchTimer);
+                    prodSearchTimer = setTimeout(function () {
+                        productFilterState.search = prodSearchInput.value.trim();
+                        initProducts();
+                    }, 300);
+                });
+            }
+            /* Product category filter button + dropdown */
+            var prodFilterBtn = document.querySelector('.page-header .btn-outline.btn-sm');
+            if (prodFilterBtn) {
+                prodFilterBtn.addEventListener('click', function () {
+                    var existing = document.getElementById('products-category-dropdown');
+                    if (existing) { existing.remove(); return; }
+                    api('GET', '/categories').then(function (cats) {
+                        if (!cats || !cats.length) return;
+                        var dd = document.createElement('div');
+                        dd.id = 'products-category-dropdown';
+                        dd.style.cssText = 'position:absolute;top:100%;left:0;margin-top:4px;background:var(--bg-card,#fff);border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:6px 0;z-index:100;min-width:180px;box-shadow:0 4px 12px rgba(0,0,0,.12);';
+                        dd.innerHTML = '<div data-cat="" style="padding:6px 14px;cursor:pointer;font-size:0.85rem;'+(!productFilterState.category?'font-weight:600;color:var(--primary,#c9a96e);':'')+'">Toutes les catégories</div>' +
+                            cats.map(function (c) { return '<div data-cat="'+esc(c.name)+'" style="padding:6px 14px;cursor:pointer;font-size:0.85rem;'+(productFilterState.category===c.name?'font-weight:600;color:var(--primary,#c9a96e);':'')+'">'+esc(c.name)+'</div>'; }).join('');
+                        dd.querySelectorAll('div[data-cat]').forEach(function (el) {
+                            el.addEventListener('mouseenter', function () { this.style.background = 'var(--bg-secondary,#f7f5f0)'; });
+                            el.addEventListener('mouseleave', function () { this.style.background = ''; });
+                            el.addEventListener('click', function () {
+                                productFilterState.category = this.dataset.cat;
+                                dd.remove();
+                                initProducts();
+                            });
+                        });
+                        prodFilterBtn.style.position = 'relative';
+                        prodFilterBtn.appendChild(dd);
+                        document.addEventListener('click', function handler(e) {
+                            if (!dd.contains(e.target) && e.target !== prodFilterBtn && !prodFilterBtn.contains(e.target)) {
+                                dd.remove();
+                                document.removeEventListener('click', handler);
+                            }
+                        });
+                    });
+                });
+            }
+            break;
         case 'categories.html': initCategories(); break;
         case 'collections.html': initCollections(); break;
         case 'orders.html':
