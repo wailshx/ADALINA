@@ -469,7 +469,24 @@
             <div class="card settings-card">
                 <div class="card-header"><h2>Prix par Wilaya</h2></div>
                 <div class="card-body">
-                    <p class="text-muted" style="font-size:0.85rem;margin-bottom:12px;">Les prix de livraison par wilaya sont gérés dans la section Livraison du tableau de bord.</p>
+                    <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+                        <input type="text" id="wilaya-filter" class="form-control" placeholder="Filtrer les wilayas..." style="max-width:250px;font-size:0.85rem;">
+                        <span style="font-size:0.8rem;color:var(--text-muted);" id="wilaya-count">58 wilayas</span>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="saveWilayaPrices()" style="margin-left:auto;"><i class="fas fa-save"></i> Enregistrer les prix</button>
+                    </div>
+                    <div style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;">
+                        <table class="dp-table" style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+                            <thead style="position:sticky;top:0;background:var(--card-bg,#fff);z-index:1;">
+                                <tr>
+                                    <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);width:50px;">N°</th>
+                                    <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Wilaya</th>
+                                    <th style="padding:8px 12px;text-align:right;border-bottom:1px solid var(--border);width:140px;">Frais livraison (DA)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wilaya-prices-tbody"></tbody>
+                        </table>
+                    </div>
+                    <p style="font-size:0.78rem;color:var(--text-muted);margin-top:8px;">Laissez 0 DA pour une livraison gratuite vers cette wilaya.</p>
                 </div>
             </div>
             <div class="card settings-card">
@@ -482,11 +499,11 @@
                             </div>
                             <div class="form-group">
                                 <label>Seuil livraison gratuite</label>
-                                <input type="text" class="form-control" data-setting="free_shipping_threshold">
+                                <input type="number" class="form-control" data-setting="free_shipping_threshold" step="0.01">
                             </div>
                             <div class="form-group">
                                 <label>Frais de livraison</label>
-                                <input type="text" class="form-control" data-setting="delivery_fee">
+                                <input type="number" class="form-control" data-setting="delivery_fee" step="0.01">
                             </div>
                     </div>
                 </div>
@@ -617,6 +634,111 @@ document.querySelectorAll('.color-input-row input[type="text"]').forEach(functio
             colorPicker.value = this.value;
         }
     });
+});
+
+/* ── Wilaya delivery prices ── */
+var algerianWilayas = [
+    {id:1,name:'Adrar'},{id:2,name:'Chlef'},{id:3,name:'Laghouat'},{id:4,name:'Oum El Bouaghi'},
+    {id:5,name:'Batna'},{id:6,name:'Béjaïa'},{id:7,name:'Biskra'},{id:8,name:'Béchar'},
+    {id:9,name:'Blida'},{id:10,name:'Bouira'},{id:11,name:'Tamanrasset'},{id:12,name:'Tébessa'},
+    {id:13,name:'Tlemcen'},{id:14,name:'Tiaret'},{id:15,name:'Tizi Ouzou'},{id:16,name:'Alger'},
+    {id:17,name:'Djelfa'},{id:18,name:'Jijel'},{id:19,name:'Sétif'},{id:20,name:'Saïda'},
+    {id:21,name:'Skikda'},{id:22,name:'Sidi Bel Abbès'},{id:23,name:'Annaba'},{id:24,name:'Guelma'},
+    {id:25,name:'Constantine'},{id:26,name:'Médéa'},{id:27,name:'Mostaganem'},{id:28,name:'Msila'},
+    {id:29,name:'Mascara'},{id:30,name:'Ouargla'},{id:31,name:'Oran'},{id:32,name:'El Bayadh'},
+    {id:33,name:'Illizi'},{id:34,name:'Bordj Bou Arreridj'},{id:35,name:'Boumerdès'},
+    {id:36,name:'El Tarf'},{id:37,name:'Tindouf'},{id:38,name:'Tissemsilt'},{id:39,name:'El Oued'},
+    {id:40,name:'Khenchela'},{id:41,name:'Souk Ahras'},{id:42,name:'Tipaza'},{id:43,name:'Mila'},
+    {id:44,name:'Aïn Defla'},{id:45,name:'Naâma'},{id:46,name:'Aïn Témouchent'},{id:47,name:'Ghardaïa'},
+    {id:48,name:'Relizane'},{id:49,name:'Timimoun'},{id:50,name:'Bordj Badji Mokhtar'},
+    {id:51,name:'Ouled Djellal'},{id:52,name:'Béni Abbès'},{id:53,name:'In Salah'},
+    {id:54,name:'In Guezzam'},{id:55,name:'Touggourt'},{id:56,name:'Djanet'},
+    {id:57,name:'El M\'Ghair'},{id:58,name:'El Meniaa'}
+];
+
+var _wilayaPrices = {};
+
+function loadWilayaPrices() {
+    api('GET', '/delivery-prices').then(function(data) {
+        if (!data) return;
+        _wilayaPrices = {};
+        for (var k in data) {
+            _wilayaPrices[k] = data[k].value !== undefined ? data[k].value : data[k];
+        }
+        renderWilayaTable();
+    }).catch(function() {
+        /* fallback: try flat endpoint */
+        fetch('/api/delivery-prices', {credentials:'same-origin'}).then(function(r){return r.json()}).then(function(data){
+            _wilayaPrices = data;
+            renderWilayaTable();
+        }).catch(function(e){console.error('Failed to load delivery prices',e);});
+    });
+}
+
+function renderWilayaTable() {
+    var tbody = document.getElementById('wilaya-prices-tbody');
+    if (!tbody) return;
+    var filter = (document.getElementById('wilaya-filter').value || '').toLowerCase();
+    var html = '';
+    var count = 0;
+    algerianWilayas.forEach(function(w) {
+        if (filter && w.name.toLowerCase().indexOf(filter) === -1) return;
+        count++;
+        var price = _wilayaPrices[String(w.id)];
+        if (price === undefined) price = 0;
+        html += '<tr class="dp-row">' +
+            '<td style="padding:6px 12px;border-bottom:1px solid var(--border);color:var(--text-muted);">' + w.id + '</td>' +
+            '<td style="padding:6px 12px;border-bottom:1px solid var(--border);">' + w.name + '</td>' +
+            '<td style="padding:6px 12px;border-bottom:1px solid var(--border);text-align:right;">' +
+                '<input type="number" class="form-control dp-price-input" data-wid="' + w.id + '" value="' + price + '" min="0" step="10" style="width:110px;text-align:right;font-size:0.82rem;padding:4px 8px;">' +
+            '</td>' +
+        '</tr>';
+    });
+    tbody.innerHTML = html;
+    document.getElementById('wilaya-count').textContent = count + ' wilaya' + (count > 1 ? 's' : '');
+}
+
+function saveWilayaPrices() {
+    var payload = {};
+    document.querySelectorAll('.dp-price-input').forEach(function(inp) {
+        var wid = inp.getAttribute('data-wid');
+        var val = parseFloat(inp.value) || 0;
+        payload[wid] = val;
+    });
+    var btn = document.querySelector('.card-header button');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...'; }
+    api('PUT', '/delivery-prices', payload).then(function(res) {
+        _wilayaPrices = payload;
+        if (res) {
+            var msg = document.getElementById('saveMsg');
+            if (msg) {
+                msg.textContent = 'Prix de livraison enregistrés.';
+                msg.className = 'save-msg';
+                msg.classList.remove('hidden');
+                setTimeout(function(){msg.classList.add('hidden');}, 4000);
+            }
+        }
+    }).catch(function() {
+        /* fallback */
+        fetch('/api/delivery-prices', {
+            method:'PUT', credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify(payload)
+        }).then(function(r){return r.json()}).then(function(){
+            _wilayaPrices = payload;
+        }).catch(function(e){console.error('Save failed',e);});
+    }).finally(function() {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Enregistrer les prix'; }
+    });
+}
+
+/* Filter input */
+document.addEventListener('DOMContentLoaded', function() {
+    var filterInput = document.getElementById('wilaya-filter');
+    if (filterInput) {
+        filterInput.addEventListener('input', renderWilayaTable);
+    }
+    loadWilayaPrices();
 });
 </script>
 

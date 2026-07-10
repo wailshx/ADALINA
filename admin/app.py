@@ -12,7 +12,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(BASE_DIR)
 SESSIONS_FILE = os.path.join(BASE_DIR, '.sessions.json')
 
-from database import get_db, init_db, seed_db, log_stock_change
+from database import get_db, init_db, seed_db, log_stock_change, deduct_order_stock, restore_order_stock, get_variant_stock
 
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD_HASH = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
@@ -85,8 +85,12 @@ def send_file(self, path, status=200):
         self.wfile.write(b'404 Not Found')
         return
     ext = os.path.splitext(path)[1].lower()
+    ctype = MIME_TYPES.get(ext, 'application/octet-stream')
     self.send_response(status)
-    self.send_header('Content-Type', MIME_TYPES.get(ext, 'application/octet-stream'))
+    self.send_header('Content-Type', ctype)
+    if 'text/' in ctype or 'application/javascript' in ctype:
+        self.send_header('Cache-Control', 'no-store, must-revalidate')
+        self.send_header('Pragma', 'no-cache')
     self.end_headers()
     with open(path, 'rb') as f:
         self.wfile.write(f.read())
@@ -96,6 +100,8 @@ def send_json(self, data, status=200):
     self.send_response(status)
     self.send_header('Content-Type', 'application/json')
     self.send_header('Access-Control-Allow-Origin', '*')
+    self.send_header('Cache-Control', 'no-store, must-revalidate')
+    self.send_header('Pragma', 'no-cache')
     self.end_headers()
     self.wfile.write(body)
 
@@ -161,7 +167,10 @@ def rows_to_list(rows):
 class AdminHandler(http.server.BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
-        print(f"[Admin] {args[0]} {args[1]} {args[2]}")
+        if len(args) >= 3:
+            print(f"[Admin] {args[0]} {args[1]} {args[2]}")
+        else:
+            print(f"[Admin] {' '.join(str(a) for a in args)}")
 
     def api_GET(self, path, query):
         db = get_db()
@@ -530,30 +539,73 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             send_json(self, data)
             return True
 
+        if path == '/api/settings':
+            cur.execute("SELECT * FROM settings ORDER BY category, id")
+            rows = cur.fetchall()
+            result = {}
+            for r in rows:
+                key = r['setting_key']
+                val = r['setting_value']
+                t = r['setting_type']
+                if t == 'boolean':
+                    val = val == '1'
+                elif t == 'number':
+                    try: val = float(val)
+                    except: pass
+                result[key] = {'value': val, 'type': t, 'category': r['category'], 'description': r.get('description', '')}
+            send_json(self, result)
+            return True
+
+        if path == '/api/delivery-prices':
+            cur.execute("SELECT wilaya_id, price FROM delivery_prices ORDER BY wilaya_id")
+            rows = cur.fetchall()
+            result = {}
+            for r in rows:
+                result[str(r['wilaya_id'])] = r['price']
+            send_json(self, result)
+            return True
+
+        if path == '/api/notifications':
+            cur.execute("SELECT COUNT(*) AS cnt FROM orders WHERE is_read IS NULL OR is_read=0")
+            unread = cur.fetchone()['cnt']
+            cur.execute("""
+                SELECT id AS order_id, order_number, customer_name, total, created_at
+                FROM orders
+                WHERE is_read IS NULL OR is_read=0
+                ORDER BY created_at DESC LIMIT 20
+            """)
+            rows = cur.fetchall()
+            notifs = []
+            for r in rows:
+                n = dict(r)
+                n['id'] = n['order_id']
+                n['customer_name'] = n.get('customer_name', '') or ''
+                n['total'] = float(n.get('total', 0))
+                notifs.append(n)
+            send_json(self, {'notifications': notifs, 'unread_count': unread})
+            return True
+
         if path == '/api/customers':
-            search = query.get('search', [''])[0].strip().lower()
-            sort = query.get('sort', ['id'])[0]
-            order = query.get('order', ['asc'])[0]
             page = int(query.get('page', ['1'])[0])
-            per_page = int(query.get('per_page', ['10'])[0])
-            allowed_sort = {'id', 'name', 'email', 'orders_count', 'total_spent', 'joined_at', 'status'}
-            if sort not in allowed_sort:
-                sort = 'id'
-            if order not in ('asc', 'desc'):
-                order = 'asc'
-            where = ''
+            per_page = int(query.get('per_page', ['20'])[0])
+            search = query.get('search', [''])[0].strip().lower()
+            offset = (page - 1) * per_page
+            where = []
             params = []
             if search:
-                where = "WHERE (LOWER(name) LIKE %s OR LOWER(email) LIKE %s)"
-                params = [f'%{search}%', f'%{search}%']
-            cur.execute(f"SELECT COUNT(*) AS cnt FROM customers {where}", params)
+                where.append("(LOWER(name) LIKE %s OR LOWER(email) LIKE %s)")
+                params.extend(['%' + search + '%', '%' + search + '%'])
+            where_clause = " WHERE " + " AND ".join(where) if where else ""
+            cur.execute("SELECT COUNT(*) AS cnt FROM customers" + where_clause, params)
             total = cur.fetchone()['cnt']
-            offset = (page - 1) * per_page
-            cur.execute(f"SELECT * FROM customers {where} ORDER BY {sort} {order} LIMIT %s OFFSET %s",
-                              params + [per_page, offset])
+            cur.execute("""
+                SELECT c.*,
+                    (SELECT COUNT(*) FROM orders o WHERE o.customer_id = c.id) AS orders_count,
+                    (SELECT COALESCE(SUM(o.total), 0) FROM orders o WHERE o.customer_id = c.id) AS total_spent
+                FROM customers c""" + where_clause + " ORDER BY c.id DESC LIMIT %s OFFSET %s", params + [per_page, offset])
             rows = cur.fetchall()
-            pages = max(1, (total + per_page - 1) // per_page)
-            send_json(self, {'customers': rows_to_list(rows), 'total': total, 'page': page, 'per_page': per_page, 'pages': pages})
+            total_pages = max(1, (total + per_page - 1) // per_page) if total > 0 else 1
+            send_json(self, {'customers': rows_to_list(rows), 'total': total, 'page': page, 'per_page': per_page, 'total_pages': total_pages})
             return True
 
         if path.startswith('/api/customers/') and path != '/api/customers':
@@ -682,8 +734,8 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             sizes = data.get('sizes', [])
             # Calculate total stock from variants or fallback
             total_stock = data.get('stock', 0)
-            cur.execute("""INSERT INTO products (name, description, price, sale_price, category_id, image, images, badge, sizes, colors, stock, brand, rating, featured, new_arrival, status)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            cur.execute("""INSERT INTO products (name, description, price, sale_price, category_id, image, images, badge, sizes, colors, stock, brand, rating, featured, new_arrival, status, created_at)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,datetime('now'))""",
                         (data.get('name',''), data.get('description',''), data.get('price',0),
                          data.get('sale_price'), cat_id, data.get('image',''),
                          json.dumps(data.get('images',[])), data.get('badge'),
@@ -757,12 +809,15 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
         if path == '/api/orders':
             items_json = json.dumps(data.get('items', []))
-            cur.execute("""INSERT INTO orders (order_number, customer_id, customer_name, customer_phone, wilaya, commune, status, total, items)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            cur.execute("""INSERT INTO orders (order_number, customer_id, customer_name, customer_phone, wilaya, commune, shipping_address, payment_method, status, total, items, delivery_fee)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                         (data.get('order_number',''), data.get('customer_id'),
                          data.get('customer_name',''), data.get('customer_phone',''),
                          data.get('wilaya',''), data.get('commune',''),
-                         data.get('status','pending'), data.get('total',0), items_json))
+                         data.get('shipping','') or data.get('shipping_address',''),
+                         data.get('payment_method',''),
+                         data.get('status','pending'), data.get('total',0), items_json,
+                         data.get('delivery_fee', 0)))
             oid = cur.lastrowid
             new_status = data.get('status', 'pending')
             if new_status in ('confirmed', 'processing'):
@@ -965,6 +1020,46 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             send_json(self, {'message': 'Collection updated'})
             return True
 
+        if path == '/api/delivery-prices':
+            for wilaya_id_str, price in data.items():
+                wid = int(wilaya_id_str)
+                p = float(price) if price else 0
+                cur.execute("SELECT 1 FROM delivery_prices WHERE wilaya_id=%s", (wid,))
+                if cur.fetchone():
+                    cur.execute("UPDATE delivery_prices SET price=%s WHERE wilaya_id=%s", (p, wid))
+                else:
+                    cur.execute("INSERT INTO delivery_prices (wilaya_id, price) VALUES (%s, %s)", (wid, p))
+            db.commit()
+            send_json(self, {'message': 'Delivery prices saved'})
+            return True
+
+        if path == '/api/settings':
+            for key, val in data.items():
+                if val is None: val = ''
+                if isinstance(val, bool): val = '1' if val else '0'
+                elif not isinstance(val, str): val = str(val)
+                cur.execute("SELECT id FROM settings WHERE setting_key=%s", (key,))
+                if cur.fetchone():
+                    cur.execute("UPDATE settings SET setting_value=%s, updated_at=CURRENT_TIMESTAMP WHERE setting_key=%s", (val, key))
+                else:
+                    cur.execute("INSERT INTO settings (setting_key, setting_value, setting_type, category) VALUES (%s, %s, 'text', 'custom')", (key, val))
+            db.commit()
+            send_json(self, {'message': 'Settings saved'})
+            return True
+
+        if path == '/api/notifications/read-all':
+            cur.execute("UPDATE orders SET is_read=1")
+            db.commit()
+            send_json(self, {'message': 'All notifications marked as read'})
+            return True
+
+        if path.startswith('/api/notifications/read/'):
+            oid = path.split('/')[-1]
+            cur.execute("UPDATE orders SET is_read=1 WHERE id=%s", (oid,))
+            db.commit()
+            send_json(self, {'message': 'Notification marked as read'})
+            return True
+
         if path.startswith('/api/orders/'):
             oid = path.split('/')[-1]
             old_status = None
@@ -981,8 +1076,12 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             vals = list(data.values()) + [oid]
             cur.execute(f"UPDATE orders SET {sets} WHERE id=%s", vals)
             new_status = data.get('status', old_status)
-            deduct_statuses = ('confirmed', 'processing')
-            if new_status in deduct_statuses and old_status not in deduct_statuses:
+            cancelled_statuses = ('cancelled', 'canceled')
+            is_cancel = new_status in cancelled_statuses
+            was_cancelled = old_status in cancelled_statuses
+
+            if is_cancel and old_status and not was_cancelled:
+                # Restock — order is being cancelled
                 items_json = data.get('items') if 'items' in data else old_items
                 if isinstance(items_json, str):
                     items = json.loads(items_json)
@@ -991,15 +1090,42 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 for item in items:
                     pid = item.get('product_id')
                     qty = item.get('quantity') or item.get('qty') or 1
+                    color = item.get('color') or item.get('selectedColor') or ''
+                    size = item.get('size') or item.get('selectedSize') or ''
                     if pid:
-                        cur.execute("SELECT quantity FROM inventory WHERE product_id=%s", (pid,))
-                        inv = cur.fetchone()
-                        before_qty = inv['quantity'] if inv else 0
-                        deduct = min(qty, before_qty)
-                        if deduct > 0:
-                            cur.execute("UPDATE inventory SET quantity = quantity - %s, updated_at = CURRENT_TIMESTAMP WHERE product_id=%s", (deduct, pid))
-                            cur.execute("UPDATE products SET stock = (SELECT quantity FROM inventory WHERE product_id=%s) WHERE id=%s", (pid, pid))
-                            log_stock_change(cur, pid, -deduct, before_qty, f'Order #{oid} {new_status}')
+                        restore_order_stock(cur, pid, color, size, qty)
+
+            elif was_cancelled and not is_cancel:
+                # Reactivate — re-validate + re-deduct stock
+                items_json = data.get('items') if 'items' in data else old_items
+                if isinstance(items_json, str):
+                    items = json.loads(items_json)
+                else:
+                    items = items_json
+                for idx, item in enumerate(items):
+                    pid = item.get('product_id')
+                    qty = item.get('quantity') or item.get('qty') or 1
+                    color = item.get('color') or item.get('selectedColor') or ''
+                    size = item.get('size') or item.get('selectedSize') or ''
+                    if pid:
+                        stock_ok, err = deduct_order_stock(cur, pid, color, size, qty)
+                        if not stock_ok:
+                            # Rollback any deductions already made
+                            for rollback_idx in range(idx):
+                                prev = items[rollback_idx]
+                                rpid = prev.get('product_id')
+                                rqty = prev.get('quantity') or prev.get('qty') or 1
+                                rcolor = prev.get('color') or prev.get('selectedColor') or ''
+                                rsize = prev.get('size') or prev.get('selectedSize') or ''
+                                if rpid:
+                                    restore_order_stock(cur, rpid, rcolor, rsize, rqty)
+                            product_name = item.get('name', '')
+                            msg = err or "Stock insuffisant"
+                            if product_name:
+                                msg = f"{msg} pour {product_name}"
+                            db.commit()
+                            send_json(self, {'error': f"Impossible de réactiver la commande : {msg}"}, 409)
+                            return True
             db.commit()
             send_json(self, {'message': 'Order updated'})
             return True
@@ -1091,6 +1217,14 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
         if path.startswith('/api/orders/'):
             oid = path.split('/')[-1]
+            cur.execute("SELECT status FROM orders WHERE id=%s", (oid,))
+            row = cur.fetchone()
+            if row is None:
+                send_json(self, {'error': 'Commande introuvable'}, 404)
+                return True
+            if row['status'] not in ('arrived', 'delivered'):
+                send_json(self, {'error': 'Suppression autorisée uniquement pour les commandes arrivées'}, 403)
+                return True
             cur.execute("DELETE FROM orders WHERE id=%s", (oid,))
             db.commit()
             send_json(self, {'message': 'Deleted'})
@@ -1102,7 +1236,10 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
     def api_UPLOAD(self, multipart):
         ALLOWED = ('.jpg', '.jpeg', '.png', '.webp')
         MAX_SIZE = 10 * 1024 * 1024
-        upload_dir = os.path.join(PARENT_DIR, 'uploads', 'products')
+        fields = multipart.get('fields', {})
+        category = fields.get('type', 'products')
+        subdir = 'settings' if category == 'settings' else 'products'
+        upload_dir = os.path.join(PARENT_DIR, 'uploads', subdir)
         os.makedirs(upload_dir, exist_ok=True)
         saved_paths = []
         for f in multipart.get('files', []):
@@ -1118,7 +1255,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 continue
             with open(dest, 'wb') as out:
                 out.write(f['content'])
-            saved_paths.append(f'uploads/products/{safe_name}')
+            saved_paths.append(f'uploads/{subdir}/{safe_name}')
         send_json(self, {'paths': saved_paths, 'count': len(saved_paths)})
 
     def do_GET(self):
@@ -1129,39 +1266,113 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         if path == '/api/public/products':
             db = get_db()
             cur = db.cursor()
+            page = int(query.get('page', ['1'])[0])
+            limit = int(query.get('limit', ['0'])[0])
             search = query.get('search', [''])[0].strip().lower()
             category = query.get('category', [''])[0].strip().lower()
             featured_only = query.get('featured', [''])[0].strip().lower() == 'true'
-            cur.execute("""
-                SELECT p.*, c.name AS category_name
-                FROM products p
-                LEFT JOIN categories c ON p.category_id = c.id
-                WHERE p.status='active'
-                ORDER BY p.id
-            """)
-            rows = cur.fetchall()
-            result = []
-            for r in rows:
+            sort = query.get('sort', ['newest'])[0].strip().lower()
+            order_map = {
+                'newest': 'p.created_at DESC',
+                'price-low': 'COALESCE(p.sale_price, p.price) ASC',
+                'price-high': 'COALESCE(p.sale_price, p.price) DESC',
+                'rating': 'p.rating DESC',
+            }
+            if sort not in order_map:
+                sort = 'newest'
+            where = ["p.status='active'"]
+            params = []
+            if category:
+                where.append("LOWER(c.name) = %s")
+                params.append(category)
+            if search:
+                where.append("(LOWER(p.name) LIKE %s OR LOWER(COALESCE(p.description, '')) LIKE %s)")
+                params.extend(['%' + search + '%', '%' + search + '%'])
+            if featured_only:
+                where.append("p.featured = 1")
+            where_clause = " AND ".join(where)
+            order_by = order_map[sort]
+
+            def enrich_product(r):
                 d = dict(r)
+                pid = d['id']
                 if d.get('images') and isinstance(d['images'], str):
                     d['images'] = json.loads(d['images'])
                 if d.get('sizes') and isinstance(d['sizes'], str):
                     d['sizes'] = json.loads(d['sizes'])
                 if d.get('colors') and isinstance(d['colors'], str):
                     d['colors'] = json.loads(d['colors'])
-                if isinstance(d.get('colors'), list):
-                    d['colors'] = [c.get('name', c) if isinstance(c, dict) else c for c in d['colors']]
+                cur.execute("SELECT id, color_name, color_hex, sku, stock FROM product_variants WHERE product_id=%s ORDER BY sort_order, id", (pid,))
+                variant_rows = cur.fetchall()
+                if variant_rows:
+                    variants = []
+                    all_colors = {}
+                    all_sizes = set()
+                    images_seen = set()
+                    merged_sizes = []
+                    for v in variant_rows:
+                        vdict = {'id': v['id'], 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock']}
+                        cur.execute("SELECT image_path FROM variant_images WHERE variant_id=%s ORDER BY sort_order", (v['id'],))
+                        vdict['images'] = [r['image_path'] for r in cur.fetchall()]
+                        cur.execute("SELECT size_name, stock FROM variant_sizes WHERE variant_id=%s ORDER BY id", (v['id'],))
+                        vdict['sizes'] = [{'size': r['size_name'], 'stock': r['stock']} for r in cur.fetchall()]
+                        variants.append(vdict)
+                        if v['color_name'] and v['color_name'] not in all_colors:
+                            all_colors[v['color_name']] = {'name': v['color_name'], 'hex': v['color_hex'], 'stock': v['stock']}
+                        for s in vdict['sizes']:
+                            if s['size'] not in all_sizes:
+                                all_sizes.add(s['size'])
+                                merged_sizes.append(s)
+                        for img in vdict['images']:
+                            if img not in images_seen:
+                                images_seen.add(img)
+                    d['colors'] = list(all_colors.values()) if all_colors else []
+                    d['sizes'] = merged_sizes if merged_sizes else []
+                    d['variants'] = variants
+                    d['images'] = list(images_seen) if images_seen else (d.get('images') or [])
+                else:
+                    d['variants'] = []
                 d['featured'] = bool(d.get('featured', 0))
                 d['new_arrival'] = bool(d.get('new_arrival', 0))
                 d['category'] = d.get('category_name') or ''
-                result.append(d)
-            if featured_only:
-                result = [p for p in result if p.get('featured')]
-            if search:
-                result = [p for p in result if search in p['name'].lower() or search in (p.get('description') or '').lower()]
-            if category:
-                result = [p for p in result if (p.get('category_name') or '').lower() == category]
-            send_json(self, result)
+                return d
+
+            cur.execute("SELECT COUNT(*) AS cnt FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE " + where_clause, params)
+            row = cur.fetchone()
+            total = row['cnt'] if row else 0
+
+            if limit > 0:
+                offset = (page - 1) * limit
+                cur.execute("""
+                    SELECT p.*, c.name AS category_name
+                    FROM products p
+                    LEFT JOIN categories c ON p.category_id = c.id
+                    WHERE """ + where_clause + """
+                    ORDER BY """ + order_by + """
+                    LIMIT %s OFFSET %s
+                """, params + [limit, offset])
+                rows = cur.fetchall()
+                result = [enrich_product(r) for r in rows]
+                total_pages = max(1, (total + limit - 1) // limit) if total > 0 else 1
+                send_json(self, {
+                    'products': result,
+                    'total': total,
+                    'page': page,
+                    'per_page': limit,
+                    'total_pages': total_pages
+                })
+            else:
+                cur.execute("""
+                    SELECT p.*, c.name AS category_name
+                    FROM products p
+                    LEFT JOIN categories c ON p.category_id = c.id
+                    WHERE """ + where_clause + """
+                    ORDER BY """ + order_by
+                )
+                rows = cur.fetchall()
+                result = [enrich_product(r) for r in rows]
+                send_json(self, result)
+            db.close()
             return
 
         if path.startswith('/api/public/products/') and path != '/api/public/products' and path != '/api/public/products/featured':
@@ -1185,8 +1396,37 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 data['sizes'] = json.loads(data['sizes'])
             if data.get('colors') and isinstance(data['colors'], str):
                 data['colors'] = json.loads(data['colors'])
-            if isinstance(data.get('colors'), list):
-                data['colors'] = [c.get('name', c) if isinstance(c, dict) else c for c in data['colors']]
+            # Enrich with variants, variant_images, variant_sizes
+            cur.execute("SELECT id, color_name, color_hex, sku, stock FROM product_variants WHERE product_id=%s ORDER BY sort_order, id", (pid,))
+            variant_rows = cur.fetchall()
+            if variant_rows:
+                variants = []
+                all_colors = {}
+                all_sizes = set()
+                images_seen = set()
+                merged_sizes = []
+                for v in variant_rows:
+                    vdict = {'id': v['id'], 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock']}
+                    cur.execute("SELECT image_path FROM variant_images WHERE variant_id=%s ORDER BY sort_order", (v['id'],))
+                    vdict['images'] = [r['image_path'] for r in cur.fetchall()]
+                    cur.execute("SELECT size_name, stock FROM variant_sizes WHERE variant_id=%s ORDER BY id", (v['id'],))
+                    vdict['sizes'] = [{'size': r['size_name'], 'stock': r['stock']} for r in cur.fetchall()]
+                    variants.append(vdict)
+                    if v['color_name'] and v['color_name'] not in all_colors:
+                        all_colors[v['color_name']] = {'name': v['color_name'], 'hex': v['color_hex'], 'stock': v['stock']}
+                    for s in vdict['sizes']:
+                        if s['size'] not in all_sizes:
+                            all_sizes.add(s['size'])
+                            merged_sizes.append(s)
+                    for img in vdict['images']:
+                        if img not in images_seen:
+                            images_seen.add(img)
+                data['colors'] = list(all_colors.values()) if all_colors else []
+                data['sizes'] = merged_sizes if merged_sizes else []
+                data['variants'] = variants
+                data['images'] = list(images_seen) if images_seen else (data.get('images') or [])
+            else:
+                data['variants'] = []
             data['featured'] = bool(data.get('featured', 0))
             data['new_arrival'] = bool(data.get('new_arrival', 0))
             data['category'] = data.get('category_name') or ''
@@ -1223,6 +1463,25 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 """, (coll['id'],))
                 coll['products'] = rows_to_list(cur.fetchall())
             send_json(self, data)
+            return
+
+        if path == '/api/public/settings':
+            db = get_db()
+            cur = db.cursor()
+            cur.execute("SELECT setting_key, setting_value, setting_type FROM settings")
+            rows = cur.fetchall()
+            result = {}
+            for r in rows:
+                key = r['setting_key']
+                val = r['setting_value']
+                t = r['setting_type']
+                if t == 'boolean':
+                    val = val == '1'
+                elif t == 'number':
+                    try: val = float(val)
+                    except: pass
+                result[key] = val
+            send_json(self, result)
             return
 
         if path.startswith('/api/'):
