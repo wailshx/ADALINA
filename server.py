@@ -454,7 +454,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         print(f'[Server] {format % args}')
 
 def main():
-    PORT = 3000
+    PORT = int(os.environ.get('PORT_MAIN', '3000'))
 
     init_database()
 

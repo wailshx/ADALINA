@@ -1,6 +1,10 @@
 __pycache__/
 *.db
+*.db-shm
+*.db-wal
 *.pyc
 .env
 .DS_Store
 admin/.sessions.json
+store.db.backup
+uploads/

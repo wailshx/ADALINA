@@ -14,8 +14,8 @@ SESSIONS_FILE = os.path.join(BASE_DIR, '.sessions.json')
 
 from database import get_db, init_db, seed_db, log_stock_change, deduct_order_stock, restore_order_stock, get_variant_stock
 
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD_HASH = "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
+ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9')
 
 MIME_TYPES = {
     '.html': 'text/html; charset=utf-8',
@@ -1624,7 +1624,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 if __name__ == '__main__':
     init_db()
     seed_db()
-    port = 5000
+    port = int(os.environ.get('PORT_ADMIN', '5000'))
     server = http.server.HTTPServer(('0.0.0.0', port), AdminHandler)
     print(f"Admin Dashboard running at http://localhost:{port}")
     print(f"Admin dashboard ready — login at http://localhost:{port}")
