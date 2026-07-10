@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Products - LUNA BELLE Admin</title>
+    <title>Products - ADALINA Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="css/admin.css">
     <script>
@@ -43,8 +43,8 @@
 
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-        <img src="../images/logo.svg" alt="LUNA BELLE" style="width:32px;height:32px">
-        <h2>LUNA <span>BELLE</span></h2>
+        <img src="../images/logo.svg" alt="ADALINA" style="width:32px;height:32px">
+        <h2>ADALINA</h2>
     </div>
     <nav class="sidebar-nav">
         <div class="nav-label">Main</div>
@@ -75,8 +75,8 @@
         </div>
     </div>
     <div class="topbar-right">
-        <button class="topbar-btn"><i class="fas fa-bell"></i><span class="badge">3</span></button>
-        <button class="topbar-btn"><i class="fas fa-envelope"></i><span class="badge">1</span></button>
+        <button class="topbar-btn"><i class="fas fa-bell"></i><span class="badge">0</span></button>
+        
         <div class="topbar-profile">
             <img src="https://ui-avatars.com/api/?name=Admin&background=c9a96e&color=fff&size=32" alt="">
             <div class="info">
@@ -95,7 +95,7 @@
         </div>
         <div style="display:flex;gap:8px;">
             <button class="btn btn-outline btn-sm"><i class="fas fa-filter"></i> Filter</button>
-            <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="product-modal"><i class="fas fa-plus"></i> Add Product</button>
+            <button class="btn btn-primary btn-sm" onclick="openAddProduct()"><i class="fas fa-plus"></i> Ajouter un produit</button>
         </div>
     </div>
 
@@ -121,83 +121,150 @@
 </main>
 
 <div class="modal-overlay" id="product-modal">
-    <div class="modal">
+    <div class="modal modal-lg product-modal">
         <div class="modal-header">
-            <h2>Product</h2>
+            <h2 id="pm-modal-title">Nouveau Produit</h2>
             <button class="modal-close">&times;</button>
         </div>
         <div class="modal-body">
+            <!-- Step Progress -->
+            <div class="pm-steps">
+                <div class="pm-step active" data-step="1">
+                    <span class="pm-step-num">1</span>
+                    <span class="pm-step-label">Informations</span>
+                </div>
+                <div class="pm-step-connector"></div>
+                <div class="pm-step" data-step="2">
+                    <span class="pm-step-num">2</span>
+                    <span class="pm-step-label">Prix &amp; Statut</span>
+                </div>
+                <div class="pm-step-connector"></div>
+                <div class="pm-step" data-step="3">
+                    <span class="pm-step-num">3</span>
+                    <span class="pm-step-label">Variantes</span>
+                </div>
+            </div>
+
             <form id="product-form">
                 <input type="hidden" id="pm-id">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Product Name</label>
-                        <input type="text" id="pm-name" class="form-control" placeholder="Enter product name" required>
+
+                <!-- ═══ Step 1: Basic Info ═══ -->
+                <div class="pm-step-content active" data-step="1">
+                    <h3 class="pm-section-title">1 — Informations de base</h3>
+
+                    <div class="form-group required">
+                        <label>Nom du produit</label>
+                        <input type="text" id="pm-name" class="form-control" placeholder="ex. Robe élégante noire" required>
+                        <small class="form-hint">Le nom qui apparaîtra sur la boutique</small>
                     </div>
+
                     <div class="form-group">
-                        <label>Brand</label>
-                        <input type="text" id="pm-brand" class="form-control" placeholder="Brand name (optional)">
+                        <label>Description</label>
+                        <textarea id="pm-desc" class="form-control" placeholder="Description détaillée du produit..." rows="4"></textarea>
                     </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Category</label>
+
+                    <div class="form-group required">
+                        <label>Catégorie</label>
                         <select id="pm-category" class="form-control" required>
-                            <option value="">Select category</option>
+                            <option value="">Sélectionner une catégorie</option>
                         </select>
                     </div>
+
                     <div class="form-group">
-                        <label>Price ($)</label>
-                        <input type="number" id="pm-price" class="form-control" placeholder="0.00" step="0.01" required>
+                        <label>Marque</label>
+                        <input type="text" id="pm-brand" class="form-control" placeholder="ADALINA (optionnel)">
+                        <small class="form-hint">Optionnel — laissez vide si non applicable</small>
                     </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Sale Price ($)</label>
-                        <input type="number" id="pm-sale-price" class="form-control" placeholder="Optional" step="0.01">
-                    </div>
-                    <div class="form-group">
-                        <label>Stock</label>
-                        <input type="number" id="pm-stock" class="form-control" placeholder="0">
+
+                    <div class="pm-nav-buttons">
+                        <button type="button" class="btn btn-outline modal-close">Annuler</button>
+                        <button type="button" class="btn btn-primary" onclick="pmNextStep(1)">Suivant →</button>
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-top:12px;">
-                    <label>Variants <small style="font-weight:400;color:var(--text-muted);">(colors with per-variant images, sizes, SKU)</small></label>
-                    <div id="variants-container" style="margin-top:6px;"></div>
-                    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center;">
-                        <input type="text" id="new-variant-name" placeholder="Color name" style="padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:0.85rem;flex:1;min-width:120px;">
-                        <input type="color" id="new-variant-color" value="#000000" style="width:40px;height:36px;padding:0;border:1px solid #ddd;border-radius:4px;cursor:pointer;">
-                        <input type="text" id="new-variant-sku" placeholder="SKU (optional)" style="padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:0.85rem;flex:1;min-width:100px;">
-                        <button type="button" class="btn btn-primary btn-sm" id="add-variant-btn">+ Add Variant</button>
+                <!-- ═══ Step 2: Pricing & Status ═══ -->
+                <div class="pm-step-content" data-step="2">
+                    <h3 class="pm-section-title">2 — Prix et statut</h3>
+
+                    <div class="form-row">
+                        <div class="form-group required">
+                            <label>Prix normal (DA)</label>
+                            <input type="number" id="pm-price" class="form-control" placeholder="ex. 5000" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Prix promotionnel (DA)</label>
+                            <input type="number" id="pm-sale-price" class="form-control" placeholder="Optionnel — prix barré" step="0.01">
+                            <small class="form-hint">Laissez vide si pas de promotion</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Ribbon / Badge</label>
+                        <div class="pm-ribbon-group" id="pm-ribbon-group">
+                            <label class="pm-ribbon-option" data-value="Nouveau">
+                                <input type="radio" name="pm_ribbon" value="Nouveau">
+                                <span class="pm-ribbon-box pm-ribbon-new">Nouveau</span>
+                            </label>
+                            <label class="pm-ribbon-option" data-value="Promotion">
+                                <input type="radio" name="pm_ribbon" value="Promotion">
+                                <span class="pm-ribbon-box pm-ribbon-sale">Promotion</span>
+                            </label>
+                            <label class="pm-ribbon-option" data-value="Best Seller">
+                                <input type="radio" name="pm_ribbon" value="Best Seller">
+                                <span class="pm-ribbon-box pm-ribbon-best">Best Seller</span>
+                            </label>
+                            <label class="pm-ribbon-option" data-value="Édition Limitée">
+                                <input type="radio" name="pm_ribbon" value="Édition Limitée">
+                                <span class="pm-ribbon-box pm-ribbon-limited">Édition Limitée</span>
+                            </label>
+                            <label class="pm-ribbon-option" data-value="">
+                                <input type="radio" name="pm_ribbon" value="" checked>
+                                <span class="pm-ribbon-box pm-ribbon-none">Aucun</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400;">
+                            <input type="checkbox" id="pm-featured"> <span>Mettre en avant sur la page d'accueil</span>
+                        </label>
+                        <label class="checkbox-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:400;margin-top:6px;">
+                            <input type="checkbox" id="pm-new-arrival"> <span>Marquer comme Nouvelle Arrivée</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Visibilité</label>
+                        <select id="pm-status" class="form-control">
+                            <option value="active">Publié (visible sur la boutique)</option>
+                            <option value="hidden">Masqué (caché de la boutique)</option>
+                            <option value="out of stock">Rupture de stock</option>
+                        </select>
+                    </div>
+
+                    <div class="pm-nav-buttons">
+                        <button type="button" class="btn btn-outline" onclick="pmPrevStep(2)">← Retour</button>
+                        <button type="button" class="btn btn-primary" onclick="pmNextStep(2)">Suivant →</button>
                     </div>
                 </div>
 
-                <div class="form-group" style="margin-top:4px;">
-                    <div style="display:flex;gap:16px;flex-wrap:wrap;">
-                        <label class="checkbox-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                            <input type="checkbox" id="pm-featured"> <span>Featured Product</span>
-                        </label>
-                        <label class="checkbox-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                            <input type="checkbox" id="pm-new-arrival"> <span>New Arrival</span>
-                        </label>
+                <!-- ═══ Step 3: Variants (Colors) ═══ -->
+                <div class="pm-step-content" data-step="3">
+                    <h3 class="pm-section-title">3 — Couleurs et tailles</h3>
+                    <p class="pm-step-hint">Ajoutez les couleurs disponibles. Pour chaque couleur, vous pouvez ajouter des images et définir le stock par taille.</p>
+
+                    <div id="variants-container">
+                        <p style="color:var(--text-muted);font-size:0.85rem;padding:12px 0;">Aucune couleur ajoutée. Cliquez sur "Ajouter une couleur" pour commencer.</p>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Status</label>
-                    <select id="pm-status" class="form-control">
-                        <option value="active">Active</option>
-                        <option value="hidden">Hidden</option>
-                        <option value="out of stock">Out of Stock</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="pm-desc" class="form-control" placeholder="Product description"></textarea>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-outline modal-close">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Product</button>
+
+                    <button type="button" class="btn btn-outline btn-sm" id="add-variant-btn" style="margin-top:6px;">
+                        <i class="fas fa-plus"></i> Ajouter une couleur
+                    </button>
+
+                    <div class="pm-nav-buttons">
+                        <button type="button" class="btn btn-outline" onclick="pmPrevStep(3)">← Retour</button>
+                        <button type="submit" class="btn btn-primary" id="pm-save-btn"><i class="fas fa-save"></i> Enregistrer le produit</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -234,6 +301,7 @@
     </div>
 </div>
 
+<script src="/js/sizes.js"></script>
 <script src="js/admin.js"></script>
 </body>
 </html>

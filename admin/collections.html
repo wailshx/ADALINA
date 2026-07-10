@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Collections - LUNA BELLE Admin</title>
+    <title>Collections - ADALINA Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="css/admin.css">
     <script>
@@ -43,8 +43,8 @@
 
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-        <img src="../images/logo.svg" alt="LUNA BELLE" style="width:32px;height:32px">
-        <h2>LUNA <span>BELLE</span></h2>
+        <img src="../images/logo.svg" alt="ADALINA" style="width:32px;height:32px">
+        <h2>ADALINA</h2>
     </div>
     <nav class="sidebar-nav">
         <div class="nav-label">Main</div>
@@ -75,8 +75,8 @@
         </div>
     </div>
     <div class="topbar-right">
-        <button class="topbar-btn"><i class="fas fa-bell"></i><span class="badge">3</span></button>
-        <button class="topbar-btn"><i class="fas fa-envelope"></i><span class="badge">1</span></button>
+        <button class="topbar-btn"><i class="fas fa-bell"></i><span class="badge">0</span></button>
+        
         <div class="topbar-profile">
             <img src="https://ui-avatars.com/api/?name=Admin&background=c9a96e&color=fff&size=32" alt="">
             <div class="info">
@@ -91,16 +91,16 @@
     <div class="page-header">
         <div>
             <h1>Collections</h1>
-            <p id="coll-count">Group products into curated collections</p>
+            <p id="coll-count">Regroupez les produits en collections organisées</p>
         </div>
-        <button class="btn btn-primary btn-sm" id="add-collection-btn"><i class="fas fa-plus"></i> Add Collection</button>
+        <button class="btn btn-primary btn-sm" id="add-collection-btn"><i class="fas fa-plus"></i> Ajouter une collection</button>
     </div>
 
-    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);" id="coll-stats">
+    <div class="stats-grid stats-grid-4" id="coll-stats">
         <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-layer-group"></i></div><div class="stat-info"><h3 id="stat-coll-count">0</h3><p>Collections</p></div></div>
-        <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-box"></i></div><div class="stat-info"><h3 id="stat-coll-products">0</h3><p>Total Products</p></div></div>
-        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-check-circle"></i></div><div class="stat-info"><h3 id="stat-coll-active">0</h3><p>Active</p></div></div>
-        <div class="stat-card"><div class="stat-icon yellow"><i class="fas fa-eye-slash"></i></div><div class="stat-info"><h3 id="stat-coll-hidden">0</h3><p>Hidden</p></div></div>
+        <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-box"></i></div><div class="stat-info"><h3 id="stat-coll-products">0</h3><p>Produits au total</p></div></div>
+        <div class="stat-card"><div class="stat-icon green"><i class="fas fa-check-circle"></i></div><div class="stat-info"><h3 id="stat-coll-active">0</h3><p>Actives</p></div></div>
+        <div class="stat-card"><div class="stat-icon yellow"><i class="fas fa-eye-slash"></i></div><div class="stat-info"><h3 id="stat-coll-hidden">0</h3><p>Masquées</p></div></div>
     </div>
 
     <div class="grid-3" id="collections-grid"></div>
@@ -109,7 +109,7 @@
 <div class="modal-overlay" id="collection-modal">
     <div class="modal modal-lg">
         <div class="modal-header">
-            <h2 id="coll-modal-title">Add Collection</h2>
+            <h2 id="coll-modal-title">Ajouter une collection</h2>
             <button class="modal-close">&times;</button>
         </div>
         <div class="modal-body">
@@ -117,47 +117,47 @@
                 <input type="hidden" id="coll-id">
 
                 <div class="form-group">
-                    <label>Collection Banner Image</label>
+                    <label>Image bannière de la collection</label>
                     <div class="cat-image-upload">
                         <img id="coll-image-preview" src="" style="display:none;width:100%;height:140px;object-fit:cover;border-radius:6px;margin-bottom:8px;">
                         <div class="upload-zone" id="coll-upload-zone" style="padding:20px;">
                             <i class="fas fa-cloud-upload-alt" style="font-size:1.5rem;"></i>
-                            <p style="font-size:0.8rem;">Drop banner image or <a href="#" id="coll-upload-link">browse</a></p>
+                            <p style="font-size:0.8rem;">Déposez l'image ou <a href="#" id="coll-upload-link">parcourez</a></p>
                             <input type="file" id="coll-file-input" accept=".jpg,.jpeg,.png,.webp" style="display:none">
                         </div>
                         <input type="hidden" id="coll-image">
-                        <button type="button" id="coll-remove-image" class="btn btn-outline btn-sm" style="display:none;margin-top:4px;">Remove Image</button>
+                        <button type="button" id="coll-remove-image" class="btn btn-outline btn-sm" style="display:none;margin-top:4px;">Supprimer l'image</button>
                     </div>
                 </div>
 
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>Collection Name</label>
-                        <input type="text" id="coll-name" class="form-control" placeholder="e.g. Summer Breeze" required>
+                    <div class="form-group required">
+                        <label>Nom de la collection</label>
+                        <input type="text" id="coll-name" class="form-control" placeholder="ex. Collection Été" required>
                     </div>
                     <div class="form-group">
-                        <label>Status</label>
+                        <label>Statut</label>
                         <select id="coll-status" class="form-control">
                             <option value="active">Active</option>
-                            <option value="hidden">Hidden</option>
+                            <option value="hidden">Masquée</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Description</label>
-                    <textarea id="coll-desc" class="form-control" placeholder="Collection description" rows="3"></textarea>
+                    <textarea id="coll-desc" class="form-control" placeholder="Description de la collection" rows="3"></textarea>
                 </div>
 
                 <div class="form-group">
-                    <label>Assign Products</label>
+                    <label>Assigner des produits</label>
                     <div style="max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:8px 12px;" id="coll-product-picker"></div>
-                    <p style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">Check products to include in this collection</p>
+                    <p style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">Cochez les produits à inclure dans cette collection</p>
                 </div>
 
                 <div class="form-actions">
-                    <button type="button" class="btn btn-outline modal-close">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Collection</button>
+                    <button type="button" class="btn btn-outline modal-close">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer la collection</button>
                 </div>
             </form>
         </div>

@@ -30,7 +30,7 @@
 </head>
 <body>
     <div id="root">
-                        <header class="header">
+        <header class="header">
             <div class="header-top-row">
                 <div class="header-left">
                     <a href="https://www.instagram.com/adalina.boutique" target="_blank" rel="noopener noreferrer" class="header-instagram" aria-label="Instagram" data-setting-href="instagram_url">
@@ -77,170 +77,36 @@
                     <ul class="nav-list">
                         <li class="nav-item"><a href="index.html" class="nav-link">HOME</a></li>
                         <li class="nav-item"><a href="shop.html" class="nav-link active">SHOP</a></li>
+                        
                     </ul>
                 </nav>
                 <span class="header-nav-location">𝐀𝐓𝐄𝐋𝐈𝐄𝐑 𝐀𝐃𝐀𝐋𝐈𝐍𝐀 • 𝐂𝐇𝐋𝐄𝐅</span>
             </div>
         </header>
-        
+
         <div class="header-spacer"></div>
-        
+
         <main class="shop-page">
             <div class="container">
                 <div class="shop-header">
-                    <h1 class="shop-title">Toutes les Collections</h1>
-                    <div class="shop-controls">
-                        <div class="search-box">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <path d="M21 21l-6.35-6.35"></path>
-                            </svg>
-                            <input type="text" id="shop-search-input" placeholder="Rechercher des produits...">
-                        </div>
-                        <select class="sort-select" id="shop-sort-select">
-                            <option value="featured">En vedette</option>
-                            <option value="newest">Nouveautés</option>
-                            <option value="price-low">Prix : croissant</option>
-                            <option value="price-high">Prix : décroissant</option>
-                            <option value="rating">Mieux notés</option>
-                        </select>
-                        <button class="filter-toggle" onclick="toggleSidebar()">Filtres</button>
-                    </div>
+                    <h1 class="shop-title">Notre Collection</h1>
                 </div>
-                
-                <div class="shop-layout">
-                    <aside class="shop-sidebar" id="shop-sidebar">
-                        <div class="filter-section">
-                            <h3 class="filter-title">Catégories</h3>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="cat-dresses" value="dresses">
-                                <label for="cat-dresses">Dresses</label>
-                            </div>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="cat-tops" value="tops">
-                                <label for="cat-tops">Tops</label>
-                            </div>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="cat-bottoms" value="bottoms">
-                                <label for="cat-bottoms">Bottoms</label>
-                            </div>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="cat-fragrances" value="fragrances">
-                                <label for="cat-fragrances">Fragrances</label>
-                            </div>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="cat-accessories" value="accessories">
-                                <label for="cat-accessories">Accessories</label>
-                            </div>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="cat-swimwear" value="swimwear">
-                                <label for="cat-swimwear">Swimwear</label>
-                            </div>
-                        </div>
-                        
-                        <div class="filter-section">
-                            <h3 class="filter-title">Gamme de prix</h3>
-                            <div class="price-range">
-                                <input type="range" class="range-slider" min="0" max="500" value="500">
-                                <div class="price-inputs">
-                                    <input type="text" class="price-input" id="price-min" value="$0">
-                                    <span>-</span>
-                                    <input type="text" class="price-input" id="price-max" value="$500">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="filter-section">
-                            <h3 class="filter-title">Couleur</h3>
-                            <div class="color-swatch-filter">
-                                <div class="color-btn" style="background-color: #333333;" onclick="toggleColorFilter('#333333')"></div>
-                                <div class="color-btn" style="background-color: #d4af37;" onclick="toggleColorFilter('#d4af37')"></div>
-                                <div class="color-btn" style="background-color: #b76e79;" onclick="toggleColorFilter('#b76e79')"></div>
-                                <div class="color-btn" style="background-color: #ff69b4;" onclick="toggleColorFilter('#ff69b4')"></div>
-                                <div class="color-btn" style="background-color: #ffffff; border: 1px solid #e0e0e0;" onclick="toggleColorFilter('#ffffff')"></div>
-                                <div class="color-btn" style="background-color: #000000;" onclick="toggleColorFilter('#000000')"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="filter-section">
-                            <h3 class="filter-title">Taille</h3>
-                            <div class="size-buttons">
-                                <button class="size-btn" onclick="toggleSizeFilter('XS')">XS</button>
-                                <button class="size-btn" onclick="toggleSizeFilter('S')">S</button>
-                                <button class="size-btn" onclick="toggleSizeFilter('M')">M</button>
-                                <button class="size-btn" onclick="toggleSizeFilter('L')">L</button>
-                                <button class="size-btn" onclick="toggleSizeFilter('XL')">XL</button>
-                            </div>
-                        </div>
 
-                        <div class="filter-section">
-                            <h3 class="filter-title">Marque</h3>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="brand-adalina" value="Adalina">
-                                <label for="brand-adalina">Adalina</label>
-                            </div>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="brand-velvet" value="Velvet">
-                                <label for="brand-velvet">Velvet</label>
-                            </div>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="brand-maison-noir" value="Maison Noir">
-                                <label for="brand-maison-noir">Maison Noir</label>
-                            </div>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="brand-aurora" value="Aurora">
-                                <label for="brand-aurora">Aurora</label>
-                            </div>
-                        </div>
+                <div class="shop-filters" id="shop-filters">
+                    <div class="shop-filter-row" id="size-filter-row"></div>
+                    <div class="shop-filter-row" id="category-filter-row"></div>
+                </div>
 
-                        <div class="filter-section">
-                            <h3 class="filter-title">Disponibilité</h3>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="stock-in">
-                                <label for="stock-in">En stock</label>
-                            </div>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="stock-out">
-                                <label for="stock-out">Épuisé</label>
-                            </div>
-                        </div>
-
-                        <div class="filter-section">
-                            <h3 class="filter-title">Promotions</h3>
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="sale-items">
-                                <label for="sale-items">Articles en promotion uniquement</label>
-                            </div>
-                        </div>
-
-                        <button class="btn btn-outline" id="clear-filters" style="width: 100%; margin-top: 1rem;">Effacer les filtres</button>
-                    </aside>
-                    
-                    <div class="products-section">
-                        <div class="results-count">
-                            <span id="results-count">Showing 0 products</span>
-                        </div>
-                        <div class="products-grid" id="products-grid"></div>
-                        
-                        <div class="pagination">
-                            <button class="pagination-btn" onclick="changePage(1)">«</button>
-                            <button class="pagination-btn active">1</button>
-                            <button class="pagination-btn" onclick="changePage(2)">2</button>
-                            <button class="pagination-btn" onclick="changePage(3)">3</button>
-                            <button class="pagination-btn" onclick="changePage(4)">4</button>
-                            <button class="pagination-btn" onclick="changePage(5)">5</button>
-                            <button class="pagination-btn" onclick="changePage(6)">6</button>
-                            <button class="pagination-btn" onclick="changePage(7)">7</button>
-                            <button class="pagination-btn" onclick="changePage(8)">8</button>
-                            <button class="pagination-btn" onclick="changePage(9)">9</button>
-                            <button class="pagination-btn" onclick="changePage(10)">10</button>
-                            <button class="pagination-btn" onclick="changePage(11)">»</button>
-                        </div>
+                <div class="products-section">
+                    <div class="results-count">
+                        <span id="results-count">0 produits</span>
                     </div>
+                    <div class="products-grid" id="products-grid"></div>
+                    <div class="pagination" id="pagination"></div>
                 </div>
             </div>
         </main>
-        
+
         <div id="cart-sidebar" class="sidebar">
             <div class="sidebar-header">
                 <h3>Mon Panier</h3>
@@ -254,15 +120,15 @@
             <div class="sidebar-footer">
                 <div class="cart-total">
                     <span>Total :</span>
-                    <span id="cart-total-price">$0.00</span>
+                    <span id="cart-total-price">0 DA</span>
                 </div>
                 <button class="btn btn-primary" onclick="toggleCart(); window.location.href='checkout.html'">Commander</button>
                 <p class="continue-shopping" onclick="toggleCart()">Continuer mes achats</p>
             </div>
         </div>
-        
+
         <div id="overlay" class="overlay" onclick="closeAllDrawers()"></div>
-        
+
         <div id="wishlist" class="sidebar">
             <div class="sidebar-header">
                 <h3>Ma liste d'envies</h3>
@@ -278,7 +144,60 @@
                 <p class="continue-shopping" onclick="toggleWishlist()">Continuer mes achats</p>
             </div>
         </div>
-        
+
+        <div id="quick-view-modal" class="modal">
+            <div class="modal-content quick-view-content">
+                <span class="close-modal" onclick="closeQuickView()">&times;</span>
+                <div class="quick-view-body">
+                    <div class="quick-view-images">
+                        <div class="quick-view-main-wrap">
+                            <img id="quick-view-main-image" src="" alt="Product">
+                            <button class="qv-nav qv-prev" onclick="qvPrevImage()">&#10094;</button>
+                            <button class="qv-nav qv-next" onclick="qvNextImage()">&#10095;</button>
+                        </div>
+                        <div class="quick-view-thumbs" id="quick-view-thumbs"></div>
+                    </div>
+                    <div class="quick-view-info">
+                        <h2 id="quick-view-title"></h2>
+                        <div class="qv-price" id="quick-view-price"></div>
+
+                        <div class="qv-section">
+                            <label>Taille</label>
+                            <div class="qv-size-options" id="qv-sizes"></div>
+                        </div>
+
+                        <div class="qv-section">
+                            <label>Couleur</label>
+                            <div class="qv-color-options" id="qv-colors"></div>
+                        </div>
+
+                        <div class="qv-section">
+                            <label>Quantité</label>
+                            <div class="qv-qty">
+                                <button class="qv-qty-btn" onclick="qvChangeQty(-1)">−</button>
+                                <input type="text" id="qv-qty-input" value="1" readonly>
+                                <button class="qv-qty-btn" onclick="qvChangeQty(1)">+</button>
+                            </div>
+                        </div>
+
+                        <div class="qv-section" id="qv-stock-info"></div>
+
+                        <button class="qv-btn qv-btn-primary" onclick="qvAddToCart()">Ajouter au panier</button>
+                        <button class="qv-btn qv-btn-dark" id="qv-buy-now" onclick="qvBuyNow()">Acheter maintenant</button>
+
+                        <button class="qv-btn qv-btn-outline" onclick="qvToggleWishlist()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                            </svg>
+                            <span id="qv-wishlist-text">Ajouter aux favoris</span>
+                        </button>
+
+                        <button class="qv-continue" onclick="closeQuickView()">Continuer les achats</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <footer class="footer">
             <div class="container">
                 <div class="footer-inner">
@@ -301,7 +220,7 @@
                         <a href="#" target="_blank" rel="noopener noreferrer" class="footer-social-link" data-setting-href="whatsapp_url" aria-label="WhatsApp">
                             <span class="footer-social-icon-wrap">
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
                                 </svg>
                             </span>
                             <span class="footer-social-label">WhatsApp</span>
@@ -324,7 +243,8 @@
             </div>
         </footer>
     </div>
-    
+
+    <script src="js/sizes.js"></script>
     <script src="js/script.js"></script>
     <script>
     (function() {
@@ -336,7 +256,7 @@
         });
         document.querySelectorAll('[data-setting-href]').forEach(function(el) {
             var key = el.getAttribute('data-setting-href');
-            if (s[key]) el.setAttribute('href', s[key]);
+            if (s[key]) { el.setAttribute('href', s[key]); el.style.display = ''; } else if (el.getAttribute('href') === '#') { el.style.display = 'none'; }
         });
         document.querySelectorAll('[data-setting-content]').forEach(function(el) {
             var key = el.getAttribute('data-setting-content');

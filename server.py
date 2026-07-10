@@ -9,12 +9,35 @@ BASE_DIR = Path(__file__).resolve().parent
 import sys
 sys.path.insert(0, str(BASE_DIR))
 from config.database import get_db
+try:
+    from admin.database import deduct_order_stock
+except ImportError:
+    def deduct_order_stock(cur, pid, color, size, qty): return (False, "Stock system unavailable")
+
 
 def init_database():
     try:
         from admin.database import init_db, seed_db
         init_db()
         seed_db()
+        # Add created_at column if missing
+        try:
+            db = get_db()
+            cur = db.cursor()
+            cur.execute("PRAGMA table_info(products)")
+            cols = [r['name'] for r in cur.fetchall()]
+            if 'created_at' not in cols:
+                cur.execute("ALTER TABLE products ADD COLUMN created_at TEXT")
+                # Backfill existing products based on id order
+                rows = cur.execute("SELECT id FROM products ORDER BY id").fetchall()
+                for i, r in enumerate(rows):
+                    days_ago = len(rows) - i
+                    cur.execute("UPDATE products SET created_at = datetime('now', '-' || ? || ' days') WHERE id = ?", (str(days_ago), r['id']))
+                db.commit()
+                print('✓ Added created_at column to products table')
+            db.close()
+        except Exception as e:
+            print(f'! created_at migration warning: {e}')
         print('✓ Database initialized and seeded')
     except Exception as e:
         print(f'! Database init warning: {e}')
@@ -83,7 +106,7 @@ def format_product(row, cur=None):
     p['category'] = p.get('category_name') or ''
     return p
 
-class LunaBelleServer(SimpleHTTPRequestHandler):
+class AdalinaServer(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
 
@@ -92,30 +115,77 @@ class LunaBelleServer(SimpleHTTPRequestHandler):
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
 
-        # GET /api/public/products — list all products
+        # GET /api/public/products — list all products (with optional pagination + sort)
         if path == '/api/public/products':
             try:
                 db = get_db()
                 cur = db.cursor()
+                page = int(query.get('page', ['1'])[0])
+                limit = int(query.get('limit', ['0'])[0])
                 search = query.get('search', [''])[0].strip().lower()
                 category = query.get('category', [''])[0].strip().lower()
                 featured_only = query.get('featured', [''])[0].strip().lower() == 'true'
-                cur.execute("""
-                    SELECT p.*, c.name AS category_name
-                    FROM products p
-                    LEFT JOIN categories c ON p.category_id = c.id
-                    WHERE p.status='active'
-                    ORDER BY p.id
-                """)
-                rows = cur.fetchall()
-                result = [format_product(r, cur) for r in rows]
-                if featured_only:
-                    result = [p for p in result if p.get('featured')]
-                if search:
-                    result = [p for p in result if search in p['name'].lower() or search in (p.get('description') or '').lower()]
+                sort = query.get('sort', ['newest'])[0].strip().lower()
+
+                where = ["p.status='active'"]
+                params = []
                 if category:
-                    result = [p for p in result if (p.get('category_name') or '').lower() == category]
-                send_json(self, result)
+                    where.append("LOWER(c.name) = ?")
+                    params.append(category)
+                if search:
+                    where.append("(LOWER(p.name) LIKE ? OR LOWER(COALESCE(p.description, '')) LIKE ?)")
+                    params.extend(['%' + search + '%', '%' + search + '%'])
+                if featured_only:
+                    where.append("p.featured = 1")
+                where_clause = " AND ".join(where)
+
+                order_map = {
+                    'newest': 'p.created_at DESC',
+                    'price-low': 'COALESCE(p.sale_price, p.price) ASC',
+                    'price-high': 'COALESCE(p.sale_price, p.price) DESC',
+                    'rating': 'p.rating DESC',
+                    'featured': 'p.rating DESC',
+                }
+                if sort not in order_map:
+                    sort = 'newest'
+                order_by = order_map[sort]
+
+                cur.execute("SELECT COUNT(*) AS cnt FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE " + where_clause, params)
+                row = cur.fetchone()
+                total = row['cnt'] if row else 0
+
+                if limit > 0:
+                    offset = (page - 1) * limit
+                    cur.execute("""
+                        SELECT p.*, c.name AS category_name
+                        FROM products p
+                        LEFT JOIN categories c ON p.category_id = c.id
+                        WHERE """ + where_clause + """
+                        ORDER BY """ + order_by + """
+                        LIMIT ? OFFSET ?
+                    """, params + [limit, offset])
+                    rows = cur.fetchall()
+                    result = [format_product(r, cur) for r in rows]
+                    total_pages = max(1, (total + limit - 1) // limit) if total > 0 else 1
+                    send_json(self, {
+                        'products': result,
+                        'total': total,
+                        'page': page,
+                        'per_page': limit,
+                        'total_pages': total_pages
+                    })
+                else:
+                    cur.execute("""
+                        SELECT p.*, c.name AS category_name
+                        FROM products p
+                        LEFT JOIN categories c ON p.category_id = c.id
+                        WHERE """ + where_clause + """
+                        ORDER BY """ + order_by
+                    )
+                    rows = cur.fetchall()
+                    result = [format_product(r, cur) for r in rows]
+                    send_json(self, result)
+
                 db.close()
             except Exception as e:
                 send_json(self, {'error': str(e)}, 500)
@@ -131,7 +201,7 @@ class LunaBelleServer(SimpleHTTPRequestHandler):
                     FROM products p
                     LEFT JOIN categories c ON p.category_id = c.id
                     WHERE p.status='active' AND p.featured=1
-                    ORDER BY p.id
+                    ORDER BY p.created_at DESC
                 """)
                 rows = cur.fetchall()
                 result = [format_product(r, cur) for r in rows]
@@ -204,6 +274,22 @@ class LunaBelleServer(SimpleHTTPRequestHandler):
                 send_json(self, {'error': str(e)}, 500)
             return
 
+        # GET /api/public/delivery-prices
+        if path == '/api/public/delivery-prices':
+            try:
+                db = get_db()
+                cur = db.cursor()
+                cur.execute("SELECT wilaya_id, price FROM delivery_prices ORDER BY wilaya_id")
+                rows = cur.fetchall()
+                result = {}
+                for r in rows:
+                    result[str(r['wilaya_id'])] = r['price']
+                send_json(self, result)
+                db.close()
+            except Exception as e:
+                send_json(self, {'error': str(e)}, 500)
+            return
+
         # GET /api/public/collections
         if path == '/api/public/collections':
             try:
@@ -240,7 +326,7 @@ class LunaBelleServer(SimpleHTTPRequestHandler):
                     SELECT p.*, c.name AS category_name
                     FROM products p LEFT JOIN categories c ON p.category_id = c.id
                     WHERE p.status='active'
-                    ORDER BY p.id
+                    ORDER BY p.created_at DESC
                 """)
                 rows = cur.fetchall()
                 products = [format_product(r, cur) for r in rows]
@@ -278,6 +364,14 @@ class LunaBelleServer(SimpleHTTPRequestHandler):
             self.path = '/' + clean_path
             return super().do_GET()
 
+        elif path.startswith('/images/'):
+            clean_path = path.lstrip('/')
+            if '..' in clean_path or clean_path.startswith('.'):
+                self.send_error(403, 'Forbidden')
+                return
+            self.path = '/' + clean_path
+            return super().do_GET()
+
         elif path == '/' or path == '':
             self.send_response(302)
             self.send_header('Location', '/website/')
@@ -300,6 +394,7 @@ class LunaBelleServer(SimpleHTTPRequestHandler):
                 data = json.loads(body) if body else {}
                 db = get_db()
                 cur = db.cursor()
+                cur.execute("BEGIN IMMEDIATE")
 
                 order_number = 'MEMO-' + __import__('datetime').datetime.now().strftime('%Y%m%d-') + str(__import__('random').randint(1000, 9999))
                 items = data.get('items', [])
@@ -311,19 +406,47 @@ class LunaBelleServer(SimpleHTTPRequestHandler):
                 shipping_address = f"Name: {customer_name}, Phone: {customer_phone}, Address: {shipping}"
                 payment = data.get('payment_method', 'Cash on Delivery')
 
+                # Validate + deduct stock for each item atomically
+                for item in items:
+                    pid = item.get('product_id')
+                    qty = item.get('quantity') or 1
+                    color = item.get('color') or item.get('selectedColor') or ''
+                    size = item.get('size') or item.get('selectedSize') or ''
+                    ok, err = deduct_order_stock(cur, pid, color, size, qty)
+                    if not ok:
+                        product_name = item.get('name', '')
+                        msg = err or "Stock insuffisant"
+                        if product_name:
+                            msg = f"{msg} pour {product_name}"
+                        cur.execute("ROLLBACK")
+                        db.commit()
+                        send_json(self, {'error': msg}, 409)
+                        db.close()
+                        return
+
+                delivery_fee = data.get('delivery_fee', 0)
                 cur.execute("""
-                    INSERT INTO orders (order_number, customer_id, customer_name, customer_phone, wilaya, commune, status, total, items, shipping_address, payment_method)
-                    VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (order_number, customer_name, customer_phone, wilaya, commune, 'new', data.get('total', 0), json.dumps(items), shipping_address, payment))
+                    INSERT INTO orders (order_number, customer_id, customer_name, customer_phone, wilaya, commune, status, total, items, shipping_address, payment_method, delivery_fee)
+                    VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (order_number, customer_name, customer_phone, wilaya, commune, 'new', data.get('total', 0), json.dumps(items), shipping_address, payment, delivery_fee))
 
                 oid = cur.lastrowid
+                cur.execute("COMMIT")
                 db.commit()
                 send_json(self, {'id': oid, 'order_number': order_number, 'message': 'Order created'}, 201)
                 db.close()
             except Exception as e:
+                try:
+                    cur.execute("ROLLBACK")
+                except Exception:
+                    pass
                 send_json(self, {'error': str(e)}, 500)
             return
 
+        self.send_response(404)
+        self.end_headers()
+
+    def do_PUT(self):
         self.send_response(404)
         self.end_headers()
 
@@ -344,7 +467,7 @@ def main():
         return
 
     print(f'\n{"="*50}')
-    print(f'LUNA BELLE WEBSITE SERVER')
+    print(f'ADALINA WEBSITE SERVER')
     print(f'Port: {PORT}')
     print(f'{"="*50}')
     print(f'✓ Access website: http://localhost:{PORT}/website/')
@@ -352,7 +475,7 @@ def main():
     print(f'{"="*50}')
     print(f'Press Ctrl+C to stop the server.')
 
-    server = HTTPServer(("", PORT), LunaBelleServer)
+    server = HTTPServer(("", PORT), AdalinaServer)
     try:
         print(f'✓ Server started and running on port {PORT}')
         server.serve_forever()

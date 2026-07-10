@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Categories - LUNA BELLE Admin</title>
+    <title>Categories - ADALINA Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="css/admin.css">
     <script>
@@ -43,8 +43,8 @@
 
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-        <img src="../images/logo.svg" alt="LUNA BELLE" style="width:32px;height:32px">
-        <h2>LUNA <span>BELLE</span></h2>
+        <img src="../images/logo.svg" alt="ADALINA" style="width:32px;height:32px">
+        <h2>ADALINA</h2>
     </div>
     <nav class="sidebar-nav">
         <div class="nav-label">Main</div>
@@ -75,8 +75,8 @@
         </div>
     </div>
     <div class="topbar-right">
-        <button class="topbar-btn"><i class="fas fa-bell"></i><span class="badge">3</span></button>
-        <button class="topbar-btn"><i class="fas fa-envelope"></i><span class="badge">1</span></button>
+        <button class="topbar-btn"><i class="fas fa-bell"></i><span class="badge">0</span></button>
+        
         <div class="topbar-profile">
             <img src="https://ui-avatars.com/api/?name=Admin&background=c9a96e&color=fff&size=32" alt="">
             <div class="info">
@@ -90,10 +90,10 @@
 <main class="main-content">
     <div class="page-header">
         <div>
-            <h1>Categories</h1>
-            <p id="cat-count">Organize your products into categories</p>
+            <h1>Catégories</h1>
+            <p id="cat-count">Organisez vos produits en catégories</p>
         </div>
-        <button class="btn btn-primary btn-sm" id="add-category-btn"><i class="fas fa-plus"></i> Add Category</button>
+        <button class="btn btn-primary btn-sm" id="add-category-btn"><i class="fas fa-plus"></i> Ajouter une catégorie</button>
     </div>
 
     <div class="card">
@@ -102,12 +102,11 @@
                 <table id="categories-table">
                     <thead>
                         <tr>
-                            <th>Image</th>
-                            <th>Category</th>
+                            <th>Catégorie</th>
                             <th>Slug</th>
                             <th>Description</th>
-                            <th>Products</th>
-                            <th>Status</th>
+                            <th>Produits</th>
+                            <th>Statut</th>
                             <th style="text-align:right;">Actions</th>
                         </tr>
                     </thead>
@@ -122,51 +121,37 @@
 <div class="modal-overlay" id="category-modal">
     <div class="modal">
         <div class="modal-header">
-            <h2 id="cat-modal-title">Add Category</h2>
+            <h2 id="cat-modal-title">Ajouter une catégorie</h2>
             <button class="modal-close">&times;</button>
         </div>
         <div class="modal-body">
             <form id="category-form">
                 <input type="hidden" id="cat-id">
 
-                <div class="form-group">
-                    <label>Category Image</label>
-                    <div class="cat-image-upload" id="cat-image-upload">
-                        <img id="cat-image-preview" src="" style="display:none;width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:8px;">
-                        <div class="upload-zone" id="cat-upload-zone" style="padding:20px;">
-                            <i class="fas fa-cloud-upload-alt" style="font-size:1.5rem;"></i>
-                            <p style="font-size:0.8rem;">Drop image or <a href="#" id="cat-upload-link">browse</a></p>
-                            <input type="file" id="cat-file-input" accept=".jpg,.jpeg,.png,.webp" style="display:none">
-                        </div>
-                        <input type="hidden" id="cat-image">
-                        <button type="button" id="cat-remove-image" class="btn btn-outline btn-sm" style="display:none;margin-top:4px;">Remove Image</button>
-                    </div>
-                </div>
-
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>Category Name</label>
-                        <input type="text" id="cat-name" class="form-control" placeholder="e.g. Dresses" required>
+                    <div class="form-group required">
+                        <label>Nom de la catégorie</label>
+                        <input type="text" id="cat-name" class="form-control" placeholder="ex. Robes" required>
                     </div>
                     <div class="form-group">
                         <label>Slug</label>
-                        <input type="text" id="cat-slug" class="form-control" placeholder="e.g. dresses">
+                        <input type="text" id="cat-slug" class="form-control" placeholder="ex. robes">
                     </div>
                 </div>
                 <div class="form-group">
                     <label>Description</label>
-                    <textarea id="cat-desc" class="form-control" placeholder="Category description"></textarea>
+                    <textarea id="cat-desc" class="form-control" placeholder="Description de la catégorie"></textarea>
                 </div>
                 <div class="form-group">
-                    <label>Status</label>
+                    <label>Statut</label>
                     <select id="cat-status" class="form-control">
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
                     </select>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn btn-outline modal-close">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Category</button>
+                    <button type="button" class="btn btn-outline modal-close">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer la catégorie</button>
                 </div>
             </form>
         </div>
