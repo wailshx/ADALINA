@@ -1,11 +1,45 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings - LUNA BELLE Admin</title>
+    <title>Paramètres - ADALINA Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="css/admin.css">
+    <style>
+        .settings-tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:24px; overflow-x:auto; }
+        .settings-tab { padding:10px 18px; font-size:0.82rem; font-weight:500; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; color:var(--text-muted); white-space:nowrap; transition:all 0.2s; }
+        .settings-tab:hover { color:var(--text-dark); }
+        .settings-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+        .settings-tab i { margin-right:6px; font-size:0.8rem; }
+        .tab-pane { display:none; }
+        .tab-pane.active { display:block; }
+        .settings-card { margin-bottom:20px; }
+        .settings-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; }
+        .settings-grid .form-group { margin:0; }
+        .color-input-row { display:flex; gap:8px; align-items:center; }
+        .color-input-row input[type="color"] { width:42px; height:36px; padding:2px; border:1px solid var(--border); border-radius:6px; cursor:pointer; flex-shrink:0; }
+        .color-input-row input[type="text"] { flex:1; }
+        .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); }
+        .toggle-row:last-child { border-bottom:none; }
+        .toggle-label strong { font-size:0.85rem; }
+        .toggle-switch { position:relative; display:inline-block; width:44px; height:24px; flex-shrink:0; }
+        .toggle-switch input { opacity:0; width:0; height:0; }
+        .toggle-slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:#ccc; border-radius:24px; transition:0.3s; }
+        .toggle-slider::before { content:""; position:absolute; height:18px; width:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:0.3s; }
+        .toggle-switch input:checked + .toggle-slider { background:var(--primary); }
+        .toggle-switch input:checked + .toggle-slider::before { transform:translateX(20px); }
+        .settings-image-upload { border:1px dashed var(--border); border-radius:8px; padding:12px; }
+        .upload-preview-wrap { margin-bottom:8px; }
+        .settings-img-preview { max-width:120px; max-height:80px; border-radius:4px; object-fit:cover; }
+        .upload-info-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:0.8rem; }
+        .upload-filename { color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .upload-zone-sm { border:1px dashed var(--border); border-radius:6px; padding:8px 12px; text-align:center; cursor:pointer; font-size:0.8rem; color:var(--text-muted); transition:0.2s; }
+        .upload-zone-sm:hover { border-color:var(--primary); color:var(--primary); }
+        .upload-zone-sm i { margin-right:6px; }
+        .settings-card .card-header h2 { font-size:1rem; }
+        @media (max-width:768px) { .settings-grid { grid-template-columns:1fr; } }
+    </style>
     <script>
     fetch('/api/public/settings').then(function(r){return r.json()}).then(function(s){
         if (s.primary_color) document.documentElement.style.setProperty('--primary', s.primary_color);
@@ -23,10 +57,8 @@
             if (parts.length > 1) { brandEl.innerHTML = parts.slice(0, -1).join(' ') + ' <span>' + parts[parts.length - 1] + '</span>'; }
             else { brandEl.textContent = s.store_name; }
         }
-        var loginBrand = document.querySelector('.brand h2');
-        if (loginBrand && s.store_name) loginBrand.textContent = s.store_name;
         if (s.logo_header) {
-            document.querySelectorAll('.sidebar-brand img, .brand img').forEach(function(img) { img.src = s.logo_header; });
+            document.querySelectorAll('.sidebar-brand img, .brand img').forEach(function(img) { img.src = '/' + s.logo_header; });
         }
         var titleEl = document.querySelector('title');
         if (titleEl && s.site_title) {
@@ -43,8 +75,8 @@
 
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-        <img src="../images/logo.svg" alt="LUNA BELLE" style="width:32px;height:32px">
-        <h2>LUNA <span>BELLE</span></h2>
+        <img src="../images/logo.svg" alt="ADALINA" style="width:32px;height:32px">
+        <h2>ADALINA <span>ADMIN</span></h2>
     </div>
     <nav class="sidebar-nav">
         <div class="nav-label">Main</div>
@@ -52,16 +84,13 @@
         <a href="products.html"><i class="fas fa-box"></i> Products</a>
         <a href="categories.html"><i class="fas fa-tags"></i> Categories</a>
         <a href="collections.html"><i class="fas fa-layer-group"></i> Collections</a>
-
         <div class="nav-label">Sales</div>
         <a href="orders.html"><i class="fas fa-shopping-cart"></i> Orders</a>
         <a href="customers.html"><i class="fas fa-users"></i> Customers</a>
-
         <div class="nav-label">Operations</div>
         <a href="inventory.html"><i class="fas fa-warehouse"></i> Inventory</a>
         <a href="analytics.html"><i class="fas fa-chart-bar"></i> Analytics</a>
         <a href="settings.html" class="active"><i class="fas fa-cog"></i> Settings</a>
-
         <a href="/admin/logout" class="logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </nav>
 </aside>
@@ -69,10 +98,6 @@
 <header class="topbar">
     <div class="topbar-left">
         <button class="hamburger" id="hamburger-btn"><i class="fas fa-bars"></i></button>
-        <div class="topbar-search">
-            <i class="fas fa-search"></i>
-            <input type="text" placeholder="Search settings...">
-        </div>
     </div>
     <div class="topbar-right">
         <button class="topbar-btn"><i class="fas fa-bell"></i><span class="badge">3</span></button>
@@ -90,114 +115,510 @@
 <main class="main-content">
     <div class="page-header">
         <div>
-            <h1>Settings</h1>
-            <p>Configure your store preferences</p>
-        </div>
-        <button class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Save Changes</button>
-    </div>
-
-    <div class="card">
-        <div class="card-header">
-            <h2>General Settings</h2>
-        </div>
-        <div class="card-body">
-            <form id="settings-form">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Store Name</label>
-                        <input type="text" class="form-control" value="LUNA BELLE">
-                    </div>
-                    <div class="form-group">
-                        <label>Store Email</label>
-                        <input type="email" class="form-control" value="hello@lunabelle.com">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Currency</label>
-                        <select class="form-control">
-                            <option>USD ($)</option>
-                            <option>EUR (€)</option>
-                            <option>GBP (£)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Time Zone</label>
-                        <select class="form-control">
-                            <option>UTC-8 (PST)</option>
-                            <option>UTC-5 (EST)</option>
-                            <option selected>UTC+0 (GMT)</option>
-                            <option>UTC+1 (CET)</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Store Description</label>
-                    <textarea class="form-control">Your destination for curated fashion and beauty essentials.</textarea>
-                </div>
-            </form>
+            <h1>Paramètres</h1>
+            <p>Configurez votre boutique : identité, apparence, réseaux sociaux et préférences</p>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header">
-            <h2>Shipping Settings</h2>
+    <form id="settings-form">
+        <div class="settings-tabs">
+        <button class="settings-tab active" data-tab="general"><i class="fas fa-store"></i> Général</button>
+        <button class="settings-tab" data-tab="appearance"><i class="fas fa-palette"></i> Apparence</button>
+        <button class="settings-tab" data-tab="social"><i class="fas fa-hashtag"></i> Réseaux sociaux</button>
+        <button class="settings-tab" data-tab="contact"><i class="fas fa-envelope"></i> Contact</button>
+        <button class="settings-tab" data-tab="seo"><i class="fas fa-search"></i> SEO</button>
+        <button class="settings-tab" data-tab="delivery"><i class="fas fa-truck"></i> Livraison</button>
+        <button class="settings-tab" data-tab="system"><i class="fas fa-cog"></i> Système</button>
         </div>
-        <div class="card-body">
-            <form>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Free Shipping Threshold</label>
-                        <input type="number" class="form-control" value="100" step="0.01">
-                    </div>
-                    <div class="form-group">
-                        <label>Standard Shipping Rate</label>
-                        <input type="number" class="form-control" value="9.99" step="0.01">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Express Shipping Rate</label>
-                        <input type="number" class="form-control" value="19.99" step="0.01">
-                    </div>
-                    <div class="form-group">
-                        <label>Estimated Delivery (days)</label>
-                        <input type="number" class="form-control" value="5">
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
 
-    <div class="card">
-        <div class="card-header">
-            <h2>Notifications</h2>
-        </div>
-        <div class="card-body">
-            <form>
-                <div style="display:flex;flex-direction:column;gap:12px;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;">
-                        <div><strong style="font-size:0.85rem;">New Order Alerts</strong><p style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">Receive notifications for new orders</p></div>
-                        <div style="position:relative;"><input type="checkbox" checked style="width:18px;height:18px;"></div>
-                    </div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;">
-                        <div><strong style="font-size:0.85rem;">Low Stock Alerts</strong><p style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">Get notified when stock is running low</p></div>
-                        <div><input type="checkbox" checked style="width:18px;height:18px;"></div>
-                    </div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;">
-                        <div><strong style="font-size:0.85rem;">Customer Registration</strong><p style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">Email when new customers sign up</p></div>
-                        <div><input type="checkbox" style="width:18px;height:18px;"></div>
-                    </div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;">
-                        <div><strong style="font-size:0.85rem;">Weekly Reports</strong><p style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">Receive weekly analytics summary</p></div>
-                        <div><input type="checkbox" checked style="width:18px;height:18px;"></div>
+        <div class="tab-pane" id="tab-general">
+            <div class="card settings-card">
+                <div class="card-header"><h2>Informations générales</h2></div>
+                <div class="card-body">
+                    <div class="settings-grid">
+                            <div class="form-group">
+                                <label>Nom de la boutique</label>
+                                <input type="text" class="form-control" data-setting="store_name">
+                            </div>
+                            <div class="form-group">
+                                <label>Slogan</label>
+                                <input type="text" class="form-control" data-setting="store_tagline">
+                            </div>
+                            <div class="form-group">
+                                <label>Description</label>
+                                <textarea class="form-control" data-setting="store_description" rows="3"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Adresse</label>
+                                <input type="text" class="form-control" data-setting="atelier_address">
+                            </div>
+                            <div class="form-group">
+                                <label>Horaires d'ouverture</label>
+                                <input type="text" class="form-control" data-setting="opening_hours">
+                            </div>
+                            <div class="form-group">
+                                <label>Devise</label>
+                                <select class="form-control" data-setting="currency">
+                                    <option>DZD</option>
+                                    <option>USD</option>
+                                    <option>EUR</option>
+                                    <option>GBP</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Fuseau horaire</label>
+                                <select class="form-control" data-setting="timezone">
+                                    <option>Africa/Algiers</option>
+                                    <option>UTC</option>
+                                    <option>UTC+1 (CET)</option>
+                                    <option>UTC-5 (EST)</option>
+                                    <option>UTC-8 (PST)</option>
+                                </select>
+                            </div>
                     </div>
                 </div>
-            </form>
+            </div>
         </div>
-    </div>
+        <div class="tab-pane" id="tab-appearance">
+            <div class="card settings-card">
+                <div class="card-header"><h2>Couleurs</h2></div>
+                <div class="card-body">
+                    <div class="settings-grid">
+                            <div class="form-group">
+                                <label>Couleur principale</label>
+                                <div class="color-input-row">
+                                    <input type="color" data-setting="primary_color">
+                                    <input type="text" class="form-control" data-setting="primary_color" placeholder="#hex">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Primaire foncé</label>
+                                <div class="color-input-row">
+                                    <input type="color" data-setting="primary_dark">
+                                    <input type="text" class="form-control" data-setting="primary_dark" placeholder="#hex">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Couleur secondaire</label>
+                                <div class="color-input-row">
+                                    <input type="color" data-setting="secondary_color">
+                                    <input type="text" class="form-control" data-setting="secondary_color" placeholder="#hex">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Arrière-plan</label>
+                                <div class="color-input-row">
+                                    <input type="color" data-setting="background_color">
+                                    <input type="text" class="form-control" data-setting="background_color" placeholder="#hex">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Couleur crème</label>
+                                <div class="color-input-row">
+                                    <input type="color" data-setting="cream_color">
+                                    <input type="text" class="form-control" data-setting="cream_color" placeholder="#hex">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Couleur du texte</label>
+                                <div class="color-input-row">
+                                    <input type="color" data-setting="text_color">
+                                    <input type="text" class="form-control" data-setting="text_color" placeholder="#hex">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Texte clair</label>
+                                <div class="color-input-row">
+                                    <input type="color" data-setting="text_light_color">
+                                    <input type="text" class="form-control" data-setting="text_light_color" placeholder="#hex">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Couleur des bordures</label>
+                                <div class="color-input-row">
+                                    <input type="color" data-setting="border_color">
+                                    <input type="text" class="form-control" data-setting="border_color" placeholder="#hex">
+                                </div>
+                            </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card settings-card">
+                <div class="card-header"><h2>Typographie</h2></div>
+                <div class="card-body">
+                    <div class="settings-grid">
+                            <div class="form-group">
+                                <label>Police des titres</label>
+                                <select class="form-control" data-setting="heading_font" name="heading_font"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Police du corps</label>
+                                <select class="form-control" data-setting="body_font" name="body_font"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Police des boutons</label>
+                                <select class="form-control" data-setting="button_font" name="button_font"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Police de navigation</label>
+                                <select class="form-control" data-setting="nav_font" name="nav_font"></select>
+                            </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card settings-card">
+                <div class="card-header"><h2>Images & Logo</h2></div>
+                <div class="card-body">
+                    <div class="settings-grid">
+                            <div class="form-group">
+                                <label>Logo (en-tête)</label>
+                                <div class="settings-image-upload">
+                                    <div class="upload-preview-wrap">
+                                        <img id="logo_header_preview" src="" class="settings-img-preview" style="display:none">
+                                    </div>
+                                    <div class="upload-info-row">
+                                        <span id="logo_header_name" class="upload-filename">Aucun fichier</span>
+                                        <button type="button" id="logo_header_clear" class="btn btn-sm btn-outline" style="display:none" onclick="clearSettingsImage('logo_header')"><i class="fas fa-times"></i></button>
+                                    </div>
+                                    <div class="upload-zone-sm" onclick="document.getElementById('logo_header_input').click()">
+                                        <i class="fas fa-cloud-upload-alt"></i> Cliquez pour uploader
+                                        <input type="file" id="logo_header_input" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadSettingsImage(event, 'logo_header')">
+                                    </div>
+                                    <input type="hidden" data-setting="logo_header" id="logo_header_value">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Logo (pied de page)</label>
+                                <div class="settings-image-upload">
+                                    <div class="upload-preview-wrap">
+                                        <img id="logo_footer_preview" src="" class="settings-img-preview" style="display:none">
+                                    </div>
+                                    <div class="upload-info-row">
+                                        <span id="logo_footer_name" class="upload-filename">Aucun fichier</span>
+                                        <button type="button" id="logo_footer_clear" class="btn btn-sm btn-outline" style="display:none" onclick="clearSettingsImage('logo_footer')"><i class="fas fa-times"></i></button>
+                                    </div>
+                                    <div class="upload-zone-sm" onclick="document.getElementById('logo_footer_input').click()">
+                                        <i class="fas fa-cloud-upload-alt"></i> Cliquez pour uploader
+                                        <input type="file" id="logo_footer_input" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadSettingsImage(event, 'logo_footer')">
+                                    </div>
+                                    <input type="hidden" data-setting="logo_footer" id="logo_footer_value">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Favicon</label>
+                                <div class="settings-image-upload">
+                                    <div class="upload-preview-wrap">
+                                        <img id="favicon_preview" src="" class="settings-img-preview" style="display:none">
+                                    </div>
+                                    <div class="upload-info-row">
+                                        <span id="favicon_name" class="upload-filename">Aucun fichier</span>
+                                        <button type="button" id="favicon_clear" class="btn btn-sm btn-outline" style="display:none" onclick="clearSettingsImage('favicon')"><i class="fas fa-times"></i></button>
+                                    </div>
+                                    <div class="upload-zone-sm" onclick="document.getElementById('favicon_input').click()">
+                                        <i class="fas fa-cloud-upload-alt"></i> Cliquez pour uploader
+                                        <input type="file" id="favicon_input" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadSettingsImage(event, 'favicon')">
+                                    </div>
+                                    <input type="hidden" data-setting="favicon" id="favicon_value">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Image OG (partage)</label>
+                                <div class="settings-image-upload">
+                                    <div class="upload-preview-wrap">
+                                        <img id="og_image_preview" src="" class="settings-img-preview" style="display:none">
+                                    </div>
+                                    <div class="upload-info-row">
+                                        <span id="og_image_name" class="upload-filename">Aucun fichier</span>
+                                        <button type="button" id="og_image_clear" class="btn btn-sm btn-outline" style="display:none" onclick="clearSettingsImage('og_image')"><i class="fas fa-times"></i></button>
+                                    </div>
+                                    <div class="upload-zone-sm" onclick="document.getElementById('og_image_input').click()">
+                                        <i class="fas fa-cloud-upload-alt"></i> Cliquez pour uploader
+                                        <input type="file" id="og_image_input" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadSettingsImage(event, 'og_image')">
+                                    </div>
+                                    <input type="hidden" data-setting="og_image" id="og_image_value">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Image Hero</label>
+                                <div class="settings-image-upload">
+                                    <div class="upload-preview-wrap">
+                                        <img id="hero_image_preview" src="" class="settings-img-preview" style="display:none">
+                                    </div>
+                                    <div class="upload-info-row">
+                                        <span id="hero_image_name" class="upload-filename">Aucun fichier</span>
+                                        <button type="button" id="hero_image_clear" class="btn btn-sm btn-outline" style="display:none" onclick="clearSettingsImage('hero_image')"><i class="fas fa-times"></i></button>
+                                    </div>
+                                    <div class="upload-zone-sm" onclick="document.getElementById('hero_image_input').click()">
+                                        <i class="fas fa-cloud-upload-alt"></i> Cliquez pour uploader
+                                        <input type="file" id="hero_image_input" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadSettingsImage(event, 'hero_image')">
+                                    </div>
+                                    <input type="hidden" data-setting="hero_image" id="hero_image_value">
+                                </div>
+                            </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card settings-card">
+                <div class="card-header"><h2>Page d'accueil</h2></div>
+                <div class="card-body">
+                    <div class="settings-grid">
+                            <div class="form-group">
+                                <label>Slogan Hero</label>
+                                <input type="text" class="form-control" data-setting="hero_slogan">
+                            </div>
+                            <div class="form-group">
+                                <label>Texte du bouton Hero</label>
+                                <input type="text" class="form-control" data-setting="hero_button_text">
+                            </div>
+                            <div class="form-group">
+                                <label>Lien du bouton Hero</label>
+                                <input type="text" class="form-control" data-setting="hero_button_link">
+                            </div>
+                            <div class="form-group">
+                                <label>Texte d'annonce</label>
+                                <input type="text" class="form-control" data-setting="announcement_text">
+                            </div>
+                            <div class="form-group">
+                                <label>Vitesse défilement (ms)</label>
+                                <input type="text" class="form-control" data-setting="announcement_speed">
+                            </div>
+                            <div class="form-group">
+                                <label>Titre des collections</label>
+                                <input type="text" class="form-control" data-setting="collection_title">
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane" id="tab-social">
+            <div class="card settings-card">
+                <div class="card-header"><h2>Réseaux sociaux</h2></div>
+                <div class="card-body">
+                    <div class="settings-grid">
+                            <div class="form-group">
+                                <label>Instagram URL</label>
+                                <input type="text" class="form-control" data-setting="instagram_url">
+                            </div>
+                            <div class="form-group">
+                                <label>Facebook URL</label>
+                                <input type="text" class="form-control" data-setting="facebook_url">
+                            </div>
+                            <div class="form-group">
+                                <label>TikTok URL</label>
+                                <input type="text" class="form-control" data-setting="tiktok_url">
+                            </div>
+                            <div class="form-group">
+                                <label>Pinterest URL</label>
+                                <input type="text" class="form-control" data-setting="pinterest_url">
+                            </div>
+                            <div class="form-group">
+                                <label>WhatsApp URL</label>
+                                <input type="text" class="form-control" data-setting="whatsapp_url">
+                            </div>
+                            <div class="form-group">
+                                <label>Numéro WhatsApp</label>
+                                <input type="text" class="form-control" data-setting="whatsapp_number">
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane" id="tab-contact">
+            <div class="card settings-card">
+                <div class="card-header"><h2>Coordonnées</h2></div>
+                <div class="card-body">
+                    <div class="settings-grid">
+                            <div class="form-group">
+                                <label>Email de contact</label>
+                                <input type="text" class="form-control" data-setting="contact_email">
+                            </div>
+                            <div class="form-group">
+                                <label>Téléphone</label>
+                                <input type="text" class="form-control" data-setting="contact_phone">
+                            </div>
+                            <div class="form-group">
+                                <label>Google Maps URL</label>
+                                <input type="text" class="form-control" data-setting="google_maps_url">
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane" id="tab-seo">
+            <div class="card settings-card">
+                <div class="card-header"><h2>Référencement</h2></div>
+                <div class="card-body">
+                    <div class="settings-grid">
+                            <div class="form-group">
+                                <label>Titre du site</label>
+                                <input type="text" class="form-control" data-setting="site_title">
+                            </div>
+                            <div class="form-group">
+                                <label>Meta description</label>
+                                <textarea class="form-control" data-setting="meta_description" rows="3"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Meta keywords</label>
+                                <input type="text" class="form-control" data-setting="meta_keywords">
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane" id="tab-delivery">
+            <div class="card settings-card">
+                <div class="card-header"><h2>Prix par Wilaya</h2></div>
+                <div class="card-body">
+                    <p class="text-muted" style="font-size:0.85rem;margin-bottom:12px;">Les prix de livraison par wilaya sont gérés dans la section Livraison du tableau de bord.</p>
+                </div>
+            </div>
+            <div class="card settings-card">
+                <div class="card-header"><h2>Frais de livraison</h2></div>
+                <div class="card-body">
+                    <div class="settings-grid">
+                            <div class="form-group">
+                                <label>Infos livraison</label>
+                                <input type="text" class="form-control" data-setting="delivery_info">
+                            </div>
+                            <div class="form-group">
+                                <label>Seuil livraison gratuite</label>
+                                <input type="text" class="form-control" data-setting="free_shipping_threshold">
+                            </div>
+                            <div class="form-group">
+                                <label>Frais de livraison</label>
+                                <input type="text" class="form-control" data-setting="delivery_fee">
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane" id="tab-system">
+            <div class="card settings-card">
+                <div class="card-header"><h2>Paramètres système</h2></div>
+                <div class="card-body">
+                    <div class="settings-grid">
+                            <div class="form-group toggle-row">
+                                <div class="toggle-label">
+                                    <strong>Mode maintenance</strong>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" data-setting="maintenance_mode">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="form-group toggle-row">
+                                <div class="toggle-label">
+                                    <strong>Inscription ouverte</strong>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" data-setting="registration_enabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="form-group toggle-row">
+                                <div class="toggle-label">
+                                    <strong>Commande invité</strong>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" data-setting="guest_checkout">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="form-group toggle-row">
+                                <div class="toggle-label">
+                                    <strong>Notifications commandes</strong>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" data-setting="order_notifications">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card settings-card">
+                <div class="card-header"><h2>Langue</h2></div>
+                <div class="card-body">
+                    <div class="settings-grid">
+                            <div class="form-group">
+                                <label>Langue par défaut</label>
+                                <select class="form-control" data-setting="default_language">
+                                    <option>fr</option>
+                                    <option>en</option>
+                                    <option>ar</option>
+                                </select>
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions" style="display:flex;gap:12px;align-items:center;padding:16px 0;">
+            <button type="submit" class="btn btn-primary" id="saveBtn"><i class="fas fa-save"></i> Enregistrer</button>
+            <div id="saveMsg" class="save-msg hidden"></div>
+        </div>
+    </form>
 </main>
 
 <script src="js/admin.js"></script>
+<script>
+/* ── Tab switching ── */
+document.querySelectorAll('.settings-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.settings-tab').forEach(function(b) { b.classList.remove('active'); });
+        document.querySelectorAll('.tab-pane').forEach(function(p) { p.classList.remove('active'); });
+        this.classList.add('active');
+        document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+    });
+});
+
+/* ── Image upload for settings ── */
+window.uploadSettingsImage = async function(evt, key) {
+    var file = evt.target.files[0];
+    if (!file) return;
+    var fd = new FormData();
+    fd.append('type', 'settings');
+    fd.append('file', file);
+    try {
+        var res = await fetch('/api/upload', { method:'POST', credentials:'same-origin', body:fd });
+        var data = await res.json();
+        if (data.paths && data.paths.length > 0) {
+            var path = data.paths[0];
+            document.getElementById(key + '_preview').src = '/' + path;
+            document.getElementById(key + '_preview').style.display = 'block';
+            document.getElementById(key + '_name').textContent = path.split('/').pop();
+            document.getElementById(key + '_clear').style.display = 'inline-block';
+            document.getElementById(key + '_value').value = path;
+        }
+    } catch(e) {
+        console.error('Upload failed', e);
+    }
+};
+
+window.clearSettingsImage = function(key) {
+    document.getElementById(key + '_preview').src = '';
+    document.getElementById(key + '_preview').style.display = 'none';
+    document.getElementById(key + '_name').textContent = 'Aucun fichier';
+    document.getElementById(key + '_clear').style.display = 'none';
+    document.getElementById(key + '_value').value = '';
+};
+
+/* ── Color sync ── */
+document.querySelectorAll('.color-input-row input[type="color"]').forEach(function(picker) {
+    picker.addEventListener('input', function() {
+        var textInput = this.parentNode.querySelector('input[type="text"]');
+        if (textInput) textInput.value = this.value;
+    });
+});
+document.querySelectorAll('.color-input-row input[type="text"]').forEach(function(textInput) {
+    textInput.addEventListener('input', function() {
+        var colorPicker = this.parentNode.querySelector('input[type="color"]');
+        if (colorPicker && /^#[0-9a-f]{6}$/i.test(this.value)) {
+            colorPicker.value = this.value;
+        }
+    });
+});
+</script>
+
 </body>
 </html>
