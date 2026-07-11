@@ -6,12 +6,20 @@ async function api(method, url, data) {
         opts.headers['Content-Type'] = 'application/json';
         opts.body = JSON.stringify(data);
     }
-    const res = await fetch(API + url, opts);
-    if (res.url.includes('/admin/login') || (res.headers.get('content-type') || '').includes('text/html')) {
-        window.location.href = '/admin/login';
+    try {
+        const res = await fetch(API + url, opts);
+        if (res.url.includes('/admin/login') || (res.headers.get('content-type') || '').includes('text/html')) {
+            window.location.href = '/admin/login';
+            return null;
+        }
+        return res.json();
+    } catch (err) {
+        console.error('[api]', method, url, err);
+        if (typeof showAdminError === 'function') {
+            showAdminError('Erreur réseau: ' + method + ' ' + url + ' — ' + (err.message || err));
+        }
         return null;
     }
-    return res.json();
 }
 
 function formatPriceDA(price) {
@@ -667,11 +675,21 @@ function _handleVariantAction(action, el) {
             break;
 
         case 'variant-name':
-            if (v) v.color_name = el.value;
+            if (v) {
+                v.color_name = el.value;
+            }
             break;
 
         case 'variant-hex':
-            if (v) { v.color_hex = el.value; renderVariants(); }
+            if (v) {
+                v.color_hex = el.value;
+                /* Update the color dot preview without full re-render */
+                var card = el.closest('.pm-variant-card');
+                if (card) {
+                    var dot = card.querySelector('.color-dot');
+                    if (dot) dot.style.background = el.value;
+                }
+            }
             break;
 
         case 'variant-sku':
@@ -737,12 +755,22 @@ function _handleVariantChange(action, el) {
                 if (f.size > 10 * 1024 * 1024) { alert(f.name + ': too large (max 10MB)'); continue; }
                 var fd = new FormData();
                 fd.append('images', f);
-                var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd });
-                var data = await res.json();
-                if (data.paths && data.paths[0]) v.images.push(data.paths[0]);
+                try {
+                    var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd });
+                    var data = await res.json();
+                    if (data.paths && data.paths[0]) {
+                        v.images.push(data.paths[0]);
+                    } else {
+                        alert(f.name + ': upload failed (no path returned)');
+                    }
+                } catch (err) {
+                    alert(f.name + ': upload error — ' + (err.message || err));
+                    console.error('[variant-upload]', err);
+                }
             }
             el.value = '';
-            renderVariants();
+            /* Only re-render if files were actually added */
+            if (v.images.length > 0) renderVariants();
         })();
         return;
     }
@@ -786,7 +814,12 @@ function addVariant() {
 function _handleAddSize(varIdx) {
     var v = productVariants[varIdx];
     if (!v) return;
-    var row = document.querySelector('.pm-add-size-row');
+    /* Scope to THIS variant's card, not the first one in the DOM */
+    var container = document.getElementById('variants-container');
+    var cards = container ? container.querySelectorAll('.pm-variant-card') : [];
+    var card = cards[varIdx] || null;
+    if (!card) return;
+    var row = card.querySelector('.pm-add-size-row');
     if (!row) return;
     var inputs = row.querySelectorAll('input[data-variant="' + varIdx + '"]');
     var nameInput, stockInput, skuInput;
@@ -1334,15 +1367,22 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('Unsupported format. Use JPG, PNG, or WEBP.');
             return;
         }
-        var fd = new FormData();
-        fd.append('images', file);
-        var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd });
-        var data = await res.json();
-        if (data.paths && data.paths[0]) {
-            imageInput.value = data.paths[0];
-            preview.src = '/' + data.paths[0];
-            preview.style.display = 'block';
-            removeBtn.style.display = 'inline-flex';
+        try {
+            var fd = new FormData();
+            fd.append('images', file);
+            var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd });
+            var data = await res.json();
+            if (data.paths && data.paths[0]) {
+                imageInput.value = data.paths[0];
+                preview.src = '/' + data.paths[0];
+                preview.style.display = 'block';
+                removeBtn.style.display = 'inline-flex';
+            } else {
+                alert('Upload failed — no path returned.');
+            }
+        } catch (err) {
+            console.error('[collection-upload]', err);
+            alert('Upload error: ' + (err.message || err));
         }
     }
 
@@ -2269,13 +2309,31 @@ function openTab(name) {
     if (btn) btn.classList.add('active');
 }
 
-/* ── Toast helper ── */
+/* ── Toast + Error helper ── */
 function showToast(msg) {
     var el = document.createElement('div');
     el.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--success);color:#fff;padding:12px 20px;border-radius:8px;font-size:0.9rem;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);';
     el.textContent = msg;
     document.body.appendChild(el);
     setTimeout(function() { el.remove(); }, 3000);
+}
+
+function showAdminError(msg) {
+    /* Persistent error banner at top of page */
+    var existing = document.getElementById('admin-error-banner');
+    if (existing) {
+        existing.querySelector('.admin-error-text').textContent = msg;
+        existing.style.display = 'flex';
+        return;
+    }
+    var banner = document.createElement('div');
+    banner.id = 'admin-error-banner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:10000;background:#e53e3e;color:#fff;padding:10px 20px;display:flex;align-items:center;gap:12px;font-size:0.85rem;box-shadow:0 2px 8px rgba(0,0,0,0.2);';
+    banner.innerHTML = '<span style="flex:1;" class="admin-error-text">' + esc(msg) + '</span>' +
+        '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:#fff;cursor:pointer;font-size:1.2rem;padding:0 4px;">&times;</button>';
+    document.body.appendChild(banner);
+    /* Auto-dismiss after 10s */
+    setTimeout(function() { if (banner.parentElement) banner.remove(); }, 10000);
 }
 
 /* ── Boot ── */
