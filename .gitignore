@@ -7,4 +7,3 @@ __pycache__/
 .DS_Store
 admin/.sessions.json
 store.db.backup
-uploads/
