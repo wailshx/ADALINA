@@ -258,8 +258,15 @@ def init_db():
         variant_id INTEGER NOT NULL,
         size_name TEXT NOT NULL,
         stock INTEGER DEFAULT 0,
+        sku TEXT DEFAULT '',
         FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE
     )""")
+
+    # Migration: add sku column to variant_sizes if missing
+    try:
+        cur.execute("SELECT sku FROM variant_sizes LIMIT 1")
+    except Exception:
+        cur.execute("ALTER TABLE variant_sizes ADD COLUMN sku TEXT DEFAULT ''")
 
     cur.execute("""CREATE TABLE IF NOT EXISTS delivery_prices (
         wilaya_id INTEGER PRIMARY KEY,

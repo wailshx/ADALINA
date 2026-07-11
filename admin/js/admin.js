@@ -551,92 +551,226 @@ function goToStep(step) {
 /* ── Variants State ── */
 var productVariants = [];  // [{color_name, color_hex, sku, images: [], sizes: [{size, stock}]}]
 
+/* ── renderVariants: uses data-* attributes, no inline handlers ── */
 function renderVariants() {
     var container = document.getElementById('variants-container');
     if (!container) return;
-    if (productVariants.length === 0) {
-        container.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;padding:12px 0;">Aucune couleur ajoutée. Cliquez sur "Ajouter une couleur" pour commencer.</p>';
+
+    try {
+        if (!window.SIZE_GROUPS) {
+            container.innerHTML = '<div style="background:#fff5f5;border:1px solid #e53e3e;border-radius:6px;padding:14px 18px;color:#e53e3e;font-size:0.85rem;">' +
+                '<strong>Erreur :</strong> Le fichier sizes.js n\'a pas pu être chargé. Les groupes de tailles ne sont pas disponibles. Vérifiez la connexion réseau ou contactez le développeur.</div>';
+            return;
+        }
+
+        if (productVariants.length === 0) {
+            container.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;padding:12px 0;">Aucune couleur ajoutée. Cliquez sur "Ajouter une couleur" pour commencer.</p>';
+            return;
+        }
+
+        container.innerHTML = productVariants.map(function(v, i) {
+            var imagesHtml = (v.images || []).map(function(img, j) {
+                var leftBtn = j > 0 ? '<button type="button" class="pm-var-img-reorder" style="left:2px;" data-action="move-image" data-variant="' + i + '" data-image="' + j + '" data-dir="-1" title="Déplacer à gauche">&lsaquo;</button>' : '';
+                var rightBtn = j < v.images.length - 1 ? '<button type="button" class="pm-var-img-reorder" style="left:22px;" data-action="move-image" data-variant="' + i + '" data-image="' + j + '" data-dir="1" title="Déplacer à droite">&rsaquo;</button>' : '';
+                return '<div class="pm-var-img-wrap">' +
+                    '<img src="/' + esc(img) + '" onerror="this.src=\'https://placehold.co/64x64/e2e8f0/718096?text=?\';this.style.border=\'2px solid #f56565\'">' +
+                    leftBtn + rightBtn +
+                    '<button type="button" class="pm-var-img-del" data-action="remove-image" data-variant="' + i + '" data-image="' + j + '">&times;</button></div>';
+            }).join('');
+            imagesHtml += '<label class="pm-var-img-add"><input type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" data-action="upload-images" data-variant="' + i + '">+</label>';
+
+            var sizeRows = (v.sizes || []).map(function(s, j) {
+                return '<tr>' +
+                    '<td>' + esc(s.size) + '</td>' +
+                    '<td><input type="number" min="0" value="' + (s.stock || 0) + '" data-action="size-stock" data-variant="' + i + '" data-size="' + j + '"></td>' +
+                    '<td><input type="text" value="' + esc(s.sku || '') + '" placeholder="SKU" data-action="size-sku" data-variant="' + i + '" data-size="' + j + '"></td>' +
+                    '<td><button type="button" class="pm-size-remove" data-action="remove-size" data-variant="' + i + '" data-size="' + j + '">&times;</button></td>' +
+                    '</tr>';
+            }).join('');
+
+            var variantHtml =
+                '<div class="pm-variant-card">' +
+                    '<div class="pm-variant-header">' +
+                        '<div class="pm-variant-color-group">' +
+                            '<span class="color-dot" style="display:inline-block;width:16px;height:16px;border-radius:50%;background:' + (v.color_hex || '#ccc') + ';border:1px solid var(--border);flex-shrink:0;"></span>' +
+                            '<input type="text" value="' + esc(v.color_name) + '" data-action="variant-name" data-variant="' + i + '" placeholder="Nom de la couleur">' +
+                            '<input type="color" value="' + (v.color_hex || '#000000') + '" data-action="variant-hex" data-variant="' + i + '">' +
+                            '<span style="font-size:0.75rem;color:var(--text-muted);">SKU:</span>' +
+                            '<input type="text" class="pm-variant-sku-input" value="' + esc(v.sku || '') + '" data-action="variant-sku" data-variant="' + i + '" placeholder="SKU">' +
+                        '</div>' +
+                        '<button type="button" class="pm-variant-remove" data-action="remove-variant" data-variant="' + i + '">Supprimer</button>' +
+                    '</div>' +
+                    '<div style="margin-bottom:12px;">' +
+                        '<div class="pm-variant-section-label">Images</div>' +
+                        '<div class="pm-variant-images">' + imagesHtml + '</div>' +
+                    '</div>' +
+                    /* ── Taille Groups ── */
+                    '<div class="pm-variant-taille-groups" style="margin-bottom:12px;">' +
+                        '<div class="pm-variant-section-label">Groupes de Tailles</div>' +
+                        (window.SIZE_GROUPS || []).map(function(g) {
+                            var expanded = groupIsExpanded(v, g.label);
+                            var visible = expanded ? '' : ' style="display:none"';
+                            var chipsHtml = g.sizes.map(function(num) {
+                                var active = variantHasSize(i, String(num));
+                                return '<label class="pm-taille-size-chip' + (active ? ' active' : '') + '">' +
+                                    '<input type="checkbox" data-action="taille-size" data-variant="' + i + '" data-size-num="' + num + '"' + (active ? ' checked' : '') + '>' +
+                                    '<span>' + num + '</span>' +
+                                '</label>';
+                            }).join('');
+                            return '<div class="pm-taille-group">' +
+                                '<label class="pm-taille-group-header">' +
+                                    '<input type="checkbox" data-action="taille-group" data-variant="' + i + '" data-group="' + g.label + '"' + (expanded ? ' checked' : '') + '>' +
+                                    '<span>' + g.label + '</span>' +
+                                    '<span class="pm-taille-sizes-hint"> (' + g.sizes.join(', ') + ')</span>' +
+                                '</label>' +
+                                '<div class="pm-taille-sizes"' + visible + '>' + chipsHtml + '</div>' +
+                            '</div>';
+                        }).join('') +
+                    '</div>' +
+                    /* ── Size Stock Table ── */
+                    '<div>' +
+                        '<div class="pm-variant-section-label">Tailles et stock</div>' +
+                        '<div style="overflow-x:auto;">' +
+                            '<table class="pm-size-table">' +
+                                '<thead><tr><th>Taille</th><th>Stock</th><th>SKU</th><th style="width:30px;"></th></tr></thead>' +
+                                '<tbody>' + (sizeRows || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:12px;font-size:0.8rem;">Aucune taille ajoutée</td></tr>') + '</tbody>' +
+                            '</table>' +
+                        '</div>' +
+                        '<div class="pm-add-size-row">' +
+                            '<input type="text" placeholder="Taille" data-action="new-size-name" data-variant="' + i + '">' +
+                            '<input type="number" min="0" value="0" placeholder="Stock" data-action="new-size-stock" data-variant="' + i + '">' +
+                            '<input type="text" placeholder="SKU" data-action="new-size-sku" data-variant="' + i + '">' +
+                            '<button type="button" class="btn btn-outline btn-sm" data-action="add-size" data-variant="' + i + '">+ Ajouter</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+
+            return variantHtml;
+        }).join('');
+    } catch (err) {
+        container.innerHTML = '<div style="background:#fff5f5;border:1px solid #e53e3e;border-radius:6px;padding:14px 18px;color:#e53e3e;font-size:0.85rem;">' +
+            '<strong>Erreur lors du rendu des variantes :</strong> ' + esc(String(err.message || err)) +
+            '<br><small>Rechargez la page ou contactez le développeur.</small></div>';
+        console.error('[variants] renderVariants failed:', err);
+    }
+}
+
+/* ── Event Delegation: single listener on #variants-container ── */
+function _handleVariantAction(action, el) {
+    var vi = parseInt(el.getAttribute('data-variant'));
+    var v = productVariants[vi];
+
+    switch (action) {
+        case 'remove-variant':
+            productVariants.splice(vi, 1);
+            renderVariants();
+            break;
+
+        case 'variant-name':
+            if (v) v.color_name = el.value;
+            break;
+
+        case 'variant-hex':
+            if (v) { v.color_hex = el.value; renderVariants(); }
+            break;
+
+        case 'variant-sku':
+            if (v) v.sku = el.value;
+            break;
+
+        case 'remove-image':
+            if (v) { v.images.splice(parseInt(el.getAttribute('data-image')), 1); renderVariants(); }
+            break;
+
+        case 'move-image':
+            if (v) {
+                var ii = parseInt(el.getAttribute('data-image'));
+                var dir = parseInt(el.getAttribute('data-dir'));
+                var ni = ii + dir;
+                if (ni >= 0 && ni < v.images.length) {
+                    var tmp = v.images[ii]; v.images[ii] = v.images[ni]; v.images[ni] = tmp;
+                    renderVariants();
+                }
+            }
+            break;
+
+        case 'remove-size':
+            if (v) { v.sizes.splice(parseInt(el.getAttribute('data-size')), 1); renderVariants(); }
+            break;
+
+        case 'size-stock':
+            if (v && v.sizes[parseInt(el.getAttribute('data-size'))])
+                v.sizes[parseInt(el.getAttribute('data-size'))].stock = parseInt(el.value) || 0;
+            break;
+
+        case 'size-sku':
+            if (v && v.sizes[parseInt(el.getAttribute('data-size'))])
+                v.sizes[parseInt(el.getAttribute('data-size'))].sku = el.value || '';
+            break;
+
+        case 'taille-group':
+            _handleTailleGroup(vi, el.getAttribute('data-group'), el.checked);
+            break;
+
+        case 'taille-size':
+            _handleTailleSize(vi, el.getAttribute('data-size-num'), el.checked);
+            break;
+
+        case 'add-size':
+            _handleAddSize(vi);
+            break;
+    }
+}
+
+function _handleVariantChange(action, el) {
+    if (action === 'upload-images') {
+        var vi = parseInt(el.getAttribute('data-variant'));
+        var files = el.files;
+        if (!files || !files.length) return;
+        var v = productVariants[vi];
+        if (!v) return;
+        (async function() {
+            for (var fi = 0; fi < files.length; fi++) {
+                var f = files[fi];
+                var ext = '.' + f.name.split('.').pop().toLowerCase();
+                if (['.jpg', '.jpeg', '.png', '.webp'].indexOf(ext) === -1) { alert(f.name + ': unsupported format'); continue; }
+                if (f.size > 10 * 1024 * 1024) { alert(f.name + ': too large (max 10MB)'); continue; }
+                var fd = new FormData();
+                fd.append('images', f);
+                var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd });
+                var data = await res.json();
+                if (data.paths && data.paths[0]) v.images.push(data.paths[0]);
+            }
+            el.value = '';
+            renderVariants();
+        })();
         return;
     }
-    container.innerHTML = productVariants.map(function(v, i) {
-        var imagesHtml = (v.images || []).map(function(img, j) {
-            var leftBtn = j > 0 ? '<button type="button" class="pm-var-img-reorder" style="left:2px;" onclick="moveVariantImage(' + i + ',' + j + ',-1)" title="Déplacer à gauche">&lsaquo;</button>' : '';
-            var rightBtn = j < v.images.length - 1 ? '<button type="button" class="pm-var-img-reorder" style="left:22px;" onclick="moveVariantImage(' + i + ',' + j + ',1)" title="Déplacer à droite">&rsaquo;</button>' : '';
-            return '<div class="pm-var-img-wrap">' +
-                '<img src="/' + esc(img) + '" onerror="this.src=\'https://placehold.co/64x64/e2e8f0/718096?text=?\';this.style.border=\'2px solid #f56565\'">' +
-                leftBtn + rightBtn +
-                '<button type="button" class="pm-var-img-del" onclick="removeVariantImage(' + i + ',' + j + ')">&times;</button></div>';
-        }).join('');
-        imagesHtml += '<label class="pm-var-img-add"><input type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="uploadVariantImages(event,' + i + ')">+</label>';
+    /* For input changes, use same action router */
+    _handleVariantAction(action, el);
+}
 
-        var sizeRows = (v.sizes || []).map(function(s, j) {
-            return '<tr>' +
-                '<td>' + esc(s.size) + '</td>' +
-                '<td><input type="number" min="0" value="' + (s.stock || 0) + '" onchange="updateVariantSizeStock(' + i + ',' + j + ',this.value)"></td>' +
-                '<td><input type="text" value="' + esc(s.sku || '') + '" placeholder="SKU" onchange="updateVariantSizeSku(' + i + ',' + j + ',this.value)"></td>' +
-                '<td><button type="button" class="pm-size-remove" onclick="removeVariantSize(' + i + ',' + j + ')">&times;</button></td>' +
-                '</tr>';
-        }).join('');
+function _setupVariantDelegation() {
+    var container = document.getElementById('variants-container');
+    if (!container || container._delegated) return;
+    container._delegated = true;
 
-        var variantHtml =
-            '<div class="pm-variant-card">' +
-                '<div class="pm-variant-header">' +
-                    '<div class="pm-variant-color-group">' +
-                        '<span class="color-dot" style="display:inline-block;width:16px;height:16px;border-radius:50%;background:' + (v.color_hex || '#ccc') + ';border:1px solid var(--border);flex-shrink:0;"></span>' +
-                        '<input type="text" value="' + esc(v.color_name) + '" onchange="updateVariantName(' + i + ',this.value)" placeholder="Nom de la couleur">' +
-                        '<input type="color" value="' + (v.color_hex || '#000000') + '" onchange="updateVariantHex(' + i + ',this.value)">' +
-                        '<span style="font-size:0.75rem;color:var(--text-muted);">SKU:</span>' +
-                        '<input type="text" class="pm-variant-sku-input" value="' + esc(v.sku || '') + '" onchange="updateVariantSku(' + i + ',this.value)" placeholder="SKU">' +
-                    '</div>' +
-                    '<button type="button" class="pm-variant-remove" onclick="removeVariant(' + i + ')">Supprimer</button>' +
-                '</div>' +
-                '<div style="margin-bottom:12px;">' +
-                    '<div class="pm-variant-section-label">Images</div>' +
-                    '<div class="pm-variant-images">' + imagesHtml + '</div>' +
-                '</div>' +
-                /* ── Taille Groups ── */
-                '<div class="pm-variant-taille-groups" style="margin-bottom:12px;">' +
-                    '<div class="pm-variant-section-label">Groupes de Tailles</div>' +
-                    (window.SIZE_GROUPS || []).map(function(g) {
-                        var expanded = groupIsExpanded(v, g.label);
-                        var visible = expanded ? '' : ' style="display:none"';
-                        var chipsHtml = g.sizes.map(function(num) {
-                            var active = variantHasSize(i, String(num));
-                            return '<label class="pm-taille-size-chip' + (active ? ' active' : '') + '">' +
-                                '<input type="checkbox" onchange="toggleVariantTailleSize(' + i + ',\'' + num + '\',this.checked)"' + (active ? ' checked' : '') + '>' +
-                                '<span>' + num + '</span>' +
-                            '</label>';
-                        }).join('');
-                        return '<div class="pm-taille-group">' +
-                            '<label class="pm-taille-group-header">' +
-                                '<input type="checkbox" onchange="toggleVariantTailleGroup(' + i + ',\'' + g.label + '\',this.checked)"' + (expanded ? ' checked' : '') + '>' +
-                                '<span>' + g.label + '</span>' +
-                                '<span class="pm-taille-sizes-hint"> (' + g.sizes.join(', ') + ')</span>' +
-                            '</label>' +
-                            '<div class="pm-taille-sizes"' + visible + '>' + chipsHtml + '</div>' +
-                        '</div>';
-                    }).join('') +
-                '</div>' +
-                /* ── Size Stock Table ── */
-                '<div>' +
-                    '<div class="pm-variant-section-label">Tailles et stock</div>' +
-                    '<div style="overflow-x:auto;">' +
-                        '<table class="pm-size-table">' +
-                            '<thead><tr><th>Taille</th><th>Stock</th><th>SKU</th><th style="width:30px;"></th></tr></thead>' +
-                            '<tbody>' + (sizeRows || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:12px;font-size:0.8rem;">Aucune taille ajoutée</td></tr>') + '</tbody>' +
-                        '</table>' +
-                    '</div>' +
-                    '<div class="pm-add-size-row">' +
-                        '<input type="text" placeholder="Taille" id="new-size-input-' + i + '">' +
-                        '<input type="number" min="0" value="0" placeholder="Stock" id="new-size-stock-' + i + '">' +
-                        '<input type="text" placeholder="SKU" id="new-size-sku-' + i + '">' +
-                        '<button type="button" class="btn btn-outline btn-sm" onclick="addVariantSize(' + i + ')">+ Ajouter</button>' +
-                    '</div>' +
-                '</div>' +
-            '</div>';
+    container.addEventListener('click', function(e) {
+        var el = e.target.closest('[data-action]');
+        if (!el) return;
+        e.preventDefault();
+        var action = el.getAttribute('data-action');
+        if (action === 'add-size' || action === 'remove-variant' || action === 'remove-image' || action === 'move-image' || action === 'remove-size' || action === 'taille-group' || action === 'taille-size') {
+            _handleVariantAction(action, el);
+        }
+    });
 
-        return variantHtml;
-    }).join('');
+    container.addEventListener('change', function(e) {
+        var el = e.target.closest('[data-action]');
+        if (!el) return;
+        var action = el.getAttribute('data-action');
+        _handleVariantChange(action, el);
+    });
 }
 
 function addVariant() {
@@ -645,124 +779,89 @@ function addVariant() {
     name = name.trim();
     productVariants.push({ color_name: name, color_hex: '#cccccc', sku: '', images: [], sizes: [] });
     renderVariants();
-    // Scroll to the new variant
     var container = document.getElementById('variants-container');
     if (container) container.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-window.removeVariant = function(index) {
-    productVariants.splice(index, 1);
-    renderVariants();
-};
-
-window.updateVariantName = function(index, val) {
-    if (productVariants[index]) productVariants[index].color_name = val;
-};
-
-window.updateVariantHex = function(index, val) {
-    if (productVariants[index]) {
-        productVariants[index].color_hex = val;
-        renderVariants();
-    }
-};
-
-window.updateVariantSku = function(index, val) {
-    if (productVariants[index]) productVariants[index].sku = val;
-};
-
-window.addVariantSize = function(varIdx) {
+function _handleAddSize(varIdx) {
     var v = productVariants[varIdx];
     if (!v) return;
-    var nameInput = document.getElementById('new-size-input-' + varIdx);
-    var stockInput = document.getElementById('new-size-stock-' + varIdx);
-    var skuInput = document.getElementById('new-size-sku-' + varIdx);
-    var name = (nameInput.value || '').trim();
+    var row = document.querySelector('.pm-add-size-row');
+    if (!row) return;
+    var inputs = row.querySelectorAll('input[data-variant="' + varIdx + '"]');
+    var nameInput, stockInput, skuInput;
+    inputs.forEach(function(inp) {
+        var act = inp.getAttribute('data-action');
+        if (act === 'new-size-name') nameInput = inp;
+        if (act === 'new-size-stock') stockInput = inp;
+        if (act === 'new-size-sku') skuInput = inp;
+    });
+    var name = (nameInput ? nameInput.value : '').trim();
     if (!name) { alert('Veuillez saisir un nom de taille.'); return; }
-    var stock = parseInt(stockInput.value) || 0;
-    var sku = (skuInput.value || '').trim();
+    var stock = parseInt(stockInput ? stockInput.value : 0) || 0;
+    var sku = (skuInput ? skuInput.value : '').trim();
     v.sizes.push({ size: name, stock: stock, sku: sku });
-    nameInput.value = '';
-    stockInput.value = '0';
-    skuInput.value = '';
     renderVariants();
-};
+}
 
-window.removeVariantSize = function(varIdx, sizeIdx) {
+function _handleTailleGroup(varIdx, groupLabel, checked) {
     var v = productVariants[varIdx];
-    if (!v) return;
-    v.sizes.splice(sizeIdx, 1);
-    renderVariants();
-};
-
-window.updateVariantSizeStock = function(varIdx, sizeIdx, val) {
-    var v = productVariants[varIdx];
-    if (!v || !v.sizes[sizeIdx]) return;
-    v.sizes[sizeIdx].stock = parseInt(val) || 0;
-};
-
-window.updateVariantSizeSku = function(varIdx, sizeIdx, val) {
-    var v = productVariants[varIdx];
-    if (!v || !v.sizes[sizeIdx]) return;
-    v.sizes[sizeIdx].sku = val || '';
-};
-
-window.removeVariantImage = function(varIdx, imgIdx) {
-    var v = productVariants[varIdx];
-    if (!v) return;
-    v.images.splice(imgIdx, 1);
-    renderVariants();
-};
-
-window.moveVariantImage = function(varIdx, imgIdx, dir) {
-    var v = productVariants[varIdx];
-    if (!v) return;
-    var newIdx = imgIdx + dir;
-    if (newIdx < 0 || newIdx >= v.images.length) return;
-    var tmp = v.images[imgIdx];
-    v.images[imgIdx] = v.images[newIdx];
-    v.images[newIdx] = tmp;
-    renderVariants();
-};
-
-window.uploadVariantImages = async function(evt, varIdx) {
-    var files = evt.target.files;
-    if (!files || files.length === 0) return;
-    var v = productVariants[varIdx];
-    if (!v) return;
-    for (var i = 0; i < files.length; i++) {
-        var f = files[i];
-        var ext = '.' + f.name.split('.').pop().toLowerCase();
-        if (['.jpg', '.jpeg', '.png', '.webp'].indexOf(ext) === -1) {
-            alert(f.name + ': unsupported format');
-            continue;
+    if (!v || !window.SIZE_GROUPS) return;
+    v._groupState = v._groupState || {};
+    v._groupState[groupLabel] = checked;
+    if (checked) {
+        var group = null;
+        for (var i = 0; i < window.SIZE_GROUPS.length; i++) {
+            if (window.SIZE_GROUPS[i].label === groupLabel) { group = window.SIZE_GROUPS[i]; break; }
         }
-        if (f.size > 10 * 1024 * 1024) {
-            alert(f.name + ': too large (max 10MB)');
-            continue;
+        if (!group) return;
+        group.sizes.forEach(function(num) {
+            var sizeName = String(num);
+            var found = false;
+            for (var j = 0; j < v.sizes.length; j++) {
+                if (String(v.sizes[j].size) === sizeName) { found = true; break; }
+            }
+            if (!found) v.sizes.push({ size: sizeName, stock: 0, sku: '' });
+        });
+    }
+    renderVariants();
+}
+
+function _handleTailleSize(varIdx, sizeName, checked) {
+    var v = productVariants[varIdx];
+    if (!v) return;
+    var sn = String(sizeName);
+    if (checked) {
+        var found = false;
+        for (var i = 0; i < v.sizes.length; i++) {
+            if (String(v.sizes[i].size) === sn) { found = true; break; }
         }
-        var fd = new FormData();
-        fd.append('images', f);
-        var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd });
-        var data = await res.json();
-        if (data.paths && data.paths[0]) {
-            v.images.push(data.paths[0]);
+        if (!found) v.sizes.push({ size: sn, stock: 0, sku: '' });
+    } else {
+        for (var i = v.sizes.length - 1; i >= 0; i--) {
+            if (String(v.sizes[i].size) === sn) v.sizes.splice(i, 1);
         }
     }
-    evt.target.value = '';
     renderVariants();
-};
+}
+
+/* Backward compat: keep window.* references for any code that still calls them directly */
+window.removeVariant = function(index) { productVariants.splice(index, 1); renderVariants(); };
+window.updateVariantName = function(index, val) { if (productVariants[index]) productVariants[index].color_name = val; };
+window.updateVariantHex = function(index, val) { if (productVariants[index]) { productVariants[index].color_hex = val; renderVariants(); } };
+window.updateVariantSku = function(index, val) { if (productVariants[index]) productVariants[index].sku = val; };
+window.addVariantSize = function(varIdx) { _handleAddSize(varIdx); };
+window.removeVariantSize = function(varIdx, sizeIdx) { var v = productVariants[varIdx]; if (v) { v.sizes.splice(sizeIdx, 1); renderVariants(); } };
+window.updateVariantSizeStock = function(varIdx, sizeIdx, val) { var v = productVariants[varIdx]; if (v && v.sizes[sizeIdx]) v.sizes[sizeIdx].stock = parseInt(val) || 0; };
+window.updateVariantSizeSku = function(varIdx, sizeIdx, val) { var v = productVariants[varIdx]; if (v && v.sizes[sizeIdx]) v.sizes[sizeIdx].sku = val || ''; };
+window.removeVariantImage = function(varIdx, imgIdx) { var v = productVariants[varIdx]; if (v) { v.images.splice(imgIdx, 1); renderVariants(); } };
+window.moveVariantImage = function(varIdx, imgIdx, dir) { var v = productVariants[varIdx]; if (!v) return; var ni = imgIdx + dir; if (ni >= 0 && ni < v.images.length) { var t = v.images[imgIdx]; v.images[imgIdx] = v.images[ni]; v.images[ni] = t; renderVariants(); } };
+window.toggleVariantTailleGroup = function(varIdx, groupLabel, checked) { _handleTailleGroup(varIdx, groupLabel, checked); };
+window.toggleVariantTailleSize = function(varIdx, sizeName, checked) { _handleTailleSize(varIdx, sizeName, checked); };
 
 /* ── Taille Group Helpers ── */
 
-function tailleGroupForSize(sizeName) {
-    var num = parseInt(sizeName, 10);
-    if (isNaN(num)) return null;
-    var groups = window.SIZE_GROUPS || [];
-    for (var i = 0; i < groups.length; i++) {
-        if (groups[i].sizes.indexOf(num) !== -1) return groups[i];
-    }
-    return null;
-}
+
 
 function variantHasGroupSizes(varIdx, groupLabel) {
     var v = productVariants[varIdx];
@@ -949,6 +1048,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+
+    // Setup event delegation for variant actions
+    _setupVariantDelegation();
 
     // Add variant button
     var addVarBtn = document.getElementById('add-variant-btn');

@@ -78,8 +78,8 @@ def format_product(row, cur=None):
                 vdict = {'id': v['id'], 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock']}
                 cur.execute("SELECT image_path FROM variant_images WHERE variant_id=? ORDER BY sort_order", (v['id'],))
                 vdict['images'] = [r['image_path'] for r in cur.fetchall()]
-                cur.execute("SELECT size_name, stock FROM variant_sizes WHERE variant_id=? ORDER BY id", (v['id'],))
-                vdict['sizes'] = [{'size': r['size_name'], 'stock': r['stock']} for r in cur.fetchall()]
+                cur.execute("SELECT size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=? ORDER BY id", (v['id'],))
+                vdict['sizes'] = [{'size': r['size_name'], 'stock': r['stock'], 'sku': r['sku']} for r in cur.fetchall()]
                 variants.append(vdict)
                 if v['color_name'] and v['color_name'] not in all_colors:
                     all_colors[v['color_name']] = {'name': v['color_name'], 'hex': v['color_hex'], 'stock': v['stock']}

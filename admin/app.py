@@ -396,8 +396,8 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     vid = v['id']
                     cur.execute("SELECT image_path FROM variant_images WHERE variant_id=%s ORDER BY sort_order", (vid,))
                     images = [row['image_path'] for row in cur.fetchall()]
-                    cur.execute("SELECT size_name, stock FROM variant_sizes WHERE variant_id=%s ORDER BY id", (vid,))
-                    sizes = [{'size': row['size_name'], 'stock': row['stock']} for row in cur.fetchall()]
+                    cur.execute("SELECT size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=%s ORDER BY id", (vid,))
+                    sizes = [{'size': row['size_name'], 'stock': row['stock'], 'sku': row.get('sku', '')} for row in cur.fetchall()]
                     variants.append({
                         'color_name': v['color_name'],
                         'color_hex': v['color_hex'],
@@ -442,8 +442,8 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 vid = v['id']
                 cur.execute("SELECT image_path FROM variant_images WHERE variant_id=%s ORDER BY sort_order", (vid,))
                 images = [row['image_path'] for row in cur.fetchall()]
-                cur.execute("SELECT size_name, stock FROM variant_sizes WHERE variant_id=%s ORDER BY id", (vid,))
-                sizes = [{'size': row['size_name'], 'stock': row['stock']} for row in cur.fetchall()]
+                cur.execute("SELECT size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=%s ORDER BY id", (vid,))
+                sizes = [{'size': row['size_name'], 'stock': row['stock'], 'sku': row.get('sku', '')} for row in cur.fetchall()]
                 variants.append({
                     'color_name': v['color_name'],
                     'color_hex': v['color_hex'],
@@ -767,11 +767,12 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                         if img_path:
                             cur.execute("INSERT INTO variant_images (variant_id, image_path, sort_order) VALUES (%s, %s, %s)",
                                         (vid, img_path, img_idx))
-                    # Insert variant sizes with stock
+                    # Insert variant sizes with stock and sku
                     for s in v.get('sizes', []):
-                        cur.execute("INSERT INTO variant_sizes (variant_id, size_name, stock) VALUES (%s, %s, %s)",
+                        cur.execute("INSERT INTO variant_sizes (variant_id, size_name, stock, sku) VALUES (%s, %s, %s, %s)",
                                     (vid, s.get('size', s) if isinstance(s, dict) else s,
-                                     s.get('stock', 0) if isinstance(s, dict) else 0))
+                                     s.get('stock', 0) if isinstance(s, dict) else 0,
+                                     s.get('sku', '') if isinstance(s, dict) else ''))
                 # Calculate total stock from variant sizes
                 total_stock = 0
                 cur.execute("SELECT id FROM product_variants WHERE product_id=%s", (pid,))
@@ -969,9 +970,10 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                                 cur.execute("INSERT INTO variant_images (variant_id, image_path, sort_order) VALUES (%s, %s, %s)",
                                             (vid, img_path, img_idx))
                         for s in v.get('sizes', []):
-                            cur.execute("INSERT INTO variant_sizes (variant_id, size_name, stock) VALUES (%s, %s, %s)",
+                            cur.execute("INSERT INTO variant_sizes (variant_id, size_name, stock, sku) VALUES (%s, %s, %s, %s)",
                                         (vid, s.get('size', s) if isinstance(s, dict) else s,
-                                         s.get('stock', 0) if isinstance(s, dict) else 0))
+                                         s.get('stock', 0) if isinstance(s, dict) else 0,
+                                         s.get('sku', '') if isinstance(s, dict) else ''))
                     # Compute total stock from variant sizes
                     total_stock = 0
                     cur.execute("SELECT id FROM product_variants WHERE product_id=%s", (pid,))
@@ -1313,7 +1315,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                         vdict = {'id': v['id'], 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock']}
                         cur.execute("SELECT image_path FROM variant_images WHERE variant_id=%s ORDER BY sort_order", (v['id'],))
                         vdict['images'] = [r['image_path'] for r in cur.fetchall()]
-                        cur.execute("SELECT size_name, stock FROM variant_sizes WHERE variant_id=%s ORDER BY id", (v['id'],))
+                        cur.execute("SELECT size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=%s ORDER BY id", (v['id'],))
                         vdict['sizes'] = [{'size': r['size_name'], 'stock': r['stock']} for r in cur.fetchall()]
                         variants.append(vdict)
                         if v['color_name'] and v['color_name'] not in all_colors:
@@ -1408,7 +1410,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     vdict = {'id': v['id'], 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock']}
                     cur.execute("SELECT image_path FROM variant_images WHERE variant_id=%s ORDER BY sort_order", (v['id'],))
                     vdict['images'] = [r['image_path'] for r in cur.fetchall()]
-                    cur.execute("SELECT size_name, stock FROM variant_sizes WHERE variant_id=%s ORDER BY id", (v['id'],))
+                    cur.execute("SELECT size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=%s ORDER BY id", (v['id'],))
                     vdict['sizes'] = [{'size': r['size_name'], 'stock': r['stock']} for r in cur.fetchall()]
                     variants.append(vdict)
                     if v['color_name'] and v['color_name'] not in all_colors:
