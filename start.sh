@@ -16,7 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # --- Persistent disk setup ---
-DISK_MOUNT="${DISK_MOUNT:-/data}"
+DISK_MOUNT="${DISK_MOUNT:-/opt/render/project/src/data}"
 if [ -d "$DISK_MOUNT" ]; then
     echo "[start.sh] Persistent disk detected at $DISK_MOUNT"
     # Symlink store.db from project root → disk (if not already linked)
