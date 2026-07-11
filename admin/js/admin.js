@@ -786,9 +786,9 @@ function _setupVariantDelegation() {
     container.addEventListener('click', function(e) {
         var el = e.target.closest('[data-action]');
         if (!el) return;
-        e.preventDefault();
         var action = el.getAttribute('data-action');
         if (action === 'add-size' || action === 'remove-variant' || action === 'remove-image' || action === 'move-image' || action === 'remove-size' || action === 'taille-group' || action === 'taille-size') {
+            e.preventDefault();
             _handleVariantAction(action, el);
         }
     });
