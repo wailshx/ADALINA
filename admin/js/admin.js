@@ -944,6 +944,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 showToast('✓ Produit enregistré avec succès !');
             } catch (e) {
                 alert('Erreur lors de l\'enregistrement du produit.');
+            } finally {
                 if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer le produit'; }
             }
         });
@@ -967,6 +968,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 goToStep(1);
                 document.getElementById('pm-id').value = '';
                 document.getElementById('pm-modal-title').textContent = 'Nouveau Produit';
+                var sb = document.getElementById('pm-save-btn');
+                if (sb) { sb.disabled = false; sb.innerHTML = '<i class="fas fa-save"></i> Enregistrer le produit'; }
             });
         });
         productModal.addEventListener('click', function(e) {
@@ -978,6 +981,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 goToStep(1);
                 document.getElementById('pm-id').value = '';
                 document.getElementById('pm-modal-title').textContent = 'Nouveau Produit';
+                var sb = document.getElementById('pm-save-btn');
+                if (sb) { sb.disabled = false; sb.innerHTML = '<i class="fas fa-save"></i> Enregistrer le produit'; }
             }
         });
     }
@@ -1302,7 +1307,9 @@ function renderOrdersTable() {
         filtered = filtered.filter(function (o) {
             return (o.customer_name || '').toLowerCase().indexOf(searchVal) !== -1 ||
                    (o.customer_phone || '').indexOf(searchVal) !== -1 ||
-                   (o.order_number || '').toLowerCase().indexOf(searchVal) !== -1;
+                   (o.order_number || '').toLowerCase().indexOf(searchVal) !== -1 ||
+                   (o.wilaya || '').toLowerCase().indexOf(searchVal) !== -1 ||
+                   (o.commune || '').toLowerCase().indexOf(searchVal) !== -1;
         });
     }
 
@@ -2292,12 +2299,34 @@ document.addEventListener('DOMContentLoaded', function () {
                     renderOrdersTable();
                 });
             }
-            /* Search */
+            /* Search (debounced) */
             var searchInput = document.getElementById('orders-search-input');
             if (searchInput) {
+                var orderSearchTimer;
+                var searchWrapper = searchInput.closest('.orders-search');
+                function updateSearchClear() {
+                    if (searchWrapper) {
+                        searchWrapper.classList.toggle('has-value', searchInput.value.length > 0);
+                    }
+                }
                 searchInput.addEventListener('input', function () {
-                    renderOrdersTable();
+                    updateSearchClear();
+                    clearTimeout(orderSearchTimer);
+                    orderSearchTimer = setTimeout(function () {
+                        renderOrdersTable();
+                    }, 300);
                 });
+                var clearBtn = searchWrapper ? searchWrapper.querySelector('.orders-search-clear') : null;
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', function () {
+                        searchInput.value = '';
+                        updateSearchClear();
+                        clearTimeout(orderSearchTimer);
+                        renderOrdersTable();
+                        searchInput.focus();
+                    });
+                }
+                updateSearchClear();
             }
             break;
         case 'customers.html': initCustomers(); break;
