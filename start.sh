@@ -37,15 +37,18 @@ else
     echo "[start.sh] No persistent disk at $DISK_MOUNT — using local store.db"
 fi
 
-# Render sets PORT; fall back to PORT_MAIN for local dev
-MAIN_PORT="${PORT_MAIN:-${PORT:-3000}}"
+# Render sets PORT for the public-facing port. Internally the three processes
+# each use their own port. The proxy sits in front and exposes a single port.
+# Local dev: PORT defaults to 8080; Render: PORT is assigned by the platform.
+PROXY_PORT="${PORT:-8080}"
+MAIN_PORT="${PORT_MAIN:-3000}"
 ADMIN_PORT="${PORT_ADMIN:-5000}"
 
 cleanup() {
     echo ""
     echo "[start.sh] Shutting down servers..."
-    kill "$MAIN_PID" "$ADMIN_PID" 2>/dev/null || true
-    wait "$MAIN_PID" "$ADMIN_PID" 2>/dev/null || true
+    kill "$MAIN_PID" "$ADMIN_PID" "$PROXY_PID" 2>/dev/null || true
+    wait "$MAIN_PID" "$ADMIN_PID" "$PROXY_PID" 2>/dev/null || true
     echo "[start.sh] All servers stopped."
 }
 
@@ -59,5 +62,11 @@ echo "[start.sh] Starting admin server (port $ADMIN_PORT)..."
 PORT_ADMIN="$ADMIN_PORT" python3 admin/app.py &
 ADMIN_PID=$!
 
-echo "[start.sh] Both servers started. Press Ctrl+C to stop."
+sleep 1  # give backends a moment to bind
+
+echo "[start.sh] Starting reverse proxy (port $PROXY_PORT)..."
+PORT="$PROXY_PORT" PORT_MAIN="$MAIN_PORT" PORT_ADMIN="$ADMIN_PORT" python3 proxy.py &
+PROXY_PID=$!
+
+echo "[start.sh] All 3 processes started. Proxy listening on $PROXY_PORT."
 wait
