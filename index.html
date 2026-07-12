@@ -316,6 +316,7 @@
             }).join('');
             setTimeout(function () {
                 if (window.initScrollTracks) initScrollTracks();
+                if (window._refreshReveals) _refreshReveals();
                 document.querySelectorAll('.scroll-track[id^="coll-track-"]').forEach(function (track) {
                     if (track.scrollWidth <= track.clientWidth) return;
                     var interval = setInterval(function () {

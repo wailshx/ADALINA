@@ -542,6 +542,32 @@ button {
     }
 }
 
+/* === Scroll-reveal animation === */
+.reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity var(--transition-elegant), transform var(--transition-elegant);
+}
+.reveal.revealed {
+    opacity: 1;
+    transform: translateY(0);
+}
+.reveal.revealed:nth-child(2) { transition-delay: 0.06s; }
+.reveal.revealed:nth-child(3) { transition-delay: 0.12s; }
+.reveal.revealed:nth-child(4) { transition-delay: 0.18s; }
+.reveal.revealed:nth-child(5) { transition-delay: 0.24s; }
+.reveal.revealed:nth-child(6) { transition-delay: 0.30s; }
+
+/* === Icon pulse on add-to-cart / add-to-wishlist === */
+@keyframes iconPulse {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.25); }
+    100% { transform: scale(1); }
+}
+.icon-pulse {
+    animation: iconPulse 0.3s ease;
+}
+
 /* Collection Section */
 .collection-section {
     padding: 6rem 0;
@@ -1157,6 +1183,14 @@ button {
     opacity: 1;
     align-items: center;
     justify-content: center;
+}
+
+.modal.closing {
+    display: flex;
+    opacity: 0;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
 }
 
 .modal.active .modal-content {
