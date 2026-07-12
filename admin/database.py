@@ -305,8 +305,14 @@ def seed_db():
         cur.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
                     ('admin', hashlib.sha256(b'admin123').hexdigest(), 'admin'))
 
-    # Set Abaya category to grouped_taille size system (case-insensitive)
-    cur.execute("UPDATE categories SET size_system='grouped_taille' WHERE name LIKE '%abay%' COLLATE NOCASE")
+    # Ensure Abaya category exists with grouped_taille size system
+    cur.execute("SELECT id FROM categories WHERE name LIKE '%abay%' COLLATE NOCASE")
+    row = cur.fetchone()
+    if row is None:
+        cur.execute("INSERT OR IGNORE INTO categories (name, slug, description, image, status, size_system) VALUES (?, ?, ?, ?, ?, ?)",
+                    ('Abaya', 'abaya', '', '', 'active', 'grouped_taille'))
+    else:
+        cur.execute("UPDATE categories SET size_system='grouped_taille' WHERE id=?", (row['id'],))
 
     # Seed settings defaults (idempotent)
     settings_defaults = [

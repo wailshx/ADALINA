@@ -65,7 +65,7 @@ function formatPriceDA(price) {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' DA';
 }
 
-function buildGroupedSizesHtml(availSizes, product, curColor, curSize, hasVariants, btnClass, wrapClass, clickHandlerAttr) {
+function buildGroupedSizesHtml(availSizes, product, curColor, curSize, hasVariants, btnClass, wrapClass, clickHandlerAttr, sizeSystem) {
     var noStockInfo = (!curColor || !hasVariants);
     // Build per-size stock data
     var sizeData = (availSizes || []).map(function(s) {
@@ -74,37 +74,41 @@ function buildGroupedSizesHtml(availSizes, product, curColor, curSize, hasVarian
         return { name: sname, stock: stock, available: noStockInfo || stock > 0, selected: sname === curSize };
     });
 
-    // Separate into groups
-    var groups = {}; // label -> { label, sizes: [] }
-    var ungrouped = [];
-    sizeData.forEach(function(sz) {
-        var grp = window.getSizeGroup(sz.name);
-        if (grp) {
-            if (!groups[grp.label]) groups[grp.label] = { label: grp.label, sizes: [] };
-            groups[grp.label].sizes.push(sz);
-        } else {
-            ungrouped.push(sz);
-        }
-    });
-
     var html = '';
-    var groupKeys = Object.keys(groups);
-    groupKeys.sort();
-    groupKeys.forEach(function(key) {
-        var g = groups[key];
-        html += '<div class="sz-group">' +
-            '<div class="sz-group-label">' + g.label + '</div>' +
-            '<div class="sz-group-sizes">';
-        g.sizes.forEach(function(sz) {
-            var sel = sz.selected ? ' selected' : '';
-            var oos = sz.available ? '' : ' out-of-stock';
-            html += '<div class="' + wrapClass + oos + '">' +
-                '<button class="' + btnClass + sel + '" ' + clickHandlerAttr.replace('{val}', sz.name.replace(/'/g, "\\'")) + '>' + sz.name + '</button>' +
-                (noStockInfo ? '' : stockLabel(sz.stock)) +
-                '</div>';
+    var groupKeys, ungrouped;
+
+    if (sizeSystem === 'standard') {
+        ungrouped = sizeData;
+    } else {
+        var groups = {};
+        ungrouped = [];
+        sizeData.forEach(function(sz) {
+            var grp = window.getSizeGroup(sz.name);
+            if (grp) {
+                if (!groups[grp.label]) groups[grp.label] = { label: grp.label, sizes: [] };
+                groups[grp.label].sizes.push(sz);
+            } else {
+                ungrouped.push(sz);
+            }
         });
-        html += '</div></div>';
-    });
+        groupKeys = Object.keys(groups);
+        groupKeys.sort();
+        groupKeys.forEach(function(key) {
+            var g = groups[key];
+            html += '<div class="sz-group">' +
+                '<div class="sz-group-label">' + g.label + '</div>' +
+                '<div class="sz-group-sizes">';
+            g.sizes.forEach(function(sz) {
+                var sel = sz.selected ? ' selected' : '';
+                var oos = sz.available ? '' : ' out-of-stock';
+                html += '<div class="' + wrapClass + oos + '">' +
+                    '<button class="' + btnClass + sel + '" ' + clickHandlerAttr.replace('{val}', sz.name.replace(/'/g, "\\'")) + '>' + sz.name + '</button>' +
+                    (noStockInfo ? '' : stockLabel(sz.stock)) +
+                    '</div>';
+            });
+            html += '</div></div>';
+        });
+    }
 
     if (ungrouped.length > 0) {
         html += '<div class="sz-group-sizes">';
@@ -898,7 +902,8 @@ function qvUpdateSizes() {
         container.innerHTML = buildGroupedSizesHtml(
             availSizes, product, color, cur, hasVariants,
             'qv-size-btn', 'qv-size-wrap',
-            'onclick="qvSelectSize(this, \'{val}\')"'
+            'onclick="qvSelectSize(this, \'{val}\')"',
+            product.category_size_system
         );
     } else {
         container.innerHTML = '';
@@ -1637,7 +1642,8 @@ function displayProduct(product) {
                 ${availSizes.length > 0 ? '<div class="pp-section"><label>Taille</label><div class="pp-sizes">' + buildGroupedSizesHtml(
                     availSizes, product, curColor, curSize, hasVariants,
                     'pp-size-btn', 'pp-size-wrap',
-                    'onclick="selectProductSize(\'{val}\', this)"'
+                    'onclick="selectProductSize(\'{val}\', this)"',
+                    product.category_size_system
                 ) + '</div></div>' : ''}
 
                 <div class="pp-section pp-stock-info" id="pp-stock-info">

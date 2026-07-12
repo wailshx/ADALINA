@@ -903,8 +903,9 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 send_json(self, {'error': 'Name required'}, 400)
                 return True
             slug = data.get('slug', '') or name.lower().replace(' ', '-')
-            cur.execute("INSERT OR IGNORE INTO categories (name, slug, description, image, status) VALUES (%s,%s,%s,%s,%s)",
-                        (name, slug, data.get('description',''), data.get('image',''), data.get('status','active')))
+            size_system = data.get('size_system', 'standard')
+            cur.execute("INSERT OR IGNORE INTO categories (name, slug, description, image, status, size_system) VALUES (%s,%s,%s,%s,%s,%s)",
+                        (name, slug, data.get('description',''), data.get('image',''), data.get('status','active'), size_system))
             db.commit()
             send_json(self, {'id': cur.lastrowid, 'message': 'Category created'}, 201)
             return True
@@ -1327,6 +1328,11 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
         if path.startswith('/api/categories/'):
             cid = path.split('/')[-1]
+            cur.execute("SELECT size_system FROM categories WHERE id=%s", (cid,))
+            cat_row = cur.fetchone()
+            if cat_row and cat_row['size_system'] == 'grouped_taille':
+                send_json(self, {'error': 'Cette catégorie est protégée (système de tailles groupées) et ne peut pas être supprimée.'}, 403)
+                return True
             cur.execute("UPDATE products SET category_id=NULL WHERE category_id=%s", (cid,))
             cur.execute("DELETE FROM categories WHERE id=%s", (cid,))
             db.commit()

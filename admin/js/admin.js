@@ -1226,15 +1226,20 @@ async function initCategories() {
     const countEl = document.getElementById('cat-count');
     if (countEl) countEl.textContent = cats.length + ' catégorie' + (cats.length > 1 ? 's' : '');
     tbody.innerHTML = cats.map(c => {
+        var isProtected = c.size_system === 'grouped_taille';
+        var deleteBtn = isProtected
+            ? '<button class="btn btn-outline btn-sm" disabled title="Catégorie protégée — ne peut pas être supprimée" style="opacity:0.4;cursor:not-allowed;"><i class="fas fa-trash"></i></button>'
+            : '<button class="btn btn-danger btn-sm" onclick="deleteCategory(' + c.id + ')"><i class="fas fa-trash"></i></button>';
+        var sizeSystemBadge = isProtected ? ' <span class="badge" style="background:var(--primary);color:#fff;font-size:0.65rem;vertical-align:middle;">Taille groupée</span>' : '';
         return '<tr>' +
-            '<td><strong>' + esc(c.name) + '</strong></td>' +
+            '<td><strong>' + esc(c.name) + '</strong>' + sizeSystemBadge + '</td>' +
             '<td>' + esc(c.slug) + '</td>' +
             '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(c.description || '') + '</td>' +
             '<td>' + (c.product_count || 0) + '</td>' +
             '<td>' + badge(c.status) + '</td>' +
             '<td style="text-align:right;">' +
             '<button class="btn btn-outline btn-sm" onclick="editCategory(' + c.id + ')"><i class="fas fa-edit"></i></button> ' +
-            '<button class="btn btn-danger btn-sm" onclick="deleteCategory(' + c.id + ')"><i class="fas fa-trash"></i></button>' +
+            deleteBtn +
             '</td></tr>';
     }).join('');
 }
@@ -1248,6 +1253,7 @@ window.editCategory = async function (id) {
     document.getElementById('cat-slug').value = c.slug || '';
     document.getElementById('cat-desc').value = c.description || '';
     document.getElementById('cat-status').value = c.status || 'active';
+    document.getElementById('cat-size-system').value = c.size_system || 'standard';
     document.getElementById('category-modal').classList.add('active');
 };
 
@@ -1296,6 +1302,7 @@ document.addEventListener('DOMContentLoaded', function () {
             slug: document.getElementById('cat-slug').value,
             description: document.getElementById('cat-desc').value,
             status: document.getElementById('cat-status').value,
+            size_system: document.getElementById('cat-size-system').value,
         };
         if (id) {
             await api('PUT', '/categories/' + id, data);
