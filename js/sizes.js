@@ -8,6 +8,8 @@ window.SIZE_GROUPS = [
     { label: 'Taille 3', sizes: [48, 50, 52] }
 ];
 
+window.STANDARD_SIZES = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+
 window.getSizeGroup = function(sizeName) {
     var num = parseInt(sizeName, 10);
     if (isNaN(num)) return null;

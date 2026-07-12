@@ -34,6 +34,23 @@ const filterState = {
 let currentSizeGroups = [];
 let _cachedAllProducts = [];
 let _cachedAllCategory = '';
+let _categoriesCache = [];
+
+function currentCategorySizeSystem() {
+    if (!_categoriesCache.length) return 'standard';
+    for (var i = 0; i < _categoriesCache.length; i++) {
+        if (_categoriesCache[i].name === currentCategory) return _categoriesCache[i].size_system || 'standard';
+    }
+    return 'standard';
+}
+
+async function _ensureCategoriesCache() {
+    if (_categoriesCache.length) return;
+    try {
+        var res = await fetch('/api/public/categories');
+        if (res.ok) _categoriesCache = await res.json();
+    } catch(e) {}
+}
 
 let wishlist = (function(){ try { return JSON.parse(localStorage.getItem('adalinaWishlist')) || []; } catch(e) { return []; } })();
 let cart = (function(){ try { return JSON.parse(localStorage.getItem('adalinaCart')) || []; } catch(e) { return []; } })();
@@ -2019,6 +2036,10 @@ function productHasSizeInGroups(product, groups) {
 function buildSizeFilterUI() {
     var container = document.getElementById('size-filter-row');
     if (!container) return;
+    if (currentCategorySizeSystem() !== 'grouped_taille') {
+        container.innerHTML = '';
+        return;
+    }
     var html = '<span class="filter-label">Taille</span>';
     var allActive = currentSizeGroups.length === 0;
     html += '<button class="filter-chip' + (allActive ? ' active' : '') + '" data-filter="size-group" data-value="">Tout</button>';
@@ -2035,6 +2056,7 @@ async function buildCategoryFilterUI() {
     try {
         var res = await fetch('/api/public/categories');
         var cats = await res.json();
+        _categoriesCache = cats;
         var html = '<span class="filter-label">Catégorie</span>';
         var allActive = !currentCategory;
         html += '<button class="filter-chip' + (allActive ? ' active' : '') + '" data-filter="category" data-value="">Tout</button>';
@@ -2052,7 +2074,7 @@ var filterDelegatesInitialized = false;
 function initFilterDelegates() {
     if (filterDelegatesInitialized) return;
     filterDelegatesInitialized = true;
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', async function(e) {
         var chip = e.target.closest('.filter-chip');
         if (!chip) return;
         var filterType = chip.dataset.filter;
@@ -2071,8 +2093,11 @@ function initFilterDelegates() {
             } else {
                 currentCategory = value;
             }
+            currentSizeGroups = [];
             _cachedAllProducts = [];
-            buildCategoryFilterUI();
+            _categoriesCache = [];
+            await buildCategoryFilterUI();
+            buildSizeFilterUI();
             loadShopPage(1);
         }
     });
@@ -2152,6 +2177,7 @@ async function init() {
             currentCategory = categoryStr;
         }
         initFilterDelegates();
+        await _ensureCategoriesCache();
         buildSizeFilterUI();
         await buildCategoryFilterUI();
         await loadShopPage(1);

@@ -26,7 +26,7 @@ DEFAULT_PASSWORD_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809
 
 # Column whitelists for PUT endpoints (prevents SQL injection via column names)
 ALLOWED_PRODUCT_COLUMNS = {'name', 'description', 'price', 'sale_price', 'category_id', 'image', 'images', 'badge', 'sizes', 'colors', 'stock', 'brand', 'rating', 'featured', 'new_arrival', 'status'}
-ALLOWED_CATEGORY_COLUMNS = {'name', 'slug', 'description', 'image', 'status'}
+ALLOWED_CATEGORY_COLUMNS = {'name', 'slug', 'description', 'image', 'status', 'size_system'}
 ALLOWED_COLLECTION_COLUMNS = {'name', 'description', 'image', 'status'}
 ALLOWED_ORDER_COLUMNS = {'status', 'total', 'items', 'customer_name', 'customer_phone', 'wilaya', 'commune', 'shipping_address', 'payment_method', 'delivery_fee', 'customer_id', 'is_read'}
 ALLOWED_CUSTOMER_COLUMNS = {'name', 'email', 'phone', 'address', 'status'}

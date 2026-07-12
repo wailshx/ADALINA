@@ -110,7 +110,8 @@ def init_db():
         slug TEXT UNIQUE NOT NULL,
         description TEXT,
         image TEXT DEFAULT '',
-        status TEXT DEFAULT 'active'
+        status TEXT DEFAULT 'active',
+        size_system TEXT DEFAULT 'standard'
     )""")
 
     cur.execute("""CREATE TABLE IF NOT EXISTS products (
@@ -239,6 +240,7 @@ def init_db():
         ('orders', 'commune', "TEXT DEFAULT ''"),
         ('orders', 'is_read', "INTEGER DEFAULT 0"),
         ('orders', 'delivery_fee', "REAL DEFAULT 0"),
+        ('categories', 'size_system', "TEXT DEFAULT 'standard'"),
     ]:
         try:
             cur.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
@@ -302,6 +304,9 @@ def seed_db():
         import hashlib
         cur.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)",
                     ('admin', hashlib.sha256(b'admin123').hexdigest(), 'admin'))
+
+    # Set Abaya category to grouped_taille size system (case-insensitive)
+    cur.execute("UPDATE categories SET size_system='grouped_taille' WHERE name LIKE '%abay%' COLLATE NOCASE")
 
     # Seed settings defaults (idempotent)
     settings_defaults = [

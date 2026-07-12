@@ -110,6 +110,7 @@ def format_product(row, cur=None):
     p['featured'] = bool(p.get('featured', 0))
     p['new_arrival'] = bool(p.get('new_arrival', 0))
     p['category'] = p.get('category_name') or ''
+    p['category_size_system'] = p.get('category_size_system') or 'standard'
     return p
 
 MAX_REQUEST_SIZE = 1 * 1024 * 1024  # 1 MB for JSON requests
@@ -176,7 +177,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 if limit > 0:
                     offset = (page - 1) * limit
                     cur.execute("""
-                        SELECT p.*, c.name AS category_name
+                        SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
                         FROM products p
                         LEFT JOIN categories c ON p.category_id = c.id
                         WHERE """ + where_clause + """
@@ -195,7 +196,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     })
                 else:
                     cur.execute("""
-                        SELECT p.*, c.name AS category_name
+                        SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
                         FROM products p
                         LEFT JOIN categories c ON p.category_id = c.id
                         WHERE """ + where_clause + """
@@ -217,7 +218,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 db = get_db()
                 cur = db.cursor()
                 cur.execute("""
-                    SELECT p.*, c.name AS category_name
+                    SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
                     FROM products p
                     LEFT JOIN categories c ON p.category_id = c.id
                     WHERE p.status='active' AND p.featured=1
@@ -239,7 +240,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 db = get_db()
                 cur = db.cursor()
                 cur.execute("""
-                    SELECT p.*, c.name AS category_name
+                    SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
                     FROM products p
                     LEFT JOIN categories c ON p.category_id = c.id
                     WHERE p.id=%s AND p.status='active'
@@ -349,7 +350,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 db = get_db()
                 cur = db.cursor()
                 cur.execute("""
-                    SELECT p.*, c.name AS category_name
+                    SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
                     FROM products p LEFT JOIN categories c ON p.category_id = c.id
                     WHERE p.status='active'
                     ORDER BY p.created_at DESC

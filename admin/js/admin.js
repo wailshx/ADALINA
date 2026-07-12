@@ -432,6 +432,7 @@ function openAddProduct() {
     document.getElementById('product-form').reset();
     document.getElementById('pm-id').value = '';
     productVariants = [];
+    _lastCategorySizeSystem = 'standard';
     renderVariants();
     goToStep(1);
     document.getElementById('pm-modal-title').textContent = 'Nouveau Produit';
@@ -459,6 +460,7 @@ window.editProduct = async function(id) {
     if (newArr) newArr.checked = !!p.new_arrival;
     const catSelect = document.getElementById('pm-category');
     if (catSelect) { catSelect.value = p.category_name || ''; }
+    _lastCategorySizeSystem = getCurrentCategorySizeSystem();
 
     // Set ribbon based on badge column, fall back to new_arrival flag
     var ribbonVal = p.badge || (p.new_arrival ? 'Nouveau' : '');
@@ -612,29 +614,47 @@ function renderVariants() {
                         '<div class="pm-variant-section-label">Images</div>' +
                         '<div class="pm-variant-images">' + imagesHtml + '</div>' +
                     '</div>' +
-                    /* ── Taille Groups ── */
-                    '<div class="pm-variant-taille-groups" style="margin-bottom:12px;">' +
-                        '<div class="pm-variant-section-label">Groupes de Tailles</div>' +
-                        (window.SIZE_GROUPS || []).map(function(g) {
-                            var expanded = groupIsExpanded(v, g.label);
-                            var visible = expanded ? '' : ' style="display:none"';
-                            var chipsHtml = g.sizes.map(function(num) {
-                                var active = variantHasSize(i, String(num));
-                                return '<label class="pm-taille-size-chip' + (active ? ' active' : '') + '">' +
-                                    '<input type="checkbox" data-action="taille-size" data-variant="' + i + '" data-size-num="' + num + '"' + (active ? ' checked' : '') + '>' +
-                                    '<span>' + num + '</span>' +
-                                '</label>';
-                            }).join('');
-                            return '<div class="pm-taille-group">' +
-                                '<label class="pm-taille-group-header">' +
-                                    '<input type="checkbox" data-action="taille-group" data-variant="' + i + '" data-group="' + g.label + '"' + (expanded ? ' checked' : '') + '>' +
-                                    '<span>' + g.label + '</span>' +
-                                    '<span class="pm-taille-sizes-hint"> (' + g.sizes.join(', ') + ')</span>' +
-                                '</label>' +
-                                '<div class="pm-taille-sizes"' + visible + '>' + chipsHtml + '</div>' +
+                    /* ── Taille Groups or Standard Sizes (based on category size_system) ── */
+                    (function() {
+                        var sizeSystem = getCurrentCategorySizeSystem();
+                        if (sizeSystem === 'grouped_taille') {
+                            return '<div class="pm-variant-taille-groups" style="margin-bottom:12px;">' +
+                                '<div class="pm-variant-section-label">Groupes de Tailles</div>' +
+                                (window.SIZE_GROUPS || []).map(function(g) {
+                                    var expanded = groupIsExpanded(v, g.label);
+                                    var visible = expanded ? '' : ' style="display:none"';
+                                    var chipsHtml = g.sizes.map(function(num) {
+                                        var active = variantHasSize(i, String(num));
+                                        return '<label class="pm-taille-size-chip' + (active ? ' active' : '') + '">' +
+                                            '<input type="checkbox" data-action="taille-size" data-variant="' + i + '" data-size-num="' + num + '"' + (active ? ' checked' : '') + '>' +
+                                            '<span>' + num + '</span>' +
+                                        '</label>';
+                                    }).join('');
+                                    return '<div class="pm-taille-group">' +
+                                        '<label class="pm-taille-group-header">' +
+                                            '<input type="checkbox" data-action="taille-group" data-variant="' + i + '" data-group="' + g.label + '"' + (expanded ? ' checked' : '') + '>' +
+                                            '<span>' + g.label + '</span>' +
+                                            '<span class="pm-taille-sizes-hint"> (' + g.sizes.join(', ') + ')</span>' +
+                                        '</label>' +
+                                        '<div class="pm-taille-sizes"' + visible + '>' + chipsHtml + '</div>' +
+                                    '</div>';
+                                }).join('') +
                             '</div>';
-                        }).join('') +
-                    '</div>' +
+                        } else {
+                            return '<div class="pm-variant-taille-groups" style="margin-bottom:12px;">' +
+                                '<div class="pm-variant-section-label">Tailles</div>' +
+                                '<div class="pm-taille-sizes" style="display:flex;flex-wrap:wrap;gap:6px;">' +
+                                (window.STANDARD_SIZES || []).map(function(sizeName) {
+                                    var active = variantHasSize(i, sizeName);
+                                    return '<label class="pm-taille-size-chip' + (active ? ' active' : '') + '">' +
+                                        '<input type="checkbox" data-action="standard-size" data-variant="' + i + '" data-size-name="' + sizeName + '"' + (active ? ' checked' : '') + '>' +
+                                        '<span>' + sizeName + '</span>' +
+                                    '</label>';
+                                }).join('') +
+                                '</div>' +
+                            '</div>';
+                        }
+                    })() +
                     /* ── Size Stock Table ── */
                     '<div>' +
                         '<div class="pm-variant-section-label">Tailles et stock</div>' +
@@ -734,6 +754,10 @@ function _handleVariantAction(action, el) {
             _handleTailleSize(vi, el.getAttribute('data-size-num'), el.checked);
             break;
 
+        case 'standard-size':
+            _handleStandardSize(vi, el.getAttribute('data-size-name'), el.checked);
+            break;
+
         case 'add-size':
             _handleAddSize(vi);
             break;
@@ -787,7 +811,7 @@ function _setupVariantDelegation() {
         var el = e.target.closest('[data-action]');
         if (!el) return;
         var action = el.getAttribute('data-action');
-        if (action === 'add-size' || action === 'remove-variant' || action === 'remove-image' || action === 'move-image' || action === 'remove-size' || action === 'taille-group' || action === 'taille-size') {
+        if (action === 'add-size' || action === 'remove-variant' || action === 'remove-image' || action === 'move-image' || action === 'remove-size' || action === 'taille-group' || action === 'taille-size' || action === 'standard-size') {
             e.preventDefault();
             _handleVariantAction(action, el);
         }
@@ -861,6 +885,24 @@ function _handleTailleGroup(varIdx, groupLabel, checked) {
 }
 
 function _handleTailleSize(varIdx, sizeName, checked) {
+    var v = productVariants[varIdx];
+    if (!v) return;
+    var sn = String(sizeName);
+    if (checked) {
+        var found = false;
+        for (var i = 0; i < v.sizes.length; i++) {
+            if (String(v.sizes[i].size) === sn) { found = true; break; }
+        }
+        if (!found) v.sizes.push({ size: sn, stock: 0, sku: '' });
+    } else {
+        for (var i = v.sizes.length - 1; i >= 0; i--) {
+            if (String(v.sizes[i].size) === sn) v.sizes.splice(i, 1);
+        }
+    }
+    renderVariants();
+}
+
+function _handleStandardSize(varIdx, sizeName, checked) {
     var v = productVariants[varIdx];
     if (!v) return;
     var sn = String(sizeName);
@@ -987,9 +1029,23 @@ function collectVariantsForSubmit() {
     });
 }
 
+/* ── Categories cache with size_system info ── */
+var _categoriesCache = [];
+
+function getCurrentCategorySizeSystem() {
+    var sel = document.getElementById('pm-category');
+    if (!sel) return 'standard';
+    var catName = sel.value;
+    for (var i = 0; i < _categoriesCache.length; i++) {
+        if (_categoriesCache[i].name === catName) return _categoriesCache[i].size_system || 'standard';
+    }
+    return 'standard';
+}
+
 async function loadCategories() {
     var cats = await api('GET', '/categories');
     if (!cats) return;
+    _categoriesCache = cats;
     var sel = document.getElementById('pm-category');
     if (!sel) return;
     sel.innerHTML = '<option value="">Select category</option>';
@@ -1001,8 +1057,45 @@ async function loadCategories() {
     });
 }
 
+function _onCategoryChange() {
+    var newSystem = getCurrentCategorySizeSystem();
+    var oldSystem = _lastCategorySizeSystem;
+    if (newSystem === oldSystem) return;
+    _lastCategorySizeSystem = newSystem;
+    var hasGroupedSizes = false;
+    var hasStandardSizes = false;
+    for (var i = 0; i < productVariants.length; i++) {
+        var v = productVariants[i];
+        for (var j = 0; j < (v.sizes || []).length; j++) {
+            var sn = v.sizes[j].size;
+            if (window.getSizeGroup(sn)) hasGroupedSizes = true;
+            if ((window.STANDARD_SIZES || []).indexOf(sn) !== -1) hasStandardSizes = true;
+        }
+    }
+    var willDiscard = (newSystem === 'standard' && hasGroupedSizes) || (newSystem === 'grouped_taille' && hasStandardSizes);
+    if (willDiscard) {
+        if (!confirm('Le changement de catégorie entraînera un système de tailles différent.\nLes tailles existantes qui ne correspondent pas au nouveau système seront conservées mais ne seront plus visibles dans les raccourcis.\n\nVoulez-vous continuer ?')) {
+            var sel = document.getElementById('pm-category');
+            if (sel) {
+                for (var k = 0; k < _categoriesCache.length; k++) {
+                    if (_categoriesCache[k].size_system === oldSystem) { sel.value = _categoriesCache[k].name; break; }
+                }
+            }
+            _lastCategorySizeSystem = oldSystem;
+            return;
+        }
+    }
+    renderVariants();
+}
+var _lastCategorySizeSystem = 'standard';
+
 document.addEventListener('DOMContentLoaded', function () {
     loadCategories();
+
+    var catSelect = document.getElementById('pm-category');
+    if (catSelect) {
+        catSelect.addEventListener('change', _onCategoryChange);
+    }
 
     const form = document.getElementById('product-form');
     if (form) {
