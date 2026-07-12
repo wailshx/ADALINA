@@ -2,6 +2,8 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 import json
 import os
 import urllib.parse
+import time
+import logging
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -13,6 +15,8 @@ try:
     from admin.database import deduct_order_stock
 except ImportError:
     def deduct_order_stock(cur, pid, color, size, qty): return (False, "Stock system unavailable")
+
+logger = logging.getLogger('adalina')
 
 
 def init_database():
@@ -48,10 +52,12 @@ def rows_to_list(rows):
 def row_to_dict(row):
     return dict(row) if row else None
 
+CORS_ORIGIN = os.environ.get('CORS_ORIGIN', 'https://adalina.onrender.com')
+
 def send_json(handler, data, status=200):
     handler.send_response(status)
     handler.send_header('Content-Type', 'application/json; charset=utf-8')
-    handler.send_header('Access-Control-Allow-Origin', '*')
+    handler.send_header('Access-Control-Allow-Origin', CORS_ORIGIN)
     handler.send_header('Cache-Control', 'no-store, must-revalidate')
     handler.end_headers()
     handler.wfile.write(json.dumps(data, default=str, ensure_ascii=False).encode('utf-8'))
@@ -106,9 +112,25 @@ def format_product(row, cur=None):
     p['category'] = p.get('category_name') or ''
     return p
 
+MAX_REQUEST_SIZE = 1 * 1024 * 1024  # 1 MB for JSON requests
+
 class AdalinaServer(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
+
+    def guess_type(self, path):
+        ctype = super().guess_type(path)
+        return ctype
+
+    def send_head(self):
+        response = super().send_head()
+        if response and hasattr(self, 'path'):
+            path = self.path.lower()
+            if any(path.endswith(ext) for ext in ('.css', '.js', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.woff', '.woff2', '.ttf')):
+                response.headers['Cache-Control'] = 'public, max-age=86400'
+            elif path.endswith('.html') or path == '/':
+                response.headers['Cache-Control'] = 'no-cache, must-revalidate'
+        return response
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -188,7 +210,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
                 db.close()
             except Exception as e:
-                send_json(self, {'error': str(e)}, 500)
+                logger.exception("Error loading products")
+                send_json(self, {'error': 'Erreur lors du chargement des produits'}, 500)
             return
 
         # GET /api/public/products/featured — featured products
@@ -208,7 +231,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, result)
                 db.close()
             except Exception as e:
-                send_json(self, {'error': str(e)}, 500)
+                logger.exception("Error loading featured products")
+                send_json(self, {'error': 'Erreur serveur'}, 500)
             return
 
         # GET /api/public/products/{id} — single product
@@ -231,7 +255,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, format_product(row, cur))
                 db.close()
             except Exception as e:
-                send_json(self, {'error': str(e)}, 500)
+                logger.exception("Error loading product %s", pid)
+                send_json(self, {'error': 'Erreur serveur'}, 500)
             return
 
         # GET /api/public/categories
@@ -247,7 +272,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, rows_to_list(rows))
                 db.close()
             except Exception as e:
-                send_json(self, {'error': str(e)}, 500)
+                logger.exception("Error loading categories")
+                send_json(self, {'error': 'Erreur serveur'}, 500)
             return
 
         # GET /api/public/settings — public settings
@@ -271,7 +297,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, result)
                 db.close()
             except Exception as e:
-                send_json(self, {'error': str(e)}, 500)
+                logger.exception("Error loading settings")
+                send_json(self, {'error': 'Erreur serveur'}, 500)
             return
 
         # GET /api/public/delivery-prices
@@ -287,7 +314,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, result)
                 db.close()
             except Exception as e:
-                send_json(self, {'error': str(e)}, 500)
+                logger.exception("Error loading delivery prices")
+                send_json(self, {'error': 'Erreur serveur'}, 500)
             return
 
         # GET /api/public/collections
@@ -314,7 +342,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, result)
                 db.close()
             except Exception as e:
-                send_json(self, {'error': str(e)}, 500)
+                logger.exception("Error loading collections")
+                send_json(self, {'error': 'Erreur serveur'}, 500)
             return
 
         # Products.json endpoint — served from DB
@@ -332,14 +361,15 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 products = [format_product(r, cur) for r in rows]
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json; charset=utf-8')
-                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Origin', CORS_ORIGIN)
                 self.end_headers()
                 self.wfile.write(json.dumps(products, default=str, ensure_ascii=False).encode('utf-8'))
                 db.close()
             except Exception as e:
+                logger.exception("Error loading products.json")
                 self.send_response(500)
                 self.end_headers()
-                self.wfile.write(f'Error: {str(e)}'.encode('utf-8'))
+                self.wfile.write(b'Erreur serveur')
             return
 
         elif path == '/website/' or path == '/website':
@@ -390,28 +420,54 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         if path == '/api/orders':
             try:
                 length = int(self.headers.get('Content-Length', 0))
+                if length > MAX_REQUEST_SIZE:
+                    send_json(self, {'error': 'Requête trop volumineuse'}, 413)
+                    return
                 body = self.rfile.read(length).decode('utf-8')
                 data = json.loads(body) if body else {}
+
+                # Input validation
+                items = data.get('items', [])
+                if not items or not isinstance(items, list):
+                    send_json(self, {'error': 'Panier vide'}, 400)
+                    return
+                customer_name = (data.get('customer_name') or '').strip()
+                customer_phone = (data.get('customer_phone') or '').strip()
+                wilaya = (data.get('wilaya') or '').strip()
+                if not customer_name or not customer_phone or not wilaya:
+                    send_json(self, {'error': 'Informations client requises (nom, téléphone, wilaya)'}, 400)
+                    return
+
                 db = get_db()
                 cur = db.cursor()
                 cur.execute("BEGIN IMMEDIATE")
 
                 order_number = 'MEMO-' + __import__('datetime').datetime.now().strftime('%Y%m%d-') + str(__import__('random').randint(1000, 9999))
-                items = data.get('items', [])
+                commune = (data.get('commune') or '').strip()
                 shipping = data.get('shipping', '')
-                customer_name = data.get('customer_name', '')
-                customer_phone = data.get('customer_phone', '')
-                wilaya = data.get('wilaya', '')
-                commune = data.get('commune', '')
                 shipping_address = f"Name: {customer_name}, Phone: {customer_phone}, Address: {shipping}"
                 payment = data.get('payment_method', 'Cash on Delivery')
 
-                # Validate + deduct stock for each item atomically
+                # Calculate order total server-side from product prices (prevents price manipulation)
+                server_total = 0
                 for item in items:
                     pid = item.get('product_id')
                     qty = item.get('quantity') or 1
                     color = item.get('color') or item.get('selectedColor') or ''
                     size = item.get('size') or item.get('selectedSize') or ''
+
+                    # Look up actual price from database
+                    cur.execute("SELECT price, sale_price FROM products WHERE id=%s", (pid,))
+                    prod = cur.fetchone()
+                    if not prod:
+                        cur.execute("ROLLBACK")
+                        db.commit()
+                        send_json(self, {'error': f'Produit {pid} introuvable'}, 400)
+                        db.close()
+                        return
+                    unit_price = prod['sale_price'] if prod['sale_price'] else prod['price']
+                    server_total += (unit_price or 0) * qty
+
                     ok, err = deduct_order_stock(cur, pid, color, size, qty)
                     if not ok:
                         product_name = item.get('name', '')
@@ -424,11 +480,22 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         db.close()
                         return
 
-                delivery_fee = data.get('delivery_fee', 0)
+                # Look up delivery price from database
+                delivery_fee = 0
+                if wilaya:
+                    try:
+                        wid = int(wilaya.split('-')[0].strip()) if '-' in wilaya else int(wilaya)
+                        cur.execute("SELECT price FROM delivery_prices WHERE wilaya_id=%s", (wid,))
+                        dp = cur.fetchone()
+                        if dp:
+                            delivery_fee = dp['price']
+                    except (ValueError, TypeError):
+                        pass
+
                 cur.execute("""
                     INSERT INTO orders (order_number, customer_id, customer_name, customer_phone, wilaya, commune, status, total, items, shipping_address, payment_method, delivery_fee)
                     VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, (order_number, customer_name, customer_phone, wilaya, commune, 'new', data.get('total', 0), json.dumps(items), shipping_address, payment, delivery_fee))
+                """, (order_number, customer_name, customer_phone, wilaya, commune, 'new', server_total, json.dumps(items), shipping_address, payment, delivery_fee))
 
                 oid = cur.lastrowid
                 cur.execute("COMMIT")
@@ -436,11 +503,12 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, {'id': oid, 'order_number': order_number, 'message': 'Order created'}, 201)
                 db.close()
             except Exception as e:
+                logger.exception("Error creating order")
                 try:
                     cur.execute("ROLLBACK")
                 except Exception:
                     pass
-                send_json(self, {'error': str(e)}, 500)
+                send_json(self, {'error': 'Erreur lors de la création de la commande'}, 500)
             return
 
         self.send_response(404)

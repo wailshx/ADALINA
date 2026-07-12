@@ -1883,7 +1883,6 @@ function addCurrentToWishlist() {
 
 function ppBuyNow() {
     addCurrentToCart();
-    toggleCart();
 }
 
 
@@ -1971,7 +1970,8 @@ async function loadFilteredPage(page) {
         if (_cachedAllProducts.length === 0 || _cachedAllCategory !== currentCategory) {
             const res = await fetch(url);
             if (!res.ok) throw new Error('Failed to load products');
-            _cachedAllProducts = await res.json();
+            const data = await res.json();
+            _cachedAllProducts = Array.isArray(data) ? data : (data.products || []);
             _cachedAllCategory = currentCategory;
         }
         var filtered = _cachedAllProducts.filter(function(p) {

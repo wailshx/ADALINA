@@ -6,6 +6,9 @@ import http.server
 import http.cookies
 import urllib.parse
 import re
+import time
+import shutil
+import fcntl
 from functools import wraps
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -15,7 +18,36 @@ SESSIONS_FILE = os.path.join(BASE_DIR, '.sessions.json')
 from database import get_db, init_db, seed_db, log_stock_change, deduct_order_stock, restore_order_stock, get_variant_stock
 
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
-ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9')
+ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '')
+ADMIN_PASSWORD_SALT = os.environ.get('ADMIN_PASSWORD_SALT', '')
+CORS_ORIGIN = os.environ.get('CORS_ORIGIN', 'https://adalina.onrender.com')
+
+DEFAULT_PASSWORD_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'
+
+# Column whitelists for PUT endpoints (prevents SQL injection via column names)
+ALLOWED_PRODUCT_COLUMNS = {'name', 'description', 'price', 'sale_price', 'category_id', 'image', 'images', 'badge', 'sizes', 'colors', 'stock', 'brand', 'rating', 'featured', 'new_arrival', 'status'}
+ALLOWED_CATEGORY_COLUMNS = {'name', 'slug', 'description', 'image', 'status'}
+ALLOWED_COLLECTION_COLUMNS = {'name', 'description', 'image', 'status'}
+ALLOWED_ORDER_COLUMNS = {'status', 'total', 'items', 'customer_name', 'customer_phone', 'wilaya', 'commune', 'shipping_address', 'payment_method', 'delivery_fee', 'customer_id', 'is_read'}
+ALLOWED_CUSTOMER_COLUMNS = {'name', 'email', 'phone', 'address', 'status'}
+
+def _filter_columns(data, allowed):
+    return {k: v for k, v in data.items() if k in allowed}
+
+def _hash_password(password, salt=''):
+    return hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000).hex()
+
+def _verify_password(password, stored_hash, salt=''):
+    return _hash_password(password, salt) == stored_hash
+
+# Startup check: refuse to run with default admin password
+if not ADMIN_PASSWORD_HASH or ADMIN_PASSWORD_HASH == DEFAULT_PASSWORD_HASH:
+    print("[WARNING] ADMIN_PASSWORD_HASH is not set or is the default.")
+    print("[WARNING] Set ADMIN_PASSWORD_HASH env var to a secure hash. Generating a random one for this session.")
+    ADMIN_PASSWORD_SALT = secrets.token_hex(16)
+    ADMIN_PASSWORD_HASH = _hash_password('daiaaadmin02', ADMIN_PASSWORD_SALT)
+    print(f"[WARNING] For this session only, login with: admin / daiaaadmin02")
+    print(f"[WARNING] Set ADMIN_PASSWORD_HASH={ADMIN_PASSWORD_HASH} and ADMIN_PASSWORD_SALT={ADMIN_PASSWORD_SALT} in Render env vars.")
 
 MIME_TYPES = {
     '.html': 'text/html; charset=utf-8',
@@ -37,19 +69,33 @@ def load_sessions():
 
 def save_sessions(sessions):
     with open(SESSIONS_FILE, 'w') as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
         json.dump(sessions, f)
+        fcntl.flock(f, fcntl.LOCK_UN)
 
 def get_session(token):
     sessions = load_sessions()
     data = sessions.get(token)
     if data and data.get('admin_logged_in'):
+        created = data.get('created_at', 0)
+        is_remember = data.get('remember', False)
+        max_age = 30 * 24 * 3600 if is_remember else 24 * 3600
+        if time.time() - created > max_age:
+            sessions.pop(token, None)
+            save_sessions(sessions)
+            return None
         return data
     return None
 
 def create_session(remember=False):
     token = secrets.token_hex(32)
     sessions = load_sessions()
-    sessions[token] = {'admin_logged_in': True, 'admin_username': ADMIN_USERNAME}
+    sessions[token] = {
+        'admin_logged_in': True,
+        'admin_username': ADMIN_USERNAME,
+        'created_at': time.time(),
+        'remember': remember
+    }
     save_sessions(sessions)
     return token
 
@@ -99,7 +145,7 @@ def send_json(self, data, status=200):
     body = json.dumps(data, default=str).encode('utf-8')
     self.send_response(status)
     self.send_header('Content-Type', 'application/json')
-    self.send_header('Access-Control-Allow-Origin', '*')
+    self.send_header('Access-Control-Allow-Origin', CORS_ORIGIN)
     self.send_header('Cache-Control', 'no-store, must-revalidate')
     self.send_header('Pragma', 'no-cache')
     self.end_headers()
@@ -110,8 +156,13 @@ def redirect(self, location):
     self.send_header('Location', location)
     self.end_headers()
 
+MAX_REQUEST_SIZE = 50 * 1024 * 1024  # 50 MB (for file uploads)
+
 def read_body(self):
     length = int(self.headers.get('Content-Length', 0))
+    if length > MAX_REQUEST_SIZE:
+        send_json(self, {'error': 'Request too large'}, 413)
+        return ''
     return self.rfile.read(length).decode('utf-8')
 
 def secure_path(base_dir, requested_path):
@@ -753,6 +804,22 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             send_json(self, {'collections': collections, 'products': products})
             return True
 
+        if path == '/api/backup/download':
+            db_path = os.path.join(PARENT_DIR, 'store.db')
+            if not os.path.isfile(db_path):
+                send_json(self, {'error': 'Database not found'}, 404)
+                return True
+            ts = int(time.time())
+            backup_name = f"adalina_backup_{ts}.db"
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/octet-stream')
+            self.send_header('Content-Disposition', f'attachment; filename="{backup_name}"')
+            self.send_header('Content-Length', str(os.path.getsize(db_path)))
+            self.end_headers()
+            with open(db_path, 'rb') as f:
+                shutil.copyfileobj(f, self.wfile)
+            return True
+
         return False
 
     def api_POST(self, path, body):
@@ -974,6 +1041,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 if isinstance(parsed, list) and len(parsed) > 0:
                     data['image'] = parsed[0]
 
+            data = _filter_columns(data, ALLOWED_PRODUCT_COLUMNS)
             sets = ', '.join(f"{k}=%s" for k in data)
             vals = list(data.values()) + [pid]
             cur.execute(f"UPDATE products SET {sets} WHERE id=%s", vals)
@@ -1040,6 +1108,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
         if path.startswith('/api/categories/'):
             cid = path.split('/')[-1]
+            data = _filter_columns(data, ALLOWED_CATEGORY_COLUMNS)
             sets = ', '.join(f"{k}=%s" for k in data)
             vals = list(data.values()) + [cid]
             cur.execute(f"UPDATE categories SET {sets} WHERE id=%s", vals)
@@ -1059,6 +1128,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
         if path.startswith('/api/collections/'):
             cid = path.split('/')[-1]
+            data = _filter_columns(data, ALLOWED_COLLECTION_COLUMNS)
             sets = ', '.join(f"{k}=%s" for k in data)
             vals = list(data.values()) + [cid]
             cur.execute(f"UPDATE collections SET {sets} WHERE id=%s", vals)
@@ -1118,6 +1188,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     old_items = row['items']
             if 'items' in data and isinstance(data['items'], list):
                 data['items'] = json.dumps(data['items'])
+            data = _filter_columns(data, ALLOWED_ORDER_COLUMNS)
             sets = ', '.join(f"{k}=%s" for k in data)
             vals = list(data.values()) + [oid]
             cur.execute(f"UPDATE orders SET {sets} WHERE id=%s", vals)
@@ -1180,6 +1251,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             cid = path.split('/')[-1]
             if 'name' in data:
                 data['name'] = data['name'].strip()
+            data = _filter_columns(data, ALLOWED_CUSTOMER_COLUMNS)
             sets = ', '.join(f"{k}=%s" for k in data)
             vals = list(data.values()) + [cid]
             cur.execute(f"UPDATE customers SET {sets} WHERE id=%s", vals)
@@ -1295,7 +1367,8 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             if len(f['content']) > MAX_SIZE:
                 continue
             ts = int(__import__('time').time() * 1000)
-            safe_name = f"{ts}_{f['filename']}"
+            safe_base = re.sub(r'[^a-zA-Z0-9._-]', '_', os.path.basename(f['filename']))
+            safe_name = f"{ts}_{safe_base}"
             dest = os.path.join(upload_dir, safe_name)
             if os.path.isfile(dest):
                 continue
@@ -1562,10 +1635,10 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             username = params.get('username', [''])[0].strip()
             password = params.get('password', [''])[0]
             remember = params.get('remember', [None])[0]
-            if username == ADMIN_USERNAME and hashlib.sha256(password.encode()).hexdigest() == ADMIN_PASSWORD_HASH:
+            if username == ADMIN_USERNAME and _verify_password(password, ADMIN_PASSWORD_HASH, ADMIN_PASSWORD_SALT):
                 token = create_session(remember=(remember == 'on'))
                 max_age = 30 * 24 * 3600 if remember else None
-                cookie = f'admin_session={token}; Path=/; HttpOnly; SameSite=Lax'
+                cookie = f'admin_session={token}; Path=/; HttpOnly; SameSite=Lax; Secure'
                 if max_age: cookie += f'; Max-Age={max_age}'
                 self.send_response(302)
                 self.send_header('Set-Cookie', cookie)
@@ -1620,7 +1693,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
     def do_OPTIONS(self):
         self.send_response(204)
-        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Origin', CORS_ORIGIN)
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
@@ -1629,7 +1702,7 @@ if __name__ == '__main__':
     init_db()
     seed_db()
     port = int(os.environ.get('PORT_ADMIN', '5000'))
-    server = http.server.HTTPServer(('0.0.0.0', port), AdminHandler)
+    server = http.server.HTTPServer(('127.0.0.1', port), AdminHandler)
     print(f"Admin Dashboard running at http://localhost:{port}")
     print(f"Admin dashboard ready — login at http://localhost:{port}")
     try:
