@@ -115,22 +115,19 @@ def format_product(row, cur=None):
 MAX_REQUEST_SIZE = 1 * 1024 * 1024  # 1 MB for JSON requests
 
 class AdalinaServer(SimpleHTTPRequestHandler):
+    STATIC_EXTS = ('.css', '.js', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.woff', '.woff2', '.ttf')
+    HTML_EXTS = ('.html',)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
 
-    def guess_type(self, path):
-        ctype = super().guess_type(path)
-        return ctype
-
-    def send_head(self):
-        response = super().send_head()
-        if response and hasattr(self, 'path'):
-            path = self.path.lower()
-            if any(path.endswith(ext) for ext in ('.css', '.js', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.woff', '.woff2', '.ttf')):
-                response.headers['Cache-Control'] = 'public, max-age=86400'
-            elif path.endswith('.html') or path == '/':
-                response.headers['Cache-Control'] = 'no-cache, must-revalidate'
-        return response
+    def send_response(self, code, message=None):
+        super().send_response(code, message)
+        path = getattr(self, 'path', '').lower()
+        if any(path.endswith(ext) for ext in self.STATIC_EXTS):
+            self.send_header('Cache-Control', 'public, max-age=86400')
+        elif any(path.endswith(ext) for ext in self.HTML_EXTS) or path in ('/', ''):
+            self.send_header('Cache-Control', 'no-cache, must-revalidate')
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
