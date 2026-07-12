@@ -1543,13 +1543,13 @@ input[data-setting]:checked + .toggle-slider {
 
 /* Taille group selection */
 .pm-variant-taille-groups {
-    background: #fff;
-    border-radius: 8px;
-    padding: 10px 12px;
+    background: #faf9f6;
+    border-radius: 10px;
+    padding: 12px 14px;
     border: 1px solid var(--border);
 }
 .pm-taille-group {
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 .pm-taille-group:last-child {
     margin-bottom: 0;
@@ -1558,7 +1558,7 @@ input[data-setting]:checked + .toggle-slider {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 0;
+    padding: 5px 0;
     cursor: pointer;
     font-size: 0.85rem;
     font-weight: 500;
@@ -1574,31 +1574,34 @@ input[data-setting]:checked + .toggle-slider {
 }
 .pm-taille-sizes {
     display: flex;
-    gap: 4px;
+    gap: 5px;
     flex-wrap: wrap;
-    padding: 4px 0 4px 22px;
+    padding: 6px 0 4px 22px;
 }
 .pm-taille-size-chip {
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    padding: 2px 8px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-    background: #f9f9f9;
+    padding: 4px 12px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: #fff;
     font-size: 0.8rem;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     user-select: none;
+    font-weight: 500;
 }
 .pm-taille-size-chip:hover {
     border-color: var(--primary);
     background: #fff;
+    box-shadow: 0 1px 4px rgba(212,175,55,0.12);
 }
 .pm-taille-size-chip.active {
     border-color: var(--primary);
     background: var(--primary);
     color: #fff;
+    box-shadow: 0 2px 6px rgba(212,175,55,0.2);
 }
 .pm-taille-size-chip input[type="checkbox"] {
     display: none;
