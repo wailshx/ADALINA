@@ -621,22 +621,23 @@ function renderVariants() {
                             return '<div class="pm-variant-taille-groups" style="margin-bottom:12px;">' +
                                 '<div class="pm-variant-section-label">Groupes de Tailles</div>' +
                                 (window.SIZE_GROUPS || []).map(function(g) {
-                                    var expanded = groupIsExpanded(v, g.label);
-                                    var visible = expanded ? '' : ' style="display:none"';
-                                    var chipsHtml = g.sizes.map(function(num) {
-                                        var active = variantHasSize(i, String(num));
-                                        return '<label class="pm-taille-size-chip' + (active ? ' active' : '') + '">' +
-                                            '<input type="checkbox" data-action="taille-size" data-variant="' + i + '" data-size-num="' + num + '"' + (active ? ' checked' : '') + '>' +
-                                            '<span>' + num + '</span>' +
-                                        '</label>';
-                                    }).join('');
-                                    return '<div class="pm-taille-group">' +
-                                        '<label class="pm-taille-group-header">' +
-                                            '<input type="checkbox" data-action="taille-group" data-variant="' + i + '" data-group="' + g.label + '"' + (expanded ? ' checked' : '') + '>' +
+                                    var hasGroup = v.sizes.some(function(s) { return s.size === g.label; });
+                                    var groupSize = v.sizes.find(function(s) { return s.size === g.label; });
+                                    var infoText = g.sizes.join(' · ');
+                                    var stockVal = groupSize ? (groupSize.stock || 0) : 0;
+                                    var skuVal = groupSize ? (groupSize.sku || '') : '';
+                                    return '<div class="pm-taille-group-card" style="border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:8px;background:' + (hasGroup ? 'var(--cream, #faf9f6)' : 'var(--bg, #fff)') + ';">' +
+                                        '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">' +
+                                            '<input type="checkbox" data-action="taille-group" data-variant="' + i + '" data-group="' + g.label + '"' + (hasGroup ? ' checked' : '') + '>' +
                                             '<span>' + g.label + '</span>' +
-                                            '<span class="pm-taille-sizes-hint"> (' + g.sizes.join(', ') + ')</span>' +
+                                            '<span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;margin-left:auto;">' + infoText + '</span>' +
                                         '</label>' +
-                                        '<div class="pm-taille-sizes"' + visible + '>' + chipsHtml + '</div>' +
+                                        (hasGroup ? '<div style="display:flex;gap:12px;margin-top:8px;align-items:center;">' +
+                                            '<label style="font-size:0.75rem;color:var(--text-muted);">Stock:</label>' +
+                                            '<input type="number" min="0" value="' + stockVal + '" data-action="group-stock" data-variant="' + i + '" data-group="' + g.label + '" style="width:80px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:0.8rem;">' +
+                                            '<label style="font-size:0.75rem;color:var(--text-muted);">SKU:</label>' +
+                                            '<input type="text" value="' + esc(skuVal) + '" data-action="group-sku" data-variant="' + i + '" data-group="' + g.label + '" placeholder="SKU" style="width:120px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:0.8rem;">' +
+                                        '</div>' : '') +
                                     '</div>';
                                 }).join('') +
                             '</div>';
@@ -655,7 +656,8 @@ function renderVariants() {
                             '</div>';
                         }
                     })() +
-                    /* ── Size Stock Table ── */
+                    /* ── Size Stock Table (only for standard) ── */
+                    getCurrentCategorySizeSystem() === 'grouped_taille' ? '' :
                     '<div>' +
                         '<div class="pm-variant-section-label">Tailles et stock</div>' +
                         '<div style="overflow-x:auto;">' +
@@ -756,6 +758,24 @@ function _handleVariantAction(action, el) {
 
         case 'standard-size':
             _handleStandardSize(vi, el.getAttribute('data-size-name'), el.checked);
+            break;
+
+        case 'group-stock':
+            if (v) {
+                var gLabel = el.getAttribute('data-group');
+                for (var gi = 0; gi < v.sizes.length; gi++) {
+                    if (v.sizes[gi].size === gLabel) { v.sizes[gi].stock = parseInt(el.value) || 0; break; }
+                }
+            }
+            break;
+
+        case 'group-sku':
+            if (v) {
+                var gLabel = el.getAttribute('data-group');
+                for (var gi = 0; gi < v.sizes.length; gi++) {
+                    if (v.sizes[gi].size === gLabel) { v.sizes[gi].sku = el.value || ''; break; }
+                }
+            }
             break;
 
         case 'add-size':
@@ -863,43 +883,25 @@ function _handleAddSize(varIdx) {
 
 function _handleTailleGroup(varIdx, groupLabel, checked) {
     var v = productVariants[varIdx];
-    if (!v || !window.SIZE_GROUPS) return;
+    if (!v) return;
     v._groupState = v._groupState || {};
     v._groupState[groupLabel] = checked;
     if (checked) {
-        var group = null;
-        for (var i = 0; i < window.SIZE_GROUPS.length; i++) {
-            if (window.SIZE_GROUPS[i].label === groupLabel) { group = window.SIZE_GROUPS[i]; break; }
+        var found = false;
+        for (var j = 0; j < v.sizes.length; j++) {
+            if (v.sizes[j].size === groupLabel) { found = true; break; }
         }
-        if (!group) return;
-        group.sizes.forEach(function(num) {
-            var sizeName = String(num);
-            var found = false;
-            for (var j = 0; j < v.sizes.length; j++) {
-                if (String(v.sizes[j].size) === sizeName) { found = true; break; }
-            }
-            if (!found) v.sizes.push({ size: sizeName, stock: 0, sku: '' });
-        });
+        if (!found) v.sizes.push({ size: groupLabel, stock: 0, sku: '' });
+    } else {
+        for (var j = v.sizes.length - 1; j >= 0; j--) {
+            if (v.sizes[j].size === groupLabel) v.sizes.splice(j, 1);
+        }
     }
     renderVariants();
 }
 
 function _handleTailleSize(varIdx, sizeName, checked) {
-    var v = productVariants[varIdx];
-    if (!v) return;
-    var sn = String(sizeName);
-    if (checked) {
-        var found = false;
-        for (var i = 0; i < v.sizes.length; i++) {
-            if (String(v.sizes[i].size) === sn) { found = true; break; }
-        }
-        if (!found) v.sizes.push({ size: sn, stock: 0, sku: '' });
-    } else {
-        for (var i = v.sizes.length - 1; i >= 0; i--) {
-            if (String(v.sizes[i].size) === sn) v.sizes.splice(i, 1);
-        }
-    }
-    renderVariants();
+    // No-op: individual sizes are not tracked for grouped_taille products
 }
 
 function _handleStandardSize(varIdx, sizeName, checked) {
@@ -958,8 +960,8 @@ function groupIsExpanded(v, groupLabel) {
     v._groupState = v._groupState || {};
     var key = groupLabel;
     if (key in v._groupState) return v._groupState[key];
-    // Default: expand if any sizes from this group are present
-    var expanded = variantHasGroupSizes(productVariants.indexOf(v), groupLabel);
+    // Default: expand if this group label is present in sizes
+    var expanded = v.sizes.some(function(s) { return s.size === groupLabel; });
     v._groupState[key] = expanded;
     return expanded;
 }
@@ -975,46 +977,11 @@ function variantHasSize(varIdx, sizeName) {
 }
 
 window.toggleVariantTailleGroup = function(varIdx, groupLabel, checked) {
-    var v = productVariants[varIdx];
-    if (!v || !window.SIZE_GROUPS) return;
-    v._groupState = v._groupState || {};
-    v._groupState[groupLabel] = checked;
-    if (checked) {
-        var group = null;
-        for (var i = 0; i < window.SIZE_GROUPS.length; i++) {
-            if (window.SIZE_GROUPS[i].label === groupLabel) { group = window.SIZE_GROUPS[i]; break; }
-        }
-        if (!group) return;
-        group.sizes.forEach(function(num) {
-            var sizeName = String(num);
-            var found = false;
-            for (var j = 0; j < v.sizes.length; j++) {
-                if (String(v.sizes[j].size) === sizeName) { found = true; break; }
-            }
-            if (!found) v.sizes.push({ size: sizeName, stock: 0, sku: '' });
-        });
-    }
-    renderVariants();
+    _handleTailleGroup(varIdx, groupLabel, checked);
 };
 
 window.toggleVariantTailleSize = function(varIdx, sizeName, checked) {
-    var v = productVariants[varIdx];
-    if (!v) return;
-    var sn = String(sizeName);
-    var found = false;
-    for (var i = 0; i < v.sizes.length; i++) {
-        if (String(v.sizes[i].size) === sn) { found = true; break; }
-    }
-    if (checked) {
-        if (!found) v.sizes.push({ size: sn, stock: 0, sku: '' });
-    } else {
-        if (found) {
-            for (var i = v.sizes.length - 1; i >= 0; i--) {
-                if (String(v.sizes[i].size) === sn) v.sizes.splice(i, 1);
-            }
-        }
-    }
-    renderVariants();
+    // No-op: individual sizes are not tracked for grouped_taille products
 };
 
 function collectVariantsForSubmit() {

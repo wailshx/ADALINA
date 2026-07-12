@@ -364,3 +364,92 @@ def seed_db():
 
     conn.commit()
     conn.close()
+
+    # Run taille-group stock migration (idempotent — only acts on numeric size_names)
+    migrate_taille_stock()
+
+
+# ── Taille-group stock migration ──
+# Aggregates individual-size stock into per-group stock for grouped_taille products.
+# This runs once (idempotent) — it only acts on variants that still have numeric size_names.
+
+TAILLE_GROUP_MAP = {32: 'Taille 1', 34: 'Taille 1', 36: 'Taille 1', 38: 'Taille 1',
+                    40: 'Taille 2', 42: 'Taille 2', 44: 'Taille 2', 46: 'Taille 2',
+                    48: 'Taille 3', 50: 'Taille 3', 52: 'Taille 3'}
+GROUP_SIZES_INFO = {'Taille 1': [32, 34, 36, 38],
+                    'Taille 2': [40, 42, 44, 46],
+                    'Taille 3': [48, 50, 52]}
+
+
+def migrate_taille_stock():
+    """Aggregate individual-size stock into Taille-group stock for all grouped_taille products."""
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT p.id AS pid, p.name AS pname, pv.id AS vid, pv.color_name,
+               vs.id AS vsid, vs.size_name, vs.stock, vs.sku
+        FROM products p
+        JOIN categories c ON p.category_id = c.id
+        JOIN product_variants pv ON pv.product_id = p.id
+        JOIN variant_sizes vs ON vs.variant_id = pv.id
+        WHERE c.size_system = 'grouped_taille'
+        ORDER BY p.id, pv.id, vs.id
+    """)
+    rows = cur.fetchall()
+    if not rows:
+        conn.close()
+        return []
+
+    # Group by (product_id, variant_id)
+    variant_sizes = {}
+    for r in rows:
+        key = (r['pid'], r['vid'], r['pname'], r['color_name'])
+        if key not in variant_sizes:
+            variant_sizes[key] = []
+        variant_sizes[key].append({'vsid': r['vsid'], 'size': r['size_name'],
+                                    'stock': r['stock'] or 0, 'sku': r['sku'] or ''})
+
+    report = []
+    for (pid, vid, pname, color), sizes in variant_sizes.items():
+        numeric = [s for s in sizes if s['size'].isdigit()]
+        if not numeric:
+            continue
+
+        groups = {}
+        sku_pick = {}
+        for s in sizes:
+            num = int(s['size'])
+            grp = TAILLE_GROUP_MAP.get(num)
+            if grp is None:
+                continue
+            if grp not in groups:
+                groups[grp] = 0
+                sku_pick[grp] = s['sku']
+            groups[grp] += s['stock']
+            if not sku_pick[grp] and s['sku']:
+                sku_pick[grp] = s['sku']
+
+        vsids = [s['vsid'] for s in sizes]
+        placeholders = ','.join(['?'] * len(vsids))
+        cur.execute(f"DELETE FROM variant_sizes WHERE id IN ({placeholders})", vsids)
+
+        for grp in ['Taille 1', 'Taille 2', 'Taille 3']:
+            if grp in groups:
+                cur.execute(
+                    "INSERT INTO variant_sizes (variant_id, size_name, stock, sku) VALUES (?, ?, ?, ?)",
+                    (vid, grp, groups[grp], sku_pick.get(grp, ''))
+                )
+
+        group_names = sorted(groups.keys())
+        cur.execute("UPDATE products SET sizes=? WHERE id=?", (json.dumps(group_names), pid))
+
+        report.append({
+            'product': pname, 'color': color, 'variant_id': vid,
+            'before': {s['size']: {'stock': s['stock'], 'sku': s['sku']} for s in sizes},
+            'after': {grp: {'stock': groups.get(grp, 0), 'sku': sku_pick.get(grp, '')} for grp in ['Taille 1', 'Taille 2', 'Taille 3'] if grp in groups}
+        })
+
+    conn.commit()
+    conn.close()
+    return report
