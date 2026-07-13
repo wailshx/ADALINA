@@ -863,6 +863,19 @@ function quickView(productId) {
         wishlistText.textContent = inWish ? 'Retirer des favoris' : 'Ajouter aux favoris';
     }
 
+    /* Description */
+    var descEl = document.getElementById('qv-desc');
+    if (descEl) {
+        var desc = product.description || '';
+        if (desc.trim()) {
+            descEl.innerHTML = '<p>' + esc(desc) + '</p>';
+            descEl.style.display = '';
+        } else {
+            descEl.innerHTML = '';
+            descEl.style.display = 'none';
+        }
+    }
+
     _qv.currentIndex = 0;
 }
 
