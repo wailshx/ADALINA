@@ -1,77 +1,470 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - ADALINA Admin</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="css/admin.css">
+    <title>Connexion - ADALINA Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #c9a96e;
+            --gold-light: #d4b97a;
+            --gold-dark: #b8944f;
+            --black: #1a1a1a;
+            --black-soft: #2a2a2a;
+            --cream: #faf9f6;
+            --cream-dark: #f0ede8;
+            --text: #333;
+            --text-muted: #888;
+            --danger: #c53030;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body { height: 100%; }
+
+        body {
+            font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--black);
+            color: var(--text);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .login-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ── Left Panel: Brand ── */
+        .login-brand-panel {
+            flex: 1;
+            background: linear-gradient(135deg, var(--black) 0%, #0d0d0d 50%, #1a1510 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-brand-panel::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at 30% 50%, rgba(201, 169, 110, 0.06) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .login-brand-panel::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--gold), transparent);
+            opacity: 0.3;
+        }
+
+        .brand-content {
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .brand-logo {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 28px;
+            border-radius: 16px;
+            border: 1px solid rgba(201, 169, 110, 0.2);
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+        }
+
+        .brand-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .brand-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3rem;
+            font-weight: 300;
+            color: #fff;
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .brand-name span {
+            color: var(--gold);
+        }
+
+        .brand-tagline {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            font-weight: 300;
+        }
+
+        .brand-divider {
+            width: 60px;
+            height: 1px;
+            background: var(--gold);
+            margin: 28px auto;
+            opacity: 0.5;
+        }
+
+        .brand-features {
+            list-style: none;
+            margin-top: 20px;
+        }
+
+        .brand-features li {
+            font-size: 0.78rem;
+            color: rgba(255, 255, 255, 0.35);
+            padding: 6px 0;
+            letter-spacing: 0.5px;
+        }
+
+        .brand-features li svg {
+            width: 14px;
+            height: 14px;
+            vertical-align: middle;
+            margin-right: 8px;
+            opacity: 0.5;
+        }
+
+        /* ── Right Panel: Form ── */
+        .login-form-panel {
+            width: 480px;
+            min-width: 400px;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px;
+            position: relative;
+        }
+
+        .login-form-wrapper {
+            width: 100%;
+            max-width: 340px;
+        }
+
+        .login-form-header {
+            margin-bottom: 40px;
+        }
+
+        .login-form-header h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            font-weight: 400;
+            color: var(--black);
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .login-form-header p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .login-error {
+            display: none;
+            background: #fef2f2;
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            margin-bottom: 20px;
+            animation: shake 0.4s ease;
+        }
+
+        .login-error.show { display: flex; align-items: center; gap: 8px; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1.5px solid #e8e6e1;
+            border-radius: 8px;
+            font-size: 0.92rem;
+            font-family: inherit;
+            color: var(--text);
+            background: #fff;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .form-input::placeholder {
+            color: #bbb;
+        }
+
+        .form-input:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.1);
+        }
+
+        .form-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 28px;
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .remember-me input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--gold);
+            cursor: pointer;
+        }
+
+        .remember-me span {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+
+        .forgot-link {
+            font-size: 0.82rem;
+            color: var(--gold);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .forgot-link:hover {
+            color: var(--gold-dark);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: var(--black);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(201, 169, 110, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn-login:hover {
+            background: var(--black-soft);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-login:hover::before {
+            left: 100%;
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .btn-login svg {
+            width: 16px;
+            height: 16px;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        .login-footer {
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        .login-footer p {
+            font-size: 0.72rem;
+            color: #ccc;
+            letter-spacing: 0.5px;
+        }
+
+        .login-footer .gold-dot {
+            color: var(--gold);
+        }
+
+        /* ── Mobile ── */
+        @media (max-width: 900px) {
+            .login-brand-panel {
+                display: none;
+            }
+
+            .login-form-panel {
+                width: 100%;
+                min-width: unset;
+                padding: 40px 24px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-form-panel {
+                padding: 32px 20px;
+            }
+
+            .login-form-header h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
     <script>
     fetch('/api/public/settings').then(function(r){return r.json()}).then(function(s){
-        if (s.primary_color) document.documentElement.style.setProperty('--primary', s.primary_color);
-        if (s.primary_dark) document.documentElement.style.setProperty('--primary-dark', s.primary_dark);
-        if (s.secondary_color) {
-            document.documentElement.style.setProperty('--secondary', s.secondary_color);
-            document.documentElement.style.setProperty('--sidebar-bg', s.secondary_color);
-            document.documentElement.style.setProperty('--sidebar-hover', s.secondary_color);
+        if (s.primary_color) {
+            document.documentElement.style.setProperty('--gold', s.primary_color);
+            document.documentElement.style.setProperty('--gold-light', s.primary_color);
         }
-        if (s.background_color) document.documentElement.style.setProperty('--content-bg', s.background_color);
-        if (s.text_color) document.documentElement.style.setProperty('--text-dark', s.text_color);
-        var brandEl = document.querySelector('.sidebar-brand h2');
-        if (brandEl && s.store_name) {
-            var parts = s.store_name.trim().split(/\s+/);
-            if (parts.length > 1) { brandEl.innerHTML = parts.slice(0, -1).join(' ') + ' <span>' + parts[parts.length - 1] + '</span>'; }
-            else { brandEl.textContent = s.store_name; }
+        if (s.primary_dark) document.documentElement.style.setProperty('--gold-dark', s.primary_dark);
+        if (s.store_name) {
+            var nameEl = document.querySelector('.brand-name');
+            if (nameEl) {
+                var parts = s.store_name.trim().split(/\s+/);
+                if (parts.length > 1) {
+                    nameEl.innerHTML = parts.slice(0, -1).join(' ') + ' <span>' + parts[parts.length - 1] + '</span>';
+                } else {
+                    nameEl.textContent = s.store_name;
+                }
+            }
         }
-        var loginBrand = document.querySelector('.brand h2');
-        if (loginBrand && s.store_name) loginBrand.textContent = s.store_name;
         if (s.logo_header) {
-            document.querySelectorAll('.sidebar-brand img, .brand img').forEach(function(img) { img.src = s.logo_header; });
+            var img = document.querySelector('.brand-logo img');
+            if (img) img.src = '/' + s.logo_header;
         }
         var titleEl = document.querySelector('title');
-        if (titleEl && s.site_title) {
-            var parts = titleEl.textContent.split(' - ');
-            if (parts.length > 1) { titleEl.textContent = s.site_title + ' - ' + parts[parts.length - 1]; }
-        }
+        if (titleEl && s.site_title) titleEl.textContent = 'Connexion - ' + s.site_title;
         window.__adminSettings = s;
     }).catch(function(){});
     </script>
 </head>
 <body>
-    <div class="login-page">
-        <div class="login-box">
-            <div class="brand">
-                <img src="../images/logo.svg" alt="ADALINA" style="width:32px;height:32px">
-                <h2>ADALINA</h2>
-                <p>Admin Dashboard</p>
+    <div class="login-container">
+        <div class="login-brand-panel">
+            <div class="brand-content">
+                <div class="brand-logo">
+                    <img src="../images/logo.svg" alt="ADALINA">
+                </div>
+                <h1 class="brand-name">ADAL<span>INA</span></h1>
+                <p class="brand-tagline">Boutique de Mode</p>
+                <div class="brand-divider"></div>
+                <ul class="brand-features">
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7L12 3L4 7M20 7L12 11M20 7V17L12 21M12 11L4 7M12 11V21M4 7V17L12 21"/></svg>
+                        Gestion des produits et commandes
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                        Tableau de bord en temps réel
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        Paramètres personnalisables
+                    </li>
+                </ul>
             </div>
-            <div class="login-error" id="login-error">Invalid username or password.</div>
-            <form id="login-form" action="/admin/login" method="POST">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" class="form-control" placeholder="admin" required autocomplete="username">
+        </div>
+
+        <div class="login-form-panel">
+            <div class="login-form-wrapper">
+                <div class="login-form-header">
+                    <h1>Bienvenue</h1>
+                    <p>Connectez-vous à votre espace admin</p>
                 </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
+
+                <div class="login-error" id="login-error">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    Identifiant ou mot de passe incorrect.
                 </div>
-                <div class="form-group" style="display:flex;align-items:center;gap:8px;">
-                    <input type="checkbox" id="remember" name="remember" value="on" style="width:16px;height:16px;">
-                    <label for="remember" style="margin:0;font-size:0.8rem;">Remember me</label>
+
+                <form id="login-form" action="/admin/login" method="POST">
+                    <div class="form-group">
+                        <label class="form-label" for="username">Nom d'utilisateur</label>
+                        <input type="text" id="username" name="username" class="form-input" placeholder="admin" required autocomplete="username">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="password">Mot de passe</label>
+                        <input type="password" id="password" name="password" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+                    </div>
+
+                    <div class="form-row">
+                        <label class="remember-me">
+                            <input type="checkbox" id="remember" name="remember" value="on">
+                            <span>Se souvenir de moi</span>
+                        </label>
+                        <a href="#" class="forgot-link">Mot de passe oublié ?</a>
+                    </div>
+
+                    <button type="submit" class="btn-login">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                        Connexion
+                    </button>
+                </form>
+
+                <div class="login-footer">
+                    <p>ADALINA <span class="gold-dot">•</span> Administration</p>
                 </div>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-sign-in-alt"></i> Sign In
-                </button>
-            </form>
-            <script>
-                if (window.location.search.includes('error=1')) {
-                    document.getElementById('login-error').classList.add('show');
-                }
-            </script>
-            <div class="form-footer">
-                <a href="#">Forgot password?</a>
             </div>
         </div>
     </div>
+
+    <script>
+        if (window.location.search.includes('error=1')) {
+            document.getElementById('login-error').classList.add('show');
+        }
+    </script>
 </body>
 </html>

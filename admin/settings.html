@@ -158,10 +158,7 @@
         <button class="settings-tab active" data-tab="general"><i class="fas fa-store"></i> Général</button>
         <button class="settings-tab" data-tab="appearance"><i class="fas fa-palette"></i> Apparence</button>
         <button class="settings-tab" data-tab="social"><i class="fas fa-hashtag"></i> Réseaux sociaux</button>
-        <button class="settings-tab" data-tab="contact"><i class="fas fa-envelope"></i> Contact</button>
-        <button class="settings-tab" data-tab="seo"><i class="fas fa-search"></i> SEO</button>
         <button class="settings-tab" data-tab="delivery"><i class="fas fa-truck"></i> Livraison</button>
-        <button class="settings-tab" data-tab="system"><i class="fas fa-cog"></i> Système</button>
         </div>
 
         <div class="tab-pane" id="tab-general">
@@ -207,6 +204,22 @@
                                     <option>UTC-5 (EST)</option>
                                     <option>UTC-8 (PST)</option>
                                 </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Email de contact</label>
+                                <input type="text" class="form-control" data-setting="contact_email">
+                            </div>
+                            <div class="form-group">
+                                <label>Téléphone</label>
+                                <input type="text" class="form-control" data-setting="contact_phone">
+                            </div>
+                            <div class="form-group">
+                                <label>Titre du site</label>
+                                <input type="text" class="form-control" data-setting="site_title">
+                            </div>
+                            <div class="form-group">
+                                <label>Meta description</label>
+                                <textarea class="form-control" data-setting="meta_description" rows="3"></textarea>
                             </div>
                     </div>
                 </div>
@@ -456,48 +469,6 @@
                 </div>
             </div>
         </div>
-        <div class="tab-pane" id="tab-contact">
-            <div class="card settings-card">
-                <div class="card-header"><h2>Coordonnées</h2></div>
-                <div class="card-body">
-                    <div class="settings-grid">
-                            <div class="form-group">
-                                <label>Email de contact</label>
-                                <input type="text" class="form-control" data-setting="contact_email">
-                            </div>
-                            <div class="form-group">
-                                <label>Téléphone</label>
-                                <input type="text" class="form-control" data-setting="contact_phone">
-                            </div>
-                            <div class="form-group">
-                                <label>Google Maps URL</label>
-                                <input type="text" class="form-control" data-setting="google_maps_url">
-                            </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="tab-pane" id="tab-seo">
-            <div class="card settings-card">
-                <div class="card-header"><h2>Référencement</h2></div>
-                <div class="card-body">
-                    <div class="settings-grid">
-                            <div class="form-group">
-                                <label>Titre du site</label>
-                                <input type="text" class="form-control" data-setting="site_title">
-                            </div>
-                            <div class="form-group">
-                                <label>Meta description</label>
-                                <textarea class="form-control" data-setting="meta_description" rows="3"></textarea>
-                            </div>
-                            <div class="form-group">
-                                <label>Meta keywords</label>
-                                <input type="text" class="form-control" data-setting="meta_keywords">
-                            </div>
-                    </div>
-                </div>
-            </div>
-        </div>
         <div class="tab-pane" id="tab-delivery">
             <div class="card settings-card">
                 <div class="card-header"><h2>Prix par Wilaya</h2></div>
@@ -537,66 +508,6 @@
                             <div class="form-group">
                                 <label>Frais de livraison</label>
                                 <input type="number" class="form-control" data-setting="delivery_fee" step="0.01">
-                            </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="tab-pane" id="tab-system">
-            <div class="card settings-card">
-                <div class="card-header"><h2>Paramètres système</h2></div>
-                <div class="card-body">
-                    <div class="settings-grid">
-                            <div class="form-group toggle-row">
-                                <div class="toggle-label">
-                                    <strong>Mode maintenance</strong>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" data-setting="maintenance_mode">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                            <div class="form-group toggle-row">
-                                <div class="toggle-label">
-                                    <strong>Inscription ouverte</strong>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" data-setting="registration_enabled">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                            <div class="form-group toggle-row">
-                                <div class="toggle-label">
-                                    <strong>Commande invité</strong>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" data-setting="guest_checkout">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                            <div class="form-group toggle-row">
-                                <div class="toggle-label">
-                                    <strong>Notifications commandes</strong>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" data-setting="order_notifications">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                    </div>
-                </div>
-            </div>
-            <div class="card settings-card">
-                <div class="card-header"><h2>Langue</h2></div>
-                <div class="card-body">
-                    <div class="settings-grid">
-                            <div class="form-group">
-                                <label>Langue par défaut</label>
-                                <select class="form-control" data-setting="default_language">
-                                    <option>fr</option>
-                                    <option>en</option>
-                                    <option>ar</option>
-                                </select>
                             </div>
                     </div>
                 </div>
