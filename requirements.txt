@@ -1,1 +1,1 @@
-# ADALINA — no third-party dependencies (stdlib only)
+psycopg2-binary>=2.9

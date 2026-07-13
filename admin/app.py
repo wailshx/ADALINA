@@ -321,8 +321,8 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
             # Monthly stats for current year
             cur.execute("""
-                SELECT strftime('%m', created_at) AS month, COUNT(*) AS cnt, COALESCE(SUM(total),0) AS rev
-                FROM orders WHERE status='delivered' AND strftime('%Y', created_at) = strftime('%Y', 'now')
+                SELECT EXTRACT(MONTH FROM created_at) AS month, COUNT(*) AS cnt, COALESCE(SUM(total),0) AS rev
+                FROM orders WHERE status='delivered' AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW())
                 GROUP BY month ORDER BY month
             """)
             monthly_data = cur.fetchall()
@@ -366,11 +366,11 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             total_products = cur.fetchone()['cnt']
 
             cur.execute("""
-                SELECT strftime('%Y-%m', created_at) AS month,
+                SELECT TO_CHAR(created_at, 'YYYY-MM') AS month,
                        COUNT(*) AS orders,
                        COALESCE(SUM(total),0) AS revenue
                 FROM orders
-                WHERE created_at >= datetime('now', '-12 months')
+                WHERE created_at >= NOW() - INTERVAL '12 months'
                 GROUP BY month ORDER BY month
             """)
             monthly_sales = cur.fetchall()
@@ -431,11 +431,11 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             best_sellers_list = best_sellers_list[:10]
 
             cur.execute("""
-                SELECT date(created_at) AS day,
+                SELECT DATE(created_at) AS day,
                        COUNT(*) AS orders,
                        COALESCE(SUM(total),0) AS revenue
                 FROM orders
-                WHERE created_at >= date('now', '-30 days')
+                WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
                 GROUP BY day ORDER BY day
             """)
             daily_sales = cur.fetchall()
@@ -805,19 +805,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             return True
 
         if path == '/api/backup/download':
-            db_path = os.path.join(PARENT_DIR, 'store.db')
-            if not os.path.isfile(db_path):
-                send_json(self, {'error': 'Database not found'}, 404)
-                return True
-            ts = int(time.time())
-            backup_name = f"adalina_backup_{ts}.db"
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/octet-stream')
-            self.send_header('Content-Disposition', f'attachment; filename="{backup_name}"')
-            self.send_header('Content-Length', str(os.path.getsize(db_path)))
-            self.end_headers()
-            with open(db_path, 'rb') as f:
-                shutil.copyfileobj(f, self.wfile)
+            send_json(self, {'error': 'Backup via store.db is no longer available. Use pg_dump for PostgreSQL backups.'}, 400)
             return True
 
         return False
@@ -846,15 +834,15 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             # Calculate total stock from variants or fallback
             total_stock = data.get('stock', 0)
             cur.execute("""INSERT INTO products (name, description, price, sale_price, category_id, image, images, badge, sizes, colors, stock, brand, rating, featured, new_arrival, status, created_at)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,datetime('now'))""",
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
+                           RETURNING id""",
                         (data.get('name',''), data.get('description',''), data.get('price',0),
                          data.get('sale_price'), cat_id, data.get('image',''),
                          json.dumps(data.get('images',[])), data.get('badge'),
                          json.dumps(sizes), json.dumps(colors),
                          total_stock, data.get('brand',''), data.get('rating',0),
                          data.get('featured', 0), data.get('new_arrival', 0), status))
-            pid = cur.lastrowid
-            # Save old tables for backward compat
+            pid = cur.fetchone()['id']
             color_names = [c.get('name', c) if isinstance(c, dict) else c for c in colors] if colors else []
             size_names = [s.get('size', s) if isinstance(s, dict) else s for s in sizes] if sizes else []
             for s_name in size_names:
@@ -870,10 +858,11 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             if variants and isinstance(variants, list):
                 for idx, v in enumerate(variants):
                     cur.execute("""INSERT INTO product_variants (product_id, color_name, color_hex, sku, sort_order, stock)
-                                   VALUES (%s,%s,%s,%s,%s,0)""",
+                                   VALUES (%s,%s,%s,%s,%s,0)
+                                   RETURNING id""",
                                 (pid, v.get('color_name', ''), v.get('color_hex', ''),
                                  v.get('sku', ''), idx))
-                    vid = cur.lastrowid
+                    vid = cur.fetchone()['id']
                     # Insert variant images
                     for img_idx, img_path in enumerate(v.get('images', [])):
                         if img_path:
@@ -892,7 +881,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     cur.execute("SELECT COALESCE(SUM(stock), 0) FROM variant_sizes WHERE variant_id=%s", (vrow['id'],))
                     total_stock += cur.fetchone()['COALESCE(SUM(stock), 0)']
                 cur.execute("UPDATE products SET stock=%s WHERE id=%s", (total_stock, pid))
-            cur.execute("INSERT OR IGNORE INTO inventory (product_id, quantity) VALUES (%s, %s)", (pid, total_stock))
+            cur.execute("INSERT INTO inventory (product_id, quantity) VALUES (%s, %s) ON CONFLICT (product_id) DO NOTHING", (pid, total_stock))
             db.commit()
             send_json(self, {'id': pid, 'message': 'Product created'}, 201)
             return True
@@ -904,18 +893,19 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 return True
             slug = data.get('slug', '') or name.lower().replace(' ', '-')
             size_system = data.get('size_system', 'standard')
-            cur.execute("INSERT OR IGNORE INTO categories (name, slug, description, image, status, size_system) VALUES (%s,%s,%s,%s,%s,%s)",
+            cur.execute("INSERT INTO categories (name, slug, description, image, status, size_system) VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (name) DO NOTHING RETURNING id",
                         (name, slug, data.get('description',''), data.get('image',''), data.get('status','active'), size_system))
             db.commit()
-            send_json(self, {'id': cur.lastrowid, 'message': 'Category created'}, 201)
+            row_id = cur.fetchone()
+            send_json(self, {'id': row_id['id'] if row_id else None, 'message': 'Category created'}, 201)
             return True
 
         if path == '/api/collections':
-            cur.execute("INSERT INTO collections (name, description, image, status) VALUES (%s,%s,%s,%s)",
+            cur.execute("INSERT INTO collections (name, description, image, status) VALUES (%s,%s,%s,%s) RETURNING id",
                         (data.get('name',''), data.get('description',''), data.get('image',''), data.get('status','active')))
-            cid = cur.lastrowid
+            cid = cur.fetchone()['id']
             for pid in data.get('product_ids', []):
-                cur.execute("INSERT OR IGNORE INTO collection_products (collection_id, product_id) VALUES (%s,%s)", (cid, pid))
+                cur.execute("INSERT INTO collection_products (collection_id, product_id) VALUES (%s,%s) ON CONFLICT DO NOTHING", (cid, pid))
             db.commit()
             send_json(self, {'id': cid, 'message': 'Collection created'}, 201)
             return True
@@ -923,7 +913,8 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         if path == '/api/orders':
             items_json = json.dumps(data.get('items', []))
             cur.execute("""INSERT INTO orders (order_number, customer_id, customer_name, customer_phone, wilaya, commune, shipping_address, payment_method, status, total, items, delivery_fee)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                           RETURNING id""",
                         (data.get('order_number',''), data.get('customer_id'),
                          data.get('customer_name',''), data.get('customer_phone',''),
                          data.get('wilaya',''), data.get('commune',''),
@@ -931,7 +922,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                          data.get('payment_method',''),
                          data.get('status','pending'), data.get('total',0), items_json,
                          data.get('delivery_fee', 0)))
-            oid = cur.lastrowid
+            oid = cur.fetchone()['id']
             new_status = data.get('status', 'pending')
             if new_status in ('confirmed', 'processing'):
                 items = data.get('items', [])
@@ -952,10 +943,10 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             return True
 
         if path == '/api/customers':
-            cur.execute("INSERT INTO customers (name, email, status) VALUES (%s,%s,%s)",
+            cur.execute("INSERT INTO customers (name, email, status) VALUES (%s,%s,%s) RETURNING id",
                         (data.get('name',''), data.get('email',''), data.get('status','active')))
             db.commit()
-            send_json(self, {'id': cur.lastrowid, 'message': 'Customer created'}, 201)
+            send_json(self, {'id': cur.fetchone()['id'], 'message': 'Customer created'}, 201)
             return True
 
         if path.startswith('/api/inventory/') and path.endswith('/adjust'):
@@ -1078,7 +1069,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                                        VALUES (%s,%s,%s,%s,%s,0)""",
                                     (pid, v.get('color_name', ''), v.get('color_hex', ''),
                                      v.get('sku', ''), idx))
-                        vid = cur.lastrowid
+                        vid = cur.fetchone()['id']
                         for img_idx, img_path in enumerate(v.get('images', [])):
                             if img_path:
                                 cur.execute("INSERT INTO variant_images (variant_id, image_path, sort_order) VALUES (%s, %s, %s)",
@@ -1092,8 +1083,8 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     total_stock = 0
                     cur.execute("SELECT id FROM product_variants WHERE product_id=%s", (pid,))
                     for vrow in cur.fetchall():
-                        cur.execute("SELECT COALESCE(SUM(stock), 0) FROM variant_sizes WHERE variant_id=%s", (vrow['id'],))
-                        total_stock += cur.fetchone()['COALESCE(SUM(stock), 0)']
+                        cur.execute("SELECT COALESCE(SUM(stock), 0) AS total FROM variant_sizes WHERE variant_id=%s", (vrow['id'],))
+                        total_stock += cur.fetchone()['total']
                     cur.execute("UPDATE products SET stock=%s WHERE id=%s", (total_stock, pid))
                 else:
                     # Legacy format: simple color_name, size_name, stock
@@ -1122,7 +1113,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             cid = parts[-2]
             cur.execute("DELETE FROM collection_products WHERE collection_id=%s", (cid,))
             for pid in data.get('product_ids', []):
-                cur.execute("INSERT OR IGNORE INTO collection_products (collection_id, product_id) VALUES (%s,%s)", (cid, pid))
+                cur.execute("INSERT INTO collection_products (collection_id, product_id) VALUES (%s,%s) ON CONFLICT DO NOTHING", (cid, pid))
             db.commit()
             send_json(self, {'message': 'Products updated'})
             return True
@@ -1172,7 +1163,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
         if path.startswith('/api/notifications/read/'):
             oid = path.split('/')[-1]
-            cur.execute("UPDATE orders SET is_read=1 WHERE id=?", (oid,))
+            cur.execute("UPDATE orders SET is_read=1 WHERE id=%s", (oid,))
             db.commit()
             send_json(self, {'message': 'Notification marked as read'})
             return True

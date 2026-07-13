@@ -41,24 +41,6 @@ def init_database():
         from admin.database import init_db, seed_db
         init_db()
         seed_db()
-        # Add created_at column if missing
-        try:
-            db = get_db()
-            cur = db.cursor()
-            cur.execute("PRAGMA table_info(products)")
-            cols = [r['name'] for r in cur.fetchall()]
-            if 'created_at' not in cols:
-                cur.execute("ALTER TABLE products ADD COLUMN created_at TEXT")
-                # Backfill existing products based on id order
-                rows = cur.execute("SELECT id FROM products ORDER BY id").fetchall()
-                for i, r in enumerate(rows):
-                    days_ago = len(rows) - i
-                    cur.execute("UPDATE products SET created_at = datetime('now', '-' || ? || ' days') WHERE id = ?", (str(days_ago), r['id']))
-                db.commit()
-                print('✓ Added created_at column to products table')
-            db.close()
-        except Exception as e:
-            print(f'! created_at migration warning: {e}')
         print('✓ Database initialized and seeded')
     except Exception as e:
         print(f'! Database init warning: {e}')
@@ -88,7 +70,7 @@ def format_product(row, cur=None):
     if cur:
         cur.execute("""
             SELECT id, color_name, color_hex, sku, stock FROM product_variants
-            WHERE product_id=? ORDER BY sort_order, id
+            WHERE product_id=%s ORDER BY sort_order, id
         """, (p['id'],))
         variant_rows = cur.fetchall()
         if variant_rows:
@@ -99,9 +81,9 @@ def format_product(row, cur=None):
             merged_sizes = []
             for v in variant_rows:
                 vdict = {'id': v['id'], 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock']}
-                cur.execute("SELECT image_path FROM variant_images WHERE variant_id=? ORDER BY sort_order", (v['id'],))
+                cur.execute("SELECT image_path FROM variant_images WHERE variant_id=%s ORDER BY sort_order", (v['id'],))
                 vdict['images'] = [r['image_path'] for r in cur.fetchall()]
-                cur.execute("SELECT size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=? ORDER BY id", (v['id'],))
+                cur.execute("SELECT size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=%s ORDER BY id", (v['id'],))
                 vdict['sizes'] = [{'size': r['size_name'], 'stock': r['stock'], 'sku': r['sku']} for r in cur.fetchall()]
                 variants.append(vdict)
                 if v['color_name'] and v['color_name'] not in all_colors:
@@ -118,11 +100,11 @@ def format_product(row, cur=None):
             p['variants'] = variants
             p['images'] = list(images_seen) if images_seen else (p.get('images') or [])
         else:
-            cur.execute("SELECT color_name, color_hex, stock FROM product_colors WHERE product_id=? ORDER BY id", (p['id'],))
+            cur.execute("SELECT color_name, color_hex, stock FROM product_colors WHERE product_id=%s ORDER BY id", (p['id'],))
             p['colors'] = [dict(r) for r in cur.fetchall()]
-            cur.execute("SELECT size, stock FROM product_sizes WHERE product_id=? ORDER BY id", (p['id'],))
+            cur.execute("SELECT size, stock FROM product_sizes WHERE product_id=%s ORDER BY id", (p['id'],))
             p['sizes'] = [{'size': r['size'], 'stock': r['stock']} for r in cur.fetchall()]
-            cur.execute("SELECT color_name, size_name, stock FROM product_variants WHERE product_id=? ORDER BY id", (p['id'],))
+            cur.execute("SELECT color_name, size_name, stock FROM product_variants WHERE product_id=%s ORDER BY id", (p['id'],))
             p['variants'] = [dict(r) for r in cur.fetchall()]
     p['featured'] = bool(p.get('featured', 0))
     p['new_arrival'] = bool(p.get('new_arrival', 0))
@@ -180,10 +162,10 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 where = ["p.status='active'"]
                 params = []
                 if category:
-                    where.append("LOWER(c.name) = ?")
+                    where.append("LOWER(c.name) = %s")
                     params.append(category)
                 if search:
-                    where.append("(LOWER(p.name) LIKE ? OR LOWER(COALESCE(p.description, '')) LIKE ?)")
+                    where.append("(LOWER(p.name) LIKE %s OR LOWER(COALESCE(p.description, '')) LIKE %s)")
                     params.extend(['%' + search + '%', '%' + search + '%'])
                 if featured_only:
                     where.append("p.featured = 1")
@@ -212,7 +194,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         LEFT JOIN categories c ON p.category_id = c.id
                         WHERE """ + where_clause + """
                         ORDER BY """ + order_by + """
-                        LIMIT ? OFFSET ?
+                        LIMIT %s OFFSET %s
                     """, params + [limit, offset])
                     rows = cur.fetchall()
                     result = [format_product(r, cur) for r in rows]
@@ -470,7 +452,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
                 db = get_db()
                 cur = db.cursor()
-                cur.execute("BEGIN IMMEDIATE")
+                cur.execute("BEGIN")
 
                 order_number = 'MEMO-' + __import__('datetime').datetime.now().strftime('%Y%m%d-') + str(__import__('random').randint(1000, 9999))
                 commune = (data.get('commune') or '').strip()
@@ -526,9 +508,10 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 cur.execute("""
                     INSERT INTO orders (order_number, customer_id, customer_name, customer_phone, wilaya, commune, status, total, items, shipping_address, payment_method, delivery_fee)
                     VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
                 """, (order_number, customer_name, customer_phone, wilaya, commune, 'new', server_total, json.dumps(items), shipping_address, payment, delivery_fee))
 
-                oid = cur.lastrowid
+                oid = cur.fetchone()['id']
                 cur.execute("COMMIT")
                 db.commit()
                 send_json(self, {'id': oid, 'order_number': order_number, 'message': 'Order created'}, 201)
@@ -570,7 +553,7 @@ def main():
     print(f'Port: {PORT}')
     print(f'{"="*50}')
     print(f'✓ Access website: http://localhost:{PORT}/website/')
-    print(f'✓ Database: SQLite')
+    print(f'✓ Database: PostgreSQL (Supabase)')
     print(f'{"="*50}')
     print(f'Press Ctrl+C to stop the server.')
 
