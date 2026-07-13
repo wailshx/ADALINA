@@ -24,12 +24,22 @@ MAIN_ONLY_PREFIXES = (
     '/api/public/delivery-prices',
 )
 
+# POST routes that must go to the main server (customer-facing, no auth)
+MAIN_POST_PATHS = (
+    '/api/orders',
+)
 
-def route_to_backend(path):
-    """Return (host, port) for the given request path."""
+
+def route_to_backend(path, method='GET'):
+    """Return (host, port) for the given request path and HTTP method."""
     if path.startswith('/admin/'):
         return ('127.0.0.1', ADMIN_PORT)
     if path.startswith('/api/'):
+        # POST to customer-facing endpoints goes to the main server
+        if method == 'POST':
+            for mp in MAIN_POST_PATHS:
+                if path == mp:
+                    return ('127.0.0.1', MAIN_PORT)
         # These specific public routes are only on the main server
         for prefix in MAIN_ONLY_PREFIXES:
             if path.startswith(prefix):
@@ -42,7 +52,7 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
     """Forward requests to the appropriate backend server."""
 
     def _proxy(self):
-        backend_host, backend_port = route_to_backend(self.path)
+        backend_host, backend_port = route_to_backend(self.path, self.command)
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length) if content_length > 0 else None
