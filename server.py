@@ -35,6 +35,24 @@ except ImportError:
 
 logger = logging.getLogger('adalina')
 
+class _Cache:
+    def __init__(self):
+        self._store = {}
+    def get(self, key, ttl=60):
+        entry = self._store.get(key)
+        if entry and time.time() - entry[1] < ttl:
+            return entry[0]
+        return None
+    def set(self, key, value):
+        self._store[key] = (value, time.time())
+    def invalidate(self, prefix=''):
+        if not prefix:
+            self._store.clear()
+        else:
+            self._store = {k: v for k, v in self._store.items() if not k.startswith(prefix)}
+
+_cache = _Cache()
+
 
 def init_database():
     try:
@@ -226,6 +244,10 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
         # GET /api/public/products/featured — featured products
         if path == '/api/public/products/featured':
+            cached = _cache.get('featured', ttl=300)
+            if cached is not None:
+                send_json(self, cached)
+                return
             try:
                 db = get_db()
                 cur = db.cursor()
@@ -238,11 +260,12 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 """)
                 rows = cur.fetchall()
                 result = [format_product(r, cur) for r in rows]
+                _cache.set('featured', result)
                 send_json(self, result)
                 db.close()
             except Exception as e:
-                logger.exception("Error loading featured products")
-                send_json(self, {'error': 'Erreur serveur'}, 500)
+                print(f'[Server] Error loading featured: {e}', flush=True)
+                send_json(self, {'error': str(e)}, 500)
             return
 
         # GET /api/public/products/{id} — single product
@@ -271,6 +294,10 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
         # GET /api/public/categories
         if path == '/api/public/categories':
+            cached = _cache.get('categories', ttl=300)
+            if cached is not None:
+                send_json(self, cached)
+                return
             try:
                 db = get_db()
                 cur = db.cursor()
@@ -279,15 +306,21 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     FROM categories c ORDER BY c.id
                 """)
                 rows = cur.fetchall()
-                send_json(self, rows_to_list(rows))
+                result = rows_to_list(rows)
+                _cache.set('categories', result)
+                send_json(self, result)
                 db.close()
             except Exception as e:
-                logger.exception("Error loading categories")
-                send_json(self, {'error': 'Erreur serveur'}, 500)
+                print(f'[Server] Error loading categories: {e}', flush=True)
+                send_json(self, {'error': str(e)}, 500)
             return
 
         # GET /api/public/settings — public settings
         if path == '/api/public/settings':
+            cached = _cache.get('settings', ttl=300)
+            if cached is not None:
+                send_json(self, cached)
+                return
             try:
                 db = get_db()
                 cur = db.cursor()
@@ -304,6 +337,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         try: val = float(val)
                         except: pass
                     result[key] = val
+                _cache.set('settings', result)
                 send_json(self, result)
                 db.close()
             except Exception as e:
@@ -313,6 +347,10 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
         # GET /api/public/delivery-prices
         if path == '/api/public/delivery-prices':
+            cached = _cache.get('delivery', ttl=600)
+            if cached is not None:
+                send_json(self, cached)
+                return
             try:
                 db = get_db()
                 cur = db.cursor()
@@ -321,11 +359,12 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 result = {}
                 for r in rows:
                     result[str(r['wilaya_id'])] = r['price']
+                _cache.set('delivery', result)
                 send_json(self, result)
                 db.close()
             except Exception as e:
-                logger.exception("Error loading delivery prices")
-                send_json(self, {'error': 'Erreur serveur'}, 500)
+                print(f'[Server] Error loading delivery: {e}', flush=True)
+                send_json(self, {'error': str(e)}, 500)
             return
 
         # GET /api/public/collections
@@ -349,15 +388,24 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     c['products'] = [format_product(r, cur) for r in prods]
                     c['product_count'] = len(prods)
                     result.append(c)
+                _cache.set('collections', result)
                 send_json(self, result)
                 db.close()
             except Exception as e:
-                logger.exception("Error loading collections")
-                send_json(self, {'error': 'Erreur serveur'}, 500)
+                print(f'[Server] Error loading collections: {e}', flush=True)
+                send_json(self, {'error': str(e)}, 500)
             return
 
         # Products.json endpoint — served from DB
         if path == '/website/products.json':
+            cached = _cache.get('products_json', ttl=300)
+            if cached is not None:
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', CORS_ORIGIN)
+                self.end_headers()
+                self.wfile.write(json.dumps(cached, default=str, ensure_ascii=False).encode('utf-8'))
+                return
             try:
                 db = get_db()
                 cur = db.cursor()
@@ -369,6 +417,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 """)
                 rows = cur.fetchall()
                 products = [format_product(r, cur) for r in rows]
+                _cache.set('products_json', products)
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json; charset=utf-8')
                 self.send_header('Access-Control-Allow-Origin', CORS_ORIGIN)
@@ -376,10 +425,10 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps(products, default=str, ensure_ascii=False).encode('utf-8'))
                 db.close()
             except Exception as e:
-                logger.exception("Error loading products.json")
+                print(f'[Server] Error loading products.json: {e}', flush=True)
                 self.send_response(500)
                 self.end_headers()
-                self.wfile.write(b'Erreur serveur')
+                self.wfile.write(str(e).encode())
             return
 
         elif path == '/website/' or path == '/website':
@@ -514,6 +563,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 oid = cur.fetchone()['id']
                 cur.execute("COMMIT")
                 db.commit()
+                _cache.invalidate('products')
+                _cache.invalidate('featured')
                 send_json(self, {'id': oid, 'order_number': order_number, 'message': 'Order created'}, 201)
                 db.close()
             except Exception as e:

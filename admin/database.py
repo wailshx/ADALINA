@@ -86,8 +86,16 @@ def restore_order_stock(cur, product_id, color_name, size_name, quantity):
     log_stock_change(cur, product_id, quantity, before, f"Restock (cancel order, legacy, {size_name})")
     return (True, None)
 
+def _tables_exist(conn):
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='products'")
+    return cur.fetchone()[0] > 0
+
 def init_db():
     conn = get_db()
+    if _tables_exist(conn):
+        conn.close()
+        return
     cur = conn.cursor()
 
     cur.execute("""CREATE TABLE IF NOT EXISTS users (
@@ -288,6 +296,14 @@ def init_db():
 
 def seed_db():
     conn = get_db()
+    if _tables_exist(conn):
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) AS cnt FROM settings")
+        row = cur.fetchone()
+        if row['cnt'] > 0:
+            conn.close()
+            migrate_taille_stock()
+            return
     cur = conn.cursor()
 
     cur.execute("SELECT COUNT(*) AS cnt FROM users WHERE role='admin'")
@@ -345,12 +361,10 @@ def seed_db():
         ('default_language', 'fr', 'text', 'seo'),
     ]
     for key, val, typ, cat in settings_defaults:
-        cur.execute("SELECT id FROM settings WHERE setting_key=%s", (key,))
-        if cur.fetchone() is None:
-            cur.execute(
-                "INSERT INTO settings (setting_key, setting_value, setting_type, category) VALUES (%s, %s, %s, %s)",
-                (key, val, typ, cat)
-            )
+        cur.execute(
+            "INSERT INTO settings (setting_key, setting_value, setting_type, category) VALUES (%s, %s, %s, %s) ON CONFLICT (setting_key) DO NOTHING",
+            (key, val, typ, cat)
+        )
 
     conn.commit()
     conn.close()
