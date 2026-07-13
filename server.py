@@ -126,7 +126,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         super().send_response(code, message)
         path = getattr(self, 'path', '').lower()
         if any(path.endswith(ext) for ext in self.STATIC_EXTS):
-            self.send_header('Cache-Control', 'public, max-age=86400')
+            self.send_header('Cache-Control', 'no-cache, must-revalidate')
         elif any(path.endswith(ext) for ext in self.HTML_EXTS) or path in ('/', ''):
             self.send_header('Cache-Control', 'no-cache, must-revalidate')
 
