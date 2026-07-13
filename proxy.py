@@ -20,8 +20,8 @@ PROXY_PORT = int(os.environ.get('PORT', '8080'))
 
 # Paths that only the main server handles (admin server doesn't have these routes)
 MAIN_ONLY_PREFIXES = (
-    '/api/public/products/featured',
-    '/api/public/delivery-prices',
+    '/api/public/',
+    '/api/orders',
 )
 
 # POST routes that must go to the main server (customer-facing, no auth)
