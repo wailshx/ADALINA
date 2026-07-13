@@ -1781,6 +1781,7 @@ if __name__ == '__main__':
         print(f"[Admin] DB init warning: {e}")
     port = int(os.environ.get('PORT_ADMIN', '5000'))
     server = http.server.HTTPServer(('127.0.0.1', port), AdminHandler)
+    server.allow_reuse_address = True
     print(f"Admin Dashboard running at http://localhost:{port}")
     print(f"Admin dashboard ready — login at http://localhost:{port}")
     try:

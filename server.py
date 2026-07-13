@@ -538,6 +538,9 @@ class AdalinaServer(SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
         print(f'[Server] {format % args}')
 
+class AdalinaHTTPServer(HTTPServer):
+    allow_reuse_address = True
+
 def main():
     PORT = int(os.environ.get('PORT_MAIN', '3000'))
 
@@ -562,7 +565,7 @@ def main():
     print(f'{"="*50}')
     print(f'Press Ctrl+C to stop the server.')
 
-    server = HTTPServer(("", PORT), AdalinaServer)
+    server = AdalinaHTTPServer(("", PORT), AdalinaServer)
     try:
         print(f'✓ Server started and running on port {PORT}')
         server.serve_forever()
