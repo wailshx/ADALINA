@@ -11,11 +11,36 @@ import shutil
 import fcntl
 from functools import wraps
 
+try:
+    import cloudinary
+    import cloudinary.uploader
+    import cloudinary.api
+    _HAS_CLOUDINARY = True
+except ImportError:
+    _HAS_CLOUDINARY = False
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(BASE_DIR)
 SESSIONS_FILE = os.path.join(BASE_DIR, '.sessions.json')
 
 from database import get_db, init_db, seed_db, log_stock_change, deduct_order_stock, restore_order_stock, get_variant_stock
+
+CLOUDINARY_CLOUD = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
+CLOUDINARY_KEY = os.environ.get('CLOUDINARY_API_KEY', '')
+CLOUDINARY_SECRET = os.environ.get('CLOUDINARY_API_SECRET', '')
+CLOUDINARY_FOLDER = os.environ.get('CLOUDINARY_FOLDER', 'adalina')
+
+if _HAS_CLOUDINARY and CLOUDINARY_CLOUD and CLOUDINARY_KEY and CLOUDINARY_SECRET:
+    cloudinary.config(
+        cloud_name=CLOUDINARY_CLOUD,
+        api_key=CLOUDINARY_KEY,
+        api_secret=CLOUDINARY_SECRET
+    )
+    CLOUDINARY_ENABLED = True
+    print("[Cloudinary] Enabled — images will be stored in cloud")
+else:
+    CLOUDINARY_ENABLED = False
+    print("[Cloudinary] Disabled — images stored locally (will be lost on redeploy)")
 
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '')
@@ -1287,9 +1312,24 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             data = json.loads(body) if body else {}
             img_path = data.get('path', '')
             if img_path:
-                full_path = secure_path(PARENT_DIR, img_path)
-                if full_path and os.path.isfile(full_path):
-                    os.remove(full_path)
+                if CLOUDINARY_ENABLED and 'cloudinary.com' in img_path:
+                    try:
+                        parts_url = img_path.split('/')
+                        idx = None
+                        for i, p in enumerate(parts_url):
+                            if p == 'upload':
+                                idx = i + 1
+                                break
+                        if idx:
+                            public_id = '/'.join(parts_url[idx:])
+                            public_id = os.path.splitext(public_id)[0]
+                            cloudinary.uploader.destroy(public_id)
+                    except Exception as e:
+                        print(f"[Cloudinary] Delete error: {e}")
+                else:
+                    full_path = secure_path(PARENT_DIR, img_path)
+                    if full_path and os.path.isfile(full_path):
+                        os.remove(full_path)
             cur.execute("SELECT images FROM products WHERE id=%s", (pid,))
             row = cur.fetchone()
             images = json.loads(row['images']) if row and row['images'] else []
@@ -1353,9 +1393,6 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         MAX_SIZE = 10 * 1024 * 1024
         fields = multipart.get('fields', {})
         category = fields.get('type', 'products')
-        subdir = 'settings' if category == 'settings' else 'products'
-        upload_dir = os.path.join(PARENT_DIR, 'uploads', subdir)
-        os.makedirs(upload_dir, exist_ok=True)
         saved_paths = []
         for f in multipart.get('files', []):
             ext = os.path.splitext(f['filename'])[1].lower()
@@ -1363,15 +1400,27 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 continue
             if len(f['content']) > MAX_SIZE:
                 continue
-            ts = int(__import__('time').time() * 1000)
-            safe_base = re.sub(r'[^a-zA-Z0-9._-]', '_', os.path.basename(f['filename']))
-            safe_name = f"{ts}_{safe_base}"
-            dest = os.path.join(upload_dir, safe_name)
-            if os.path.isfile(dest):
-                continue
-            with open(dest, 'wb') as out:
-                out.write(f['content'])
-            saved_paths.append(f'uploads/{subdir}/{safe_name}')
+            if CLOUDINARY_ENABLED:
+                try:
+                    result = cloudinary.uploader.upload(
+                        f['content'],
+                        folder=f'{CLOUDINARY_FOLDER}/{category}',
+                        resource_type='image'
+                    )
+                    saved_paths.append(result['secure_url'])
+                except Exception as e:
+                    print(f"[Cloudinary] Upload error: {e}")
+            else:
+                subdir = 'settings' if category == 'settings' else 'products'
+                upload_dir = os.path.join(PARENT_DIR, 'uploads', subdir)
+                os.makedirs(upload_dir, exist_ok=True)
+                ts = int(__import__('time').time() * 1000)
+                safe_base = re.sub(r'[^a-zA-Z0-9._-]', '_', os.path.basename(f['filename']))
+                safe_name = f"{ts}_{safe_base}"
+                dest = os.path.join(upload_dir, safe_name)
+                with open(dest, 'wb') as out:
+                    out.write(f['content'])
+                saved_paths.append(f'uploads/{subdir}/{safe_name}')
         send_json(self, {'paths': saved_paths, 'count': len(saved_paths)})
 
     def do_GET(self):
