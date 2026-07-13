@@ -1219,8 +1219,10 @@ function goToSlide(n) {
 function toggleNav() {
     const nav = document.getElementById('nav-menu');
     const hamburger = document.getElementById('hamburger-btn');
+    const navRow = document.querySelector('.header-nav-row');
     if (nav) nav.classList.toggle('active');
     if (hamburger) hamburger.classList.toggle('active');
+    if (navRow) navRow.classList.toggle('nav-open');
 }
 
 function openTab(tabName) {

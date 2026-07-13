@@ -730,6 +730,7 @@ button {
     pointer-events: none;
     border-radius: 50%;
     color: var(--secondary);
+    -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
 }
 
@@ -864,6 +865,7 @@ button {
     cursor: pointer;
     transition: all var(--transition-smooth);
     min-width: 150px;
+    -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     border-radius: var(--radius-sm);
     transform: translateY(12px);
@@ -935,6 +937,7 @@ button {
     top: 14px;
     right: 14px;
     background: rgba(255,255,255,0.85);
+    -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     border: none;
     width: 38px;
@@ -1579,6 +1582,7 @@ button {
     height: 100%;
     background-color: rgba(0, 0, 0, 0.4);
     z-index: 1999;
+    -webkit-backdrop-filter: blur(2px);
     backdrop-filter: blur(2px);
 }
 
@@ -1625,6 +1629,7 @@ button {
     top: 50%;
     transform: translateY(-50%);
     background: rgba(255, 255, 255, 0.85);
+    -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px);
     border: none;
     width: 40px;
@@ -2042,6 +2047,7 @@ button {
     top: 50%;
     transform: translateY(-50%);
     background: rgba(255, 255, 255, 0.85);
+    -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px);
     border: none;
     width: 40px;
@@ -2895,7 +2901,7 @@ input[type="checkbox"] {
         display: flex;
     }
     
-    .header-nav-row:has(#nav-menu.active) {
+    .header-nav-row.nav-open {
         max-height: 300px;
         padding: 10px 20px;
         border-top: 0.5px solid var(--border);
