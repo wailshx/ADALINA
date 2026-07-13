@@ -532,6 +532,9 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         self.send_response(404)
         self.end_headers()
 
+    def do_HEAD(self):
+        self.do_GET()
+
     def log_message(self, format, *args):
         print(f'[Server] {format % args}')
 
@@ -543,14 +546,16 @@ def main():
     try:
         db = get_db()
         db.close()
+        db_ok = True
     except Exception as e:
-        print(f'ERROR: Cannot connect to database.')
-        print(f'Error: {e}')
-        return
+        print(f'WARNING: Cannot connect to database: {e}')
+        print('Server will start anyway — requests may fail until DB is reachable.')
+        db_ok = False
 
     print(f'\n{"="*50}')
     print(f'ADALINA WEBSITE SERVER')
     print(f'Port: {PORT}')
+    print(f'DB: {"OK" if db_ok else "UNREACHABLE"}')
     print(f'{"="*50}')
     print(f'✓ Access website: http://localhost:{PORT}/website/')
     print(f'✓ Database: PostgreSQL (Supabase)')

@@ -96,6 +96,9 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         self._proxy()
 
+    def do_HEAD(self):
+        self._proxy()
+
     def do_POST(self):
         self._proxy()
 

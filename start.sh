@@ -4,11 +4,10 @@
 # The hosting platform should run this as its start command.
 #
 # Both servers must run from the project root so that
-# config/database.py and admin/database.py resolve store.db correctly.
+# config/database.py and admin/database.py resolve imports correctly.
 #
 # Render sets PORT for the public-facing server. For local dev, PORT_MAIN works.
-# Render persistent disk: mount at DISK_MOUNT (default /data). start.sh symlinks
-# store.db into the project root so both servers find it on the persistent disk.
+# Database is PostgreSQL (Supabase) — no local store.db needed.
 
 set -euo pipefail
 
@@ -78,14 +77,17 @@ echo "[start.sh] Starting admin server (port $ADMIN_PORT)..."
 PORT_ADMIN="$ADMIN_PORT" python3 admin/app.py &
 ADMIN_PID=$!
 
-# Wait for backends to be ready (up to 10 seconds)
+# Wait for backends to be ready (up to 30 seconds)
 echo "[start.sh] Waiting for backends to bind..."
-for i in $(seq 1 20); do
+for i in $(seq 1 30); do
     if python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:$MAIN_PORT/')" 2>/dev/null; then
         echo "[start.sh] Main server ready"
         break
     fi
-    sleep 0.5
+    if [ "$i" -eq 30 ]; then
+        echo "[start.sh] Main server not ready after 30s, starting proxy anyway"
+    fi
+    sleep 1
 done
 
 echo "[start.sh] Starting reverse proxy (port $PROXY_PORT)..."

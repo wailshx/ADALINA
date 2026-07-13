@@ -1768,9 +1768,17 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
 
+    def do_HEAD(self):
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html')
+        self.end_headers()
+
 if __name__ == '__main__':
-    init_db()
-    seed_db()
+    try:
+        init_db()
+        seed_db()
+    except Exception as e:
+        print(f"[Admin] DB init warning: {e}")
     port = int(os.environ.get('PORT_ADMIN', '5000'))
     server = http.server.HTTPServer(('127.0.0.1', port), AdminHandler)
     print(f"Admin Dashboard running at http://localhost:{port}")
