@@ -1508,7 +1508,9 @@ function updateCheckoutSummary() {
     totalEl.textContent = formatPriceDA(total);
 }
 
-function placeOrder() {
+function placeOrder(e) {
+    if (e) e.preventDefault();
+    try {
     var name = document.getElementById('co-full-name').value.trim();
     var phone = document.getElementById('co-phone').value.trim();
     var wilayaSel = document.getElementById('co-wilaya');
@@ -1523,7 +1525,6 @@ function placeOrder() {
 
     var phoneInput = document.getElementById('co-phone');
     if (!validatePhone(phoneInput)) {
-        phoneInput.focus();
         return;
     }
 
@@ -1532,11 +1533,10 @@ function placeOrder() {
         return;
     }
 
-    /* build order */
     var orderItems = cart.map(function (item) {
         return { product_id: item.id, name: item.name, price: item.price, quantity: item.quantity, size: item.selectedSize || '', color: item.selectedColor || '' };
     });
-    var wilayaId = parseInt(wilayaSel.value);
+    var wilayaId = parseInt(wilayaSel.value) || 0;
     var deliveryFee = getDeliveryPrice(wilayaId);
     var subtotal = cart.reduce(function (sum, item) { return sum + item.price * item.quantity; }, 0);
     var total = subtotal + deliveryFee;
@@ -1565,7 +1565,6 @@ function placeOrder() {
         if (!res.ok) return res.json().then(function (errData) { throw new Error(errData.error || 'Erreur serveur'); });
         return res.json();
     }).then(function (data) {
-        // Show confirmation modal (use server-generated number or client fallback)
         var refNumber = data.order_number || orderNumber;
         document.getElementById('confirmation-order-number').textContent = '#' + refNumber;
         document.getElementById('conf-pb-subtotal').textContent = formatPriceDA(subtotal);
@@ -1574,7 +1573,6 @@ function placeOrder() {
         document.getElementById('conf-pb-total').textContent = formatPriceDA(total);
         document.getElementById('confirmation-details').textContent = 'Un conseiller vous contactera au ' + phone + ' pour confirmer la livraison à ' + shippingAddr + '.';
         document.getElementById('order-confirmation-modal').classList.add('active');
-        // Clear cart
         cart = [];
         localStorage.setItem('adalinaCart', JSON.stringify(cart));
         updateCartDisplay();
@@ -1584,6 +1582,10 @@ function placeOrder() {
         console.error('Order error:', err);
         alert(err.message || 'Erreur lors de la commande. Veuillez réessayer.');
     });
+    } catch (domErr) {
+        console.error('Order error:', domErr);
+        alert('Une erreur est survenue. Veuillez réessayer.');
+    }
 }
 
 /* ── Product Page ── */

@@ -99,7 +99,7 @@
                                 <label for="co-full-name" class="floating-label">Nom complet <span class="required-star">*</span></label>
                             </div>
                             <div class="floating-group">
-                                <input type="tel" id="co-phone" class="floating-input" inputmode="numeric" autocomplete="tel">
+                                <input type="text" id="co-phone" class="floating-input" inputmode="numeric" autocomplete="tel">
                                 <label for="co-phone" class="floating-label">Numéro de téléphone <span class="required-star">*</span></label>
                                 <span class="input-hint">Ex: 0555 12 34 56</span>
                                 <span class="input-error" id="co-phone-error"></span>
@@ -128,7 +128,7 @@
                             </div>
                         </div>
 
-                        <button class="checkout-submit" onclick="placeOrder()">
+                        <button class="checkout-submit" onclick="placeOrder(event)">
                             <span>Passer la commande</span>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                         </button>
