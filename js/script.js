@@ -69,7 +69,12 @@ function buildGroupedSizesHtml(availSizes, product, curColor, curSize, hasVarian
     var noStockInfo = (!curColor || !hasVariants);
 
     /* ── grouped_taille: sizes are already "Taille 1", "Taille 2", "Taille 3" ── */
-    if (sizeSystem === 'grouped_taille' && availSizes && availSizes.length > 0) {
+    var isGroupedTaille = sizeSystem === 'grouped_taille';
+    if (!isGroupedTaille && availSizes && availSizes.length > 0) {
+        var probe = typeof availSizes[0] === 'object' ? availSizes[0].size : availSizes[0];
+        if (probe && probe.indexOf('Taille') === 0) isGroupedTaille = true;
+    }
+    if (isGroupedTaille && availSizes && availSizes.length > 0) {
         var firstSize = typeof availSizes[0] === 'object' ? availSizes[0].size : availSizes[0];
         /* If sizes are already group names, render elegant Taille boxes */
         if (firstSize && firstSize.indexOf('Taille') === 0) {
@@ -185,7 +190,12 @@ function renderProductCard(product) {
     if (product.sizes && product.sizes.length > 0) {
         var available = product.sizes.filter(function(s) { return s.stock > 0; });
         if (available.length > 0) {
-            if (product.category_size_system === 'grouped_taille') {
+            var isGroupedTaille = product.category_size_system === 'grouped_taille';
+            if (!isGroupedTaille && available.length > 0) {
+                var firstName = typeof available[0] === 'object' ? available[0].size : available[0];
+                if (firstName && firstName.indexOf('Taille') === 0) isGroupedTaille = true;
+            }
+            if (isGroupedTaille) {
                 /* Show Taille group boxes on product card — compact single-line layout */
                 var tailleHtml = '<div class="product-sizes-grouped">' +
                     '<span class="product-sizes-label">Disponible</span>' +
