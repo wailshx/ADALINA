@@ -1414,7 +1414,7 @@ function updateSelectFloat(sel) {
 }
 
 function validatePhone(inp) {
-    if (!inp) return;
+    if (!inp) return false;
     var err = document.getElementById('co-phone-error');
     var val = inp.value.trim();
     if (!val) {
@@ -1422,9 +1422,11 @@ function validatePhone(inp) {
         inp.classList.add('error');
         return false;
     }
-    var cleaned = val.replace(/[\s\-\.]/g, '');
-    if (!/^(05|06|07|03)[0-9]{8}$/.test(cleaned)) {
-        if (err) err.textContent = 'Format invalide. Ex: 0555 12 34 56';
+    var cleaned = val.replace(/[\s\-\.\/]/g, '');
+    if (cleaned.startsWith('+213')) cleaned = cleaned.substring(4);
+    else if (cleaned.startsWith('213')) cleaned = cleaned.substring(3);
+    if (!/^[0-9]{9,10}$/.test(cleaned)) {
+        if (err) err.textContent = 'Numéro invalide. Ex: 0555 12 34 56';
         inp.classList.add('error');
         return false;
     }
