@@ -27,7 +27,7 @@ BUILD_VERSION = get_build_version()
 
 import sys
 sys.path.insert(0, str(BASE_DIR))
-from config.database import get_db
+from config.database import get_db, get_public_db
 try:
     from admin.database import deduct_order_stock
 except ImportError:
@@ -168,7 +168,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         # GET /api/public/products — list all products (with optional pagination + sort)
         if path == '/api/public/products':
             try:
-                db = get_db()
+                db = get_public_db()
                 cur = db.cursor()
                 page = int(query.get('page', ['1'])[0])
                 limit = int(query.get('limit', ['0'])[0])
@@ -249,7 +249,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, cached)
                 return
             try:
-                db = get_db()
+                db = get_public_db()
                 cur = db.cursor()
                 cur.execute("""
                     SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
@@ -272,7 +272,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         if path.startswith('/api/public/products/') and path != '/api/public/products' and path != '/api/public/products/featured':
             pid = path.split('/')[-1]
             try:
-                db = get_db()
+                db = get_public_db()
                 cur = db.cursor()
                 cur.execute("""
                     SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
@@ -299,7 +299,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, cached)
                 return
             try:
-                db = get_db()
+                db = get_public_db()
                 cur = db.cursor()
                 cur.execute("""
                     SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.status='active') AS product_count
@@ -322,7 +322,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, cached)
                 return
             try:
-                db = get_db()
+                db = get_public_db()
                 cur = db.cursor()
                 cur.execute("SELECT setting_key, setting_value, setting_type FROM settings")
                 rows = cur.fetchall()
@@ -352,7 +352,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, cached)
                 return
             try:
-                db = get_db()
+                db = get_public_db()
                 cur = db.cursor()
                 cur.execute("SELECT wilaya_id, price FROM delivery_prices ORDER BY wilaya_id")
                 rows = cur.fetchall()
@@ -370,7 +370,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         # GET /api/public/collections
         if path == '/api/public/collections':
             try:
-                db = get_db()
+                db = get_public_db()
                 cur = db.cursor()
                 cur.execute("SELECT * FROM collections WHERE status='active' ORDER BY id")
                 collections = cur.fetchall()
@@ -407,7 +407,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps(cached, default=str, ensure_ascii=False).encode('utf-8'))
                 return
             try:
-                db = get_db()
+                db = get_public_db()
                 cur = db.cursor()
                 cur.execute("""
                     SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
@@ -499,7 +499,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     send_json(self, {'error': 'Informations client requises (nom, téléphone, wilaya)'}, 400)
                     return
 
-                db = get_db()
+                db = get_public_db()
                 cur = db.cursor()
                 cur.execute("BEGIN")
 
@@ -600,7 +600,7 @@ def main():
     init_database()
 
     try:
-        db = get_db()
+        db = get_public_db()
         db.close()
         db_ok = True
     except Exception as e:
