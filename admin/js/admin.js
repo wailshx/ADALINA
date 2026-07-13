@@ -208,26 +208,9 @@ function timeAgo(dateStr) {
 let notifInterval = null;
 
 function initNotifications() {
-    const bellBtn = document.querySelector('.topbar-btn .fa-bell');
-    if (!bellBtn) return;
-    const btn = bellBtn.closest('.topbar-btn');
-    if (!btn || btn.querySelector('.notif-wrapper')) return;
-
-    const wrapper = document.createElement('span');
-    wrapper.className = 'notif-wrapper';
-    btn.parentNode.insertBefore(wrapper, btn);
-    wrapper.appendChild(btn);
-
-    const dropdown = document.createElement('div');
-    dropdown.className = 'notif-dropdown';
-    dropdown.id = 'notifDropdown';
-    dropdown.innerHTML =
-        '<div class="notif-header">' +
-            '<span>Notifications</span>' +
-            '<button id="markAllNotifRead">Tout marquer comme lu</button>' +
-        '</div>' +
-        '<div class="notif-list" id="notifList"><div class="notif-empty">Chargement...</div></div>';
-    wrapper.appendChild(dropdown);
+    var btn = document.getElementById('notif-btn');
+    var dropdown = document.getElementById('notif-dropdown');
+    if (!btn || !dropdown) return;
 
     btn.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -236,18 +219,32 @@ function initNotifications() {
     });
 
     document.addEventListener('click', function (e) {
-        if (!wrapper.contains(e.target)) dropdown.classList.remove('active');
+        if (!dropdown.contains(e.target) && !btn.contains(e.target)) dropdown.classList.remove('active');
     });
 
-    document.getElementById('markAllNotifRead').addEventListener('click', function (e) {
-        e.stopPropagation();
-        api('PUT', '/notifications/read-all').then(function () {
-            fetchNotifications();
+    var markAllBtn = dropdown.querySelector('#markAllNotifRead');
+    if (!markAllBtn) {
+        var header = document.createElement('div');
+        header.className = 'notif-header';
+        header.innerHTML = '<span>Notifications</span><button id="markAllNotifRead">Tout marquer comme lu</button>';
+        dropdown.appendChild(header);
+        markAllBtn = header.querySelector('#markAllNotifRead');
+    }
+    if (markAllBtn) {
+        markAllBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            api('PUT', '/notifications/read-all').then(function () { fetchNotifications(); });
         });
-    });
+    }
 
-    var badge = btn.querySelector('.badge');
-    if (badge) badge.style.display = 'none';
+    var list = dropdown.querySelector('#notifList');
+    if (!list) {
+        list = document.createElement('div');
+        list.className = 'notif-list';
+        list.id = 'notifList';
+        list.innerHTML = '<div class="notif-empty">Chargement...</div>';
+        dropdown.appendChild(list);
+    }
 
     if (notifInterval) clearInterval(notifInterval);
     notifInterval = setInterval(fetchNotifications, 30000);
@@ -258,7 +255,7 @@ async function fetchNotifications() {
     var res = await api('GET', '/notifications');
     if (!res) return;
     var list = document.getElementById('notifList');
-    var badge = document.querySelector('.topbar-btn .fa-bell').closest('.topbar-btn').querySelector('.badge');
+    var badge = document.getElementById('notif-badge');
     if (!list) return;
 
     if (badge) {
@@ -273,7 +270,7 @@ async function fetchNotifications() {
 
     list.innerHTML = res.notifications.map(function (n) {
         return '<div class="notif-item" data-id="' + n.id + '" data-order-id="' + (n.order_id || n.id) + '">' +
-            '<div class="notif-icon"><i class="fas fa-shopping-bag"></i></div>' +
+            '<div class="notif-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div>' +
             '<div class="notif-content">' +
                 '<div class="notif-title">Nouvelle commande ' + esc(n.order_number || '#' + n.id) + '</div>' +
                 '<div class="notif-desc">' + esc(n.customer_name || 'Client inconnu') + ' &middot; ' + Number(n.total || 0).toFixed(2) + ' DA</div>' +

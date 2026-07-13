@@ -1172,7 +1172,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
         if path.startswith('/api/notifications/read/'):
             oid = path.split('/')[-1]
-            cur.execute("UPDATE orders SET is_read=1 WHERE id=%s", (oid,))
+            cur.execute("UPDATE orders SET is_read=1 WHERE id=?", (oid,))
             db.commit()
             send_json(self, {'message': 'Notification marked as read'})
             return True
