@@ -220,7 +220,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
                 db.close()
             except Exception as e:
-                logger.exception("Error loading products")
+                print(f'[Server] Error loading products: {e}', flush=True)
                 send_json(self, {'error': 'Erreur lors du chargement des produits'}, 500)
             return
 
@@ -307,8 +307,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, result)
                 db.close()
             except Exception as e:
-                logger.exception("Error loading settings")
-                send_json(self, {'error': 'Erreur serveur'}, 500)
+                print(f'[Server] Error loading settings: {e}', flush=True)
+                send_json(self, {'error': str(e)}, 500)
             return
 
         # GET /api/public/delivery-prices
@@ -533,7 +533,9 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_HEAD(self):
-        self.do_GET()
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html')
+        self.end_headers()
 
     def log_message(self, format, *args):
         print(f'[Server] {format % args}')

@@ -28,6 +28,9 @@ class _ConnectionWrapper:
         return getattr(self._conn, name)
 
 def get_db():
-    conn = psycopg2.connect(DATABASE_URL, connect_timeout=10)
+    url = DATABASE_URL
+    if url.startswith('postgres://'):
+        url = url.replace('postgres://', 'postgresql://', 1)
+    conn = psycopg2.connect(url, connect_timeout=10)
     conn.autocommit = False
     return _ConnectionWrapper(conn)
