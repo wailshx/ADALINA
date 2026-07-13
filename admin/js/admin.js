@@ -568,121 +568,134 @@ function renderVariants() {
 
     try {
         if (!window.SIZE_GROUPS) {
-            container.innerHTML = '<div style="background:#fff5f5;border:1px solid #e53e3e;border-radius:6px;padding:14px 18px;color:#e53e3e;font-size:0.85rem;">' +
-                '<strong>Erreur :</strong> Le fichier sizes.js n\'a pas pu être chargé. Les groupes de tailles ne sont pas disponibles. Vérifiez la connexion réseau ou contactez le développeur.</div>';
+            container.innerHTML = '<div class="pm-card-section" style="background:#fff5f5;border:1px solid #e53e3e;border-radius:6px;padding:14px 18px;color:#e53e3e;font-size:0.85rem;">' +
+                '<strong>Erreur :</strong> Le fichier sizes.js n\'a pas pu être chargé. Vérifiez la connexion réseau.</div>';
             return;
         }
+
+        var sizeSystem = getCurrentCategorySizeSystem();
 
         if (productVariants.length === 0) {
-            container.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;padding:12px 0;">Aucune couleur ajoutée. Cliquez sur "Ajouter une couleur" pour commencer.</p>';
+            container.innerHTML = '<div class="pm-empty-variants"><i class="fas fa-palette"></i><p>Aucune couleur ajoutée.</p></div>';
+            _appendAddColorForm(container, sizeSystem);
             return;
         }
 
-        container.innerHTML = productVariants.map(function(v, i) {
+        var html = productVariants.map(function(v, i) {
+            /* ── Images section ── */
             var imagesHtml = (v.images || []).map(function(img, j) {
-                var leftBtn = j > 0 ? '<button type="button" class="pm-var-img-reorder" style="left:2px;" data-action="move-image" data-variant="' + i + '" data-image="' + j + '" data-dir="-1" title="Déplacer à gauche">&lsaquo;</button>' : '';
-                var rightBtn = j < v.images.length - 1 ? '<button type="button" class="pm-var-img-reorder" style="left:22px;" data-action="move-image" data-variant="' + i + '" data-image="' + j + '" data-dir="1" title="Déplacer à droite">&rsaquo;</button>' : '';
-                return '<div class="pm-var-img-wrap">' +
-                    '<img src="/' + esc(img) + '" onerror="this.src=\'https://placehold.co/64x64/e2e8f0/718096?text=?\';this.style.border=\'2px solid #f56565\'">' +
+                var leftBtn = j > 0 ? '<button type="button" class="pm-card-img-reorder pm-card-img-reorder-left" data-action="move-image" data-variant="' + i + '" data-image="' + j + '" data-dir="-1" title="Gauche">&lsaquo;</button>' : '';
+                var rightBtn = j < v.images.length - 1 ? '<button type="button" class="pm-card-img-reorder pm-card-img-reorder-right" data-action="move-image" data-variant="' + i + '" data-image="' + j + '" data-dir="1" title="Droite">&rsaquo;</button>' : '';
+                return '<div class="pm-card-img-thumb">' +
+                    '<img src="/' + esc(img) + '" loading="lazy" onerror="this.src=\'https://placehold.co/72x72/e2e8f0/718096?text=?\';this.style.border=\'2px solid #f56565\'">' +
                     leftBtn + rightBtn +
-                    '<button type="button" class="pm-var-img-del" data-action="remove-image" data-variant="' + i + '" data-image="' + j + '">&times;</button></div>';
+                    '<button type="button" class="pm-card-img-del" data-action="remove-image" data-variant="' + i + '" data-image="' + j + '">&times;</button></div>';
             }).join('');
-            imagesHtml += '<label class="pm-var-img-add"><input type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" data-action="upload-images" data-variant="' + i + '">+</label>';
+            imagesHtml += '<label class="pm-card-img-add" title="Ajouter des images"><input type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" data-action="upload-images" data-variant="' + i + '"><i class="fas fa-plus"></i></label>';
 
-            var sizeRows = (v.sizes || []).map(function(s, j) {
-                return '<tr>' +
-                    '<td>' + esc(s.size) + '</td>' +
-                    '<td><input type="number" min="0" value="' + (s.stock || 0) + '" data-action="size-stock" data-variant="' + i + '" data-size="' + j + '"></td>' +
-                    '<td><input type="text" value="' + esc(s.sku || '') + '" placeholder="SKU" data-action="size-sku" data-variant="' + i + '" data-size="' + j + '"></td>' +
-                    '<td><button type="button" class="pm-size-remove" data-action="remove-size" data-variant="' + i + '" data-size="' + j + '">&times;</button></td>' +
+            /* ── Size section (grouped_taille vs standard) ── */
+            var sizeHtml = '';
+            if (sizeSystem === 'grouped_taille') {
+                sizeHtml = '<div class="pm-taille-group-cards">';
+                (window.SIZE_GROUPS || []).forEach(function(g) {
+                    var hasGroup = v.sizes.some(function(s) { return s.size === g.label; });
+                    var groupSize = v.sizes.find(function(s) { return s.size === g.label; });
+                    var infoText = g.sizes.join(' \u00b7 ');
+                    var stockVal = groupSize ? (groupSize.stock || 0) : 0;
+                    var skuVal = groupSize ? (groupSize.sku || '') : '';
+                    var cardClass = 'pm-taille-group-card' + (hasGroup ? ' active' : '');
+                    sizeHtml += '<div class="' + cardClass + '">' +
+                        '<label class="pm-taille-group-check">' +
+                            '<input type="checkbox" data-action="taille-group" data-variant="' + i + '" data-group="' + g.label + '"' + (hasGroup ? ' checked' : '') + '>' +
+                            '<span class="pm-taille-group-name">' + g.label + '</span>' +
+                            '<span class="pm-taille-group-info">' + infoText + '</span>' +
+                        '</label>' +
+                        (hasGroup ? '<div class="pm-taille-group-body">' +
+                            '<label>Stock</label>' +
+                            '<input type="number" min="0" value="' + stockVal + '" data-action="group-stock" data-variant="' + i + '" data-group="' + g.label + '">' +
+                            '<label>SKU</label>' +
+                            '<input type="text" value="' + esc(skuVal) + '" data-action="group-sku" data-variant="' + i + '" data-group="' + g.label + '" placeholder="SKU">' +
+                        '</div>' : '') +
+                    '</div>';
+                });
+                sizeHtml += '</div>';
+            } else {
+                /* Standard sizes: chips + stock table */
+                var sizeRows = (v.sizes || []).map(function(s, j) {
+                    return '<tr>' +
+                        '<td>' + esc(s.size) + '</td>' +
+                        '<td><input type="number" min="0" value="' + (s.stock || 0) + '" data-action="size-stock" data-variant="' + i + '" data-size="' + j + '"></td>' +
+                        '<td><input type="text" value="' + esc(s.sku || '') + '" placeholder="SKU" data-action="size-sku" data-variant="' + i + '" data-size="' + j + '"></td>' +
+                        '<td><button type="button" class="pm-size-remove" data-action="remove-size" data-variant="' + i + '" data-size="' + j + '">&times;</button></td>' +
                     '</tr>';
-            }).join('');
-
-            var variantHtml =
-                '<div class="pm-variant-card">' +
-                    '<div class="pm-variant-header">' +
-                        '<div class="pm-variant-color-group">' +
-                            '<span class="color-dot" style="display:inline-block;width:16px;height:16px;border-radius:50%;background:' + (v.color_hex || '#ccc') + ';border:1px solid var(--border);flex-shrink:0;"></span>' +
-                            '<input type="text" value="' + esc(v.color_name) + '" data-action="variant-name" data-variant="' + i + '" placeholder="Nom de la couleur">' +
-                            '<input type="color" value="' + (v.color_hex || '#000000') + '" data-action="variant-hex" data-variant="' + i + '">' +
-                            '<span style="font-size:0.75rem;color:var(--text-muted);">SKU:</span>' +
-                            '<input type="text" class="pm-variant-sku-input" value="' + esc(v.sku || '') + '" data-action="variant-sku" data-variant="' + i + '" placeholder="SKU">' +
-                        '</div>' +
-                        '<button type="button" class="pm-variant-remove" data-action="remove-variant" data-variant="' + i + '">Supprimer</button>' +
-                    '</div>' +
-                    '<div style="margin-bottom:12px;">' +
-                        '<div class="pm-variant-section-label">Images</div>' +
-                        '<div class="pm-variant-images">' + imagesHtml + '</div>' +
-                    '</div>' +
-                    /* ── Taille Groups or Standard Sizes (based on category size_system) ── */
-                    (function() {
-                        var sizeSystem = getCurrentCategorySizeSystem();
-                        if (sizeSystem === 'grouped_taille') {
-                            return '<div class="pm-variant-taille-groups" style="margin-bottom:12px;">' +
-                                '<div class="pm-variant-section-label">Groupes de Tailles</div>' +
-                                (window.SIZE_GROUPS || []).map(function(g) {
-                                    var hasGroup = v.sizes.some(function(s) { return s.size === g.label; });
-                                    var groupSize = v.sizes.find(function(s) { return s.size === g.label; });
-                                    var infoText = g.sizes.join(' · ');
-                                    var stockVal = groupSize ? (groupSize.stock || 0) : 0;
-                                    var skuVal = groupSize ? (groupSize.sku || '') : '';
-                                    return '<div class="pm-taille-group-card" style="border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:8px;background:' + (hasGroup ? 'var(--cream, #faf9f6)' : 'var(--bg, #fff)') + ';">' +
-                                        '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">' +
-                                            '<input type="checkbox" data-action="taille-group" data-variant="' + i + '" data-group="' + g.label + '"' + (hasGroup ? ' checked' : '') + '>' +
-                                            '<span>' + g.label + '</span>' +
-                                            '<span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;margin-left:auto;">' + infoText + '</span>' +
-                                        '</label>' +
-                                        (hasGroup ? '<div style="display:flex;gap:12px;margin-top:8px;align-items:center;">' +
-                                            '<label style="font-size:0.75rem;color:var(--text-muted);">Stock:</label>' +
-                                            '<input type="number" min="0" value="' + stockVal + '" data-action="group-stock" data-variant="' + i + '" data-group="' + g.label + '" style="width:80px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:0.8rem;">' +
-                                            '<label style="font-size:0.75rem;color:var(--text-muted);">SKU:</label>' +
-                                            '<input type="text" value="' + esc(skuVal) + '" data-action="group-sku" data-variant="' + i + '" data-group="' + g.label + '" placeholder="SKU" style="width:120px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:0.8rem;">' +
-                                        '</div>' : '') +
-                                    '</div>';
-                                }).join('') +
-                            '</div>';
-                        } else {
-                            return '<div class="pm-variant-taille-groups" style="margin-bottom:12px;">' +
-                                '<div class="pm-variant-section-label">Tailles</div>' +
-                                '<div class="pm-taille-sizes" style="display:flex;flex-wrap:wrap;gap:6px;">' +
-                                (window.STANDARD_SIZES || []).map(function(sizeName) {
-                                    var active = variantHasSize(i, sizeName);
-                                    return '<label class="pm-taille-size-chip' + (active ? ' active' : '') + '">' +
-                                        '<input type="checkbox" data-action="standard-size" data-variant="' + i + '" data-size-name="' + sizeName + '"' + (active ? ' checked' : '') + '>' +
-                                        '<span>' + sizeName + '</span>' +
-                                    '</label>';
-                                }).join('') +
-                                '</div>' +
-                            '</div>';
-                        }
-                    })() +
-                    /* ── Size Stock Table (only for standard) ── */
-                    getCurrentCategorySizeSystem() === 'grouped_taille' ? '' :
-                    '<div>' +
-                        '<div class="pm-variant-section-label">Tailles et stock</div>' +
-                        '<div style="overflow-x:auto;">' +
-                            '<table class="pm-size-table">' +
-                                '<thead><tr><th>Taille</th><th>Stock</th><th>SKU</th><th style="width:30px;"></th></tr></thead>' +
-                                '<tbody>' + (sizeRows || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:12px;font-size:0.8rem;">Aucune taille ajoutée</td></tr>') + '</tbody>' +
-                            '</table>' +
-                        '</div>' +
-                        '<div class="pm-add-size-row">' +
-                            '<input type="text" placeholder="Taille" data-action="new-size-name" data-variant="' + i + '">' +
-                            '<input type="number" min="0" value="0" placeholder="Stock" data-action="new-size-stock" data-variant="' + i + '">' +
-                            '<input type="text" placeholder="SKU" data-action="new-size-sku" data-variant="' + i + '">' +
-                            '<button type="button" class="btn btn-outline btn-sm" data-action="add-size" data-variant="' + i + '">+ Ajouter</button>' +
-                        '</div>' +
-                    '</div>' +
+                }).join('');
+                sizeHtml = '<div class="pm-taille-sizes" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">' +
+                    (window.STANDARD_SIZES || []).map(function(sizeName) {
+                        var active = variantHasSize(i, sizeName);
+                        return '<label class="pm-taille-size-chip' + (active ? ' active' : '') + '">' +
+                            '<input type="checkbox" data-action="standard-size" data-variant="' + i + '" data-size-name="' + sizeName + '"' + (active ? ' checked' : '') + '>' +
+                            '<span>' + sizeName + '</span>' +
+                        '</label>';
+                    }).join('') +
+                '</div>' +
+                '<div style="overflow-x:auto;">' +
+                    '<table class="pm-size-table">' +
+                        '<thead><tr><th>Taille</th><th>Stock</th><th>SKU</th><th style="width:30px;"></th></tr></thead>' +
+                        '<tbody>' + (sizeRows || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:12px;font-size:0.8rem;">Aucune taille sélectionnée</td></tr>') + '</tbody>' +
+                    '</table>' +
+                '</div>' +
+                '<div class="pm-add-size-row">' +
+                    '<input type="text" placeholder="Taille" data-action="new-size-name" data-variant="' + i + '">' +
+                    '<input type="number" min="0" value="0" placeholder="Stock" data-action="new-size-stock" data-variant="' + i + '">' +
+                    '<input type="text" placeholder="SKU" data-action="new-size-sku" data-variant="' + i + '">' +
+                    '<button type="button" class="btn btn-outline btn-sm" data-action="add-size" data-variant="' + i + '">+ Ajouter</button>' +
                 '</div>';
+            }
 
-            return variantHtml;
+            /* ── Assemble full card ── */
+            return '<div class="pm-variant-card">' +
+                /* Header: color dot + name + SKU + remove */
+                '<div class="pm-card-header">' +
+                    '<div class="pm-card-color-swatch" style="background:' + (v.color_hex || '#ccc') + ';">' +
+                        '<input type="color" value="' + (v.color_hex || '#000000') + '" data-action="variant-hex" data-variant="' + i + '">' +
+                    '</div>' +
+                    '<input type="text" class="pm-card-name-input" value="' + esc(v.color_name) + '" data-action="variant-name" data-variant="' + i + '" placeholder="Nom de la couleur">' +
+                    '<span class="pm-card-sku-label">SKU</span>' +
+                    '<input type="text" class="pm-card-sku-input" value="' + esc(v.sku || '') + '" data-action="variant-sku" data-variant="' + i + '" placeholder="SKU couleur">' +
+                    '<button type="button" class="pm-card-remove-btn" data-action="remove-variant" data-variant="' + i + '"><i class="fas fa-trash-alt"></i> Supprimer</button>' +
+                '</div>' +
+                /* Section: Images */
+                '<div class="pm-card-section">' +
+                    '<div class="pm-card-section-title"><i class="fas fa-image"></i> Images</div>' +
+                    '<div class="pm-card-images">' + imagesHtml + '</div>' +
+                '</div>' +
+                /* Section: Sizes */
+                '<div class="pm-card-section">' +
+                    '<div class="pm-card-section-title"><i class="fas fa-ruler-vertical"></i> ' + (sizeSystem === 'grouped_taille' ? 'Groupes de tailles' : 'Tailles') + '</div>' +
+                    sizeHtml +
+                '</div>' +
+            '</div>';
         }).join('');
+
+        container.innerHTML = html;
+        _appendAddColorForm(container, sizeSystem);
     } catch (err) {
-        container.innerHTML = '<div style="background:#fff5f5;border:1px solid #e53e3e;border-radius:6px;padding:14px 18px;color:#e53e3e;font-size:0.85rem;">' +
-            '<strong>Erreur lors du rendu des variantes :</strong> ' + esc(String(err.message || err)) +
+        container.innerHTML = '<div class="pm-card-section" style="background:#fff5f5;border:1px solid #e53e3e;border-radius:6px;padding:14px 18px;color:#e53e3e;font-size:0.85rem;">' +
+            '<strong>Erreur lors du rendu :</strong> ' + esc(String(err.message || err)) +
             '<br><small>Rechargez la page ou contactez le développeur.</small></div>';
         console.error('[variants] renderVariants failed:', err);
     }
+}
+
+/* ── Append the inline "add color" form after all variant cards ── */
+function _appendAddColorForm(container, sizeSystem) {
+    var form = document.createElement('div');
+    form.className = 'pm-add-color-form';
+    form.innerHTML = '<i class="fas fa-palette" style="color:var(--text-muted);font-size:1.1rem;"></i>' +
+        '<input type="text" class="pm-add-color-name" placeholder="Nom de la couleur (ex. Noir, Blanc, Rose)">' +
+        '<input type="color" class="pm-add-color-hex" value="#cccccc">' +
+        '<button type="button" class="btn btn-primary btn-sm" data-action="add-color-submit"><i class="fas fa-plus"></i> Ajouter</button>';
+    container.appendChild(form);
 }
 
 /* ── Event Delegation: single listener on #variants-container ── */
@@ -705,11 +718,11 @@ function _handleVariantAction(action, el) {
         case 'variant-hex':
             if (v) {
                 v.color_hex = el.value;
-                /* Update the color dot preview without full re-render */
+                /* Update the color swatch preview without full re-render */
                 var card = el.closest('.pm-variant-card');
                 if (card) {
-                    var dot = card.querySelector('.color-dot');
-                    if (dot) dot.style.background = el.value;
+                    var swatch = card.querySelector('.pm-card-color-swatch');
+                    if (swatch) swatch.style.background = el.value;
                 }
             }
             break;
@@ -831,7 +844,15 @@ function _setupVariantDelegation() {
         var el = e.target.closest('[data-action]');
         if (!el) return;
         var action = el.getAttribute('data-action');
-        if (action === 'add-size' || action === 'remove-variant' || action === 'remove-image' || action === 'move-image' || action === 'remove-size' || action === 'taille-group' || action === 'taille-size' || action === 'standard-size') {
+
+        if (action === 'add-color-submit') {
+            e.preventDefault();
+            _handleInlineAddColor(container);
+            return;
+        }
+
+        var clickActions = ['add-size', 'remove-variant', 'remove-image', 'move-image', 'remove-size'];
+        if (clickActions.indexOf(action) !== -1) {
             e.preventDefault();
             _handleVariantAction(action, el);
         }
@@ -843,16 +864,63 @@ function _setupVariantDelegation() {
         var action = el.getAttribute('data-action');
         _handleVariantChange(action, el);
     });
+
+    container.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            var el = e.target.closest('.pm-add-color-form');
+            if (el) {
+                e.preventDefault();
+                _handleInlineAddColor(container);
+            }
+        }
+    });
 }
 
-function addVariant() {
-    var name = prompt('Nom de la couleur (ex. Noir, Blanc, Rouge) :');
-    if (!name || !name.trim()) return;
-    name = name.trim();
-    productVariants.push({ color_name: name, color_hex: '#cccccc', sku: '', images: [], sizes: [] });
+/* ── Inline add-color form handler ── */
+function _handleInlineAddColor(container) {
+    var form = container.querySelector('.pm-add-color-form');
+    if (!form) return;
+    var nameInput = form.querySelector('.pm-add-color-name');
+    var hexInput = form.querySelector('.pm-add-color-hex');
+    var name = (nameInput ? nameInput.value : '').trim();
+    if (!name) { if (nameInput) nameInput.focus(); return; }
+    var hex = hexInput ? hexInput.value : '#cccccc';
+    productVariants.push({ color_name: name, color_hex: hex, sku: '', images: [], sizes: [] });
     renderVariants();
+    /* Focus the new card's name input */
+    var newCards = container.querySelectorAll('.pm-variant-card');
+    var lastCard = newCards[newCards.length - 1];
+    if (lastCard) {
+        var nameField = lastCard.querySelector('.pm-card-name-input');
+        if (nameField) nameField.focus();
+        lastCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    _showPmToast('Couleur "' + name + '" ajout\u00e9e', 'success');
+}
+
+/* ── Legacy addVariant (kept for backward compat, but now unused) ── */
+function addVariant() {
+    /* The inline form in renderVariants() handles this now */
     var container = document.getElementById('variants-container');
-    if (container) container.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (container) {
+        var form = container.querySelector('.pm-add-color-name');
+        if (form) form.focus();
+    }
+}
+
+/* ── PM Toast notification ── */
+function _showPmToast(msg, type) {
+    var existing = document.querySelector('.pm-toast');
+    if (existing) existing.remove();
+    var t = document.createElement('div');
+    t.className = 'pm-toast ' + (type || '');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(function() { t.classList.add('show'); });
+    setTimeout(function() {
+        t.classList.remove('show');
+        setTimeout(function() { t.remove(); }, 400);
+    }, 2500);
 }
 
 function _handleAddSize(varIdx) {
@@ -933,38 +1001,8 @@ window.updateVariantSizeStock = function(varIdx, sizeIdx, val) { var v = product
 window.updateVariantSizeSku = function(varIdx, sizeIdx, val) { var v = productVariants[varIdx]; if (v && v.sizes[sizeIdx]) v.sizes[sizeIdx].sku = val || ''; };
 window.removeVariantImage = function(varIdx, imgIdx) { var v = productVariants[varIdx]; if (v) { v.images.splice(imgIdx, 1); renderVariants(); } };
 window.moveVariantImage = function(varIdx, imgIdx, dir) { var v = productVariants[varIdx]; if (!v) return; var ni = imgIdx + dir; if (ni >= 0 && ni < v.images.length) { var t = v.images[imgIdx]; v.images[imgIdx] = v.images[ni]; v.images[ni] = t; renderVariants(); } };
-window.toggleVariantTailleGroup = function(varIdx, groupLabel, checked) { _handleTailleGroup(varIdx, groupLabel, checked); };
-window.toggleVariantTailleSize = function(varIdx, sizeName, checked) { _handleTailleSize(varIdx, sizeName, checked); };
 
 /* ── Taille Group Helpers ── */
-
-
-
-function variantHasGroupSizes(varIdx, groupLabel) {
-    var v = productVariants[varIdx];
-    if (!v || !window.SIZE_GROUPS) return false;
-    var group = null;
-    for (var i = 0; i < window.SIZE_GROUPS.length; i++) {
-        if (window.SIZE_GROUPS[i].label === groupLabel) { group = window.SIZE_GROUPS[i]; break; }
-    }
-    if (!group) return false;
-    for (var j = 0; j < v.sizes.length; j++) {
-        var num = parseInt(v.sizes[j].size, 10);
-        if (group.sizes.indexOf(num) !== -1) return true;
-    }
-    return false;
-}
-
-function groupIsExpanded(v, groupLabel) {
-    if (!v || !window.SIZE_GROUPS) return false;
-    v._groupState = v._groupState || {};
-    var key = groupLabel;
-    if (key in v._groupState) return v._groupState[key];
-    // Default: expand if this group label is present in sizes
-    var expanded = v.sizes.some(function(s) { return s.size === groupLabel; });
-    v._groupState[key] = expanded;
-    return expanded;
-}
 
 function variantHasSize(varIdx, sizeName) {
     var v = productVariants[varIdx];
@@ -975,14 +1013,6 @@ function variantHasSize(varIdx, sizeName) {
     }
     return false;
 }
-
-window.toggleVariantTailleGroup = function(varIdx, groupLabel, checked) {
-    _handleTailleGroup(varIdx, groupLabel, checked);
-};
-
-window.toggleVariantTailleSize = function(varIdx, sizeName, checked) {
-    // No-op: individual sizes are not tracked for grouped_taille products
-};
 
 function collectVariantsForSubmit() {
     return productVariants.map(function(v) {
@@ -1144,12 +1174,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Setup event delegation for variant actions
     _setupVariantDelegation();
-
-    // Add variant button
-    var addVarBtn = document.getElementById('add-variant-btn');
-    if (addVarBtn) {
-        addVarBtn.addEventListener('click', addVariant);
-    }
 
     // Reset form on modal close
     var productModal = document.getElementById('product-modal');
