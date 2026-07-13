@@ -315,72 +315,70 @@ function tailleGroupForSize(size) {
 function buildInvoiceHTML(order) {
     var s = window.__adminSettings || {};
     var storeName = s.store_name || 'ADALINA';
-    var logo = s.logo_header || '../images/logo.svg';
     var items = [];
     try { items = order.items || JSON.parse(order.items || '[]'); } catch (e) { items = []; }
 
     var itemsHTML = items.map(function (item) {
         var name = item.name || item.product_name || 'Produit #' + (item.product_id || '');
-        var color = item.color || item.selectedColor || '—';
-        var size = item.size || item.selectedSize || '—';
-        var tg = tailleGroupForSize(size);
-        var sizeDisplay = size + (tg ? ' (' + tg + ')' : '');
+        var size = item.size || item.selectedSize || '';
         var qty = item.quantity || item.qty || 1;
         var price = Number(item.price || 0);
         var sub = price * qty;
-        return '<tr>' +
-            '<td>' + esc(name) + '</td>' +
-            '<td>' + esc(color) + '</td>' +
-            '<td>' + esc(sizeDisplay) + '</td>' +
-            '<td style="text-align:center;">' + qty + '</td>' +
-            '<td style="text-align:right;">' + formatPriceDA(price) + '</td>' +
-            '<td style="text-align:right;">' + formatPriceDA(sub) + '</td>' +
-            '</tr>';
+        return '<div class="rc-item">' +
+            '<div class="rc-item-top">' +
+                '<span class="rc-item-name">' + esc(name) + '</span>' +
+                '<span class="rc-item-sub">' + formatPriceDA(sub) + '</span>' +
+            '</div>' +
+            '<div class="rc-item-bot">' +
+                '<span>' + (size ? esc(size) : '') + ' × ' + qty + '</span>' +
+                '<span>' + formatPriceDA(price) + '</span>' +
+            '</div>' +
+        '</div>';
     }).join('');
 
     var dateStr = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-DZ', {
-        day: 'numeric', month: 'long', year: 'numeric'
+        day: '2-digit', month: '2-digit', year: 'numeric'
     }) : '—';
+    var timeStr = order.created_at ? new Date(order.created_at).toLocaleTimeString('fr-DZ', {
+        hour: '2-digit', minute: '2-digit'
+    }) : '';
 
-    return '<div class="invoice">' +
-        '<div class="invoice-header">' +
-            '<img src="' + esc(logo) + '" alt="Logo" class="invoice-logo" onerror="this.style.display=\'none\'">' +
-            '<div>' +
-                '<h1>' + esc(storeName) + '</h1>' +
-                '<p class="invoice-title">FACTURE</p>' +
-            '</div>' +
+    var shippingFee = Number(order.delivery_fee || 0);
+    var subtotal = items.reduce(function (sum, item) {
+        return sum + (Number(item.price || 0) * (item.quantity || item.qty || 1));
+    }, 0);
+
+    return '<div class="rc-receipt">' +
+        '<div class="rc-header">' +
+            '<div class="rc-store">' + esc(storeName) + '</div>' +
+            '<div class="rc-date">' + dateStr + ' ' + timeStr + '</div>' +
         '</div>' +
-        '<div class="invoice-meta">' +
-            '<div>' +
-                '<strong>Commande :</strong> ' + esc(order.order_number || '#' + order.id) + '<br>' +
-                '<strong>Date :</strong> ' + dateStr + '<br>' +
-                '<strong>Statut :</strong> ' + esc(order.status || '') + '<br>' +
-                '<strong>Paiement :</strong> ' + esc(order.payment_method || '—') +
-            '</div>' +
-            '<div>' +
-                '<strong>Client :</strong> ' + esc(order.customer_name || '—') + '<br>' +
-                '<strong>Téléphone :</strong> ' + esc(order.customer_phone || '—') + '<br>' +
-                '<strong>Wilaya :</strong> ' + esc(order.wilaya || '—') + '<br>' +
-                '<strong>Commune :</strong> ' + esc(order.commune || '—') +
-            '</div>' +
+        '<div class="rc-divider">================================</div>' +
+        '<div class="rc-info">' +
+            '<span>Commande</span><span>' + esc(order.order_number || '#' + order.id) + '</span>' +
         '</div>' +
-        '<table class="invoice-items">' +
-            '<thead><tr>' +
-                '<th>Produit</th>' +
-                '<th>Couleur</th>' +
-                '<th>Taille</th>' +
-                '<th style="text-align:center;">Qté</th>' +
-                '<th style="text-align:right;">Prix unit.</th>' +
-                '<th style="text-align:right;">Total</th>' +
-            '</tr></thead>' +
-            '<tbody>' + itemsHTML + '</tbody>' +
-        '</table>' +
-        '<div class="invoice-total">' +
-            '<strong>Total :</strong> ' + formatPriceDA(order.total) +
+        '<div class="rc-info">' +
+            '<span>Client</span><span>' + esc(order.customer_name || '—') + '</span>' +
         '</div>' +
-        '<div class="invoice-footer">' +
-            '<p>Merci de votre confiance !</p>' +
+        '<div class="rc-info">' +
+            '<span>Tel</span><span>' + esc(order.customer_phone || '—') + '</span>' +
         '</div>' +
+        '<div class="rc-info">' +
+            '<span>Adresse</span><span>' + esc((order.commune || '') + (order.wilaya ? ', ' + order.wilaya : '')) + '</span>' +
+        '</div>' +
+        '<div class="rc-info">' +
+            '<span>Paiement</span><span>' + esc(order.payment_method || '—') + '</span>' +
+        '</div>' +
+        '<div class="rc-divider">--------------------------------</div>' +
+        '<div class="rc-col-head"><span>Article</span><span>Total</span></div>' +
+        itemsHTML +
+        '<div class="rc-divider">--------------------------------</div>' +
+        '<div class="rc-info rc-bold"><span>Sous-total</span><span>' + formatPriceDA(subtotal) + '</span></div>' +
+        (shippingFee > 0 ? '<div class="rc-info"><span>Livraison</span><span>' + formatPriceDA(shippingFee) + '</span></div>' : '') +
+        '<div class="rc-divider">================================</div>' +
+        '<div class="rc-info rc-total"><span>TOTAL</span><span>' + formatPriceDA(order.total) + '</span></div>' +
+        '<div class="rc-divider">================================</div>' +
+        '<div class="rc-footer">Merci et a bientot !</div>' +
     '</div>';
 }
 

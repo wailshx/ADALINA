@@ -91,7 +91,7 @@ function buildGroupedSizesHtml(availSizes, product, curColor, curSize, hasVarian
                 var selected = (typeof sizeEntry === 'object' ? sizeEntry.size : sizeEntry) === curSize;
                 var infoText = grp.sizes.join(' \u00b7 ');
                 html += '<div class="sz-taille-box' + (selected ? ' selected' : '') + (!available ? ' out-of-stock' : '') + '"' +
-                    (!available ? '' : ' onclick="' + clickHandlerAttr.replace('{val}', grp.label.replace(/'/g, "\\'")) + '"') + '>' +
+                    (!available ? '' : ' ' + clickHandlerAttr.replace('{val}', grp.label.replace(/'/g, "\\'"))) + '>' +
                     '<div class="sz-taille-header">' +
                         '<span class="sz-taille-label">' + grp.label + '</span>' +
                         (!available ? '<span class="sz-taille-oos-text">Épuisé</span>' :
@@ -337,10 +337,11 @@ function updateWishlistDisplay() {
     wishlist.forEach(id => {
         const p = products.find(pr => pr.id === id);
         if (p) {
+            var wImg = (p.images && p.images.length > 0) ? p.images[0] : (p.image || '');
             container.innerHTML += `
                 <div class="wishlist-item">
                     <a href="product.html?id=${p.id}">
-                        <img src="${p.image}" alt="${p.name}" class="cart-item-image">
+                        <img src="${wImg}" alt="${p.name}" class="cart-item-image">
                     </a>
                     <div class="cart-item-details">
                         <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit">
