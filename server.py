@@ -1,12 +1,29 @@
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import json
 import os
+import subprocess
 import urllib.parse
 import time
 import logging
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
+
+def get_build_version():
+    try:
+        r = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'],
+                           capture_output=True, text=True, cwd=str(BASE_DIR), timeout=3)
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.strip()
+    except Exception:
+        pass
+    h = 0
+    for f in ('css/styles.css', 'js/script.js'):
+        try: h = (h * 31 + int(os.path.getmtime(BASE_DIR / f))) & 0xFFFFFFFF
+        except Exception: pass
+    return format(h, 'x')[-8:]
+
+BUILD_VERSION = get_build_version()
 
 import sys
 sys.path.insert(0, str(BASE_DIR))
@@ -129,6 +146,19 @@ class AdalinaServer(SimpleHTTPRequestHandler):
             self.send_header('Cache-Control', 'no-cache, must-revalidate')
         elif any(path.endswith(ext) for ext in self.HTML_EXTS) or path in ('/', ''):
             self.send_header('Cache-Control', 'no-cache, must-revalidate')
+
+    def _serve_html(self, rel_path):
+        file_path = BASE_DIR / rel_path.lstrip('/')
+        if not file_path.exists():
+            self.send_error(404, 'Not found')
+            return
+        content = file_path.read_bytes()
+        content = content.replace(b'?v=__BUILD__', ('?v=' + BUILD_VERSION).encode())
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html; charset=utf-8')
+        self.send_header('Content-Length', str(len(content)))
+        self.end_headers()
+        self.wfile.write(content)
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -372,7 +402,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
         elif path == '/website/' or path == '/website':
             self.path = '/index.html'
-            return super().do_GET()
+            return self._serve_html('/index.html')
 
         elif path.startswith('/website/'):
             clean_path = path[9:]
@@ -381,6 +411,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
             if clean_path.startswith('.') or '..' in clean_path:
                 self.send_error(403, 'Forbidden')
                 return
+            if any(clean_path.endswith(ext) for ext in self.HTML_EXTS):
+                return self._serve_html('/' + clean_path)
             self.path = '/' + clean_path
             return super().do_GET()
 
