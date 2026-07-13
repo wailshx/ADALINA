@@ -73,7 +73,7 @@ function buildGroupedSizesHtml(availSizes, product, curColor, curSize, hasVarian
         var firstSize = typeof availSizes[0] === 'object' ? availSizes[0].size : availSizes[0];
         /* If sizes are already group names, render elegant Taille boxes */
         if (firstSize && firstSize.indexOf('Taille') === 0) {
-            var html = '<div class="sz-group-taille-boxes" style="display:flex;flex-direction:column;gap:10px;">';
+            var html = '<div class="sz-group-taille-boxes">';
             window.SIZE_GROUPS.forEach(function(grp) {
                 var sizeEntry = null;
                 for (var i = 0; i < availSizes.length; i++) {
@@ -86,20 +86,17 @@ function buildGroupedSizesHtml(availSizes, product, curColor, curSize, hasVarian
                 var selected = (typeof sizeEntry === 'object' ? sizeEntry.size : sizeEntry) === curSize;
                 var infoText = grp.sizes.join(' \u00b7 ');
                 html += '<div class="sz-taille-box' + (selected ? ' selected' : '') + (!available ? ' out-of-stock' : '') + '"' +
-                    ' style="border:1.5px solid ' + (selected ? 'var(--primary)' : 'var(--border)') + ';border-radius:10px;padding:12px 16px;cursor:pointer;transition:all 0.2s ease;' +
-                    'background:' + (selected ? 'var(--cream, #faf9f6)' : 'var(--bg, #fff)') + ';' +
-                    (!available ? 'opacity:0.45;cursor:not-allowed;' : 'hover:border-color:var(--primary);hover:box-shadow:0 2px 8px rgba(212,175,55,0.12);') + '"' +
                     (!available ? '' : ' onclick="' + clickHandlerAttr.replace('{val}', grp.label.replace(/'/g, "\\'")) + '"') + '>' +
-                    '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-                        '<span style="font-weight:600;font-size:0.95rem;">' + grp.label + '</span>' +
-                        (!available ? '<span style="font-size:0.7rem;color:var(--text-light);">Épuisé</span>' :
-                         (selected ? '<span style="font-size:0.7rem;color:var(--primary);font-weight:500;">Sélectionné</span>' : '')) +
+                    '<div class="sz-taille-header">' +
+                        '<span class="sz-taille-label">' + grp.label + '</span>' +
+                        (!available ? '<span class="sz-taille-oos-text">Épuisé</span>' :
+                         (selected ? '<span class="sz-taille-status">Sélectionné</span>' : '')) +
                     '</div>' +
-                    '<div style="font-size:0.75rem;color:var(--text-light);margin-top:4px;">' + infoText + '</div>' +
+                    '<div class="sz-taille-info">' + infoText + '</div>' +
                 '</div>';
             });
             html += '</div>';
-            if (!html || html === '<div class="sz-group-taille-boxes" style="display:flex;flex-direction:column;gap:10px;"></div>') {
+            if (!html || html === '<div class="sz-group-taille-boxes"></div>') {
                 html = '<p style="color:var(--text-light);font-size:0.85rem;">Aucune taille disponible</p>';
             }
             return html;
@@ -188,8 +185,30 @@ function renderProductCard(product) {
     if (product.sizes && product.sizes.length > 0) {
         var available = product.sizes.filter(function(s) { return s.stock > 0; });
         if (available.length > 0) {
-            var sizeLabels = available.map(function(s) { return esc(s.size); }).join(' \u2022 ');
-            sizesHtml = '<div class="product-sizes">Disponible : ' + sizeLabels + '</div>';
+            if (product.category_size_system === 'grouped_taille') {
+                /* Show Taille group boxes on product card */
+                var tailleHtml = '<div class="sz-group-taille-boxes">';
+                window.SIZE_GROUPS.forEach(function(grp) {
+                    var sizeEntry = null;
+                    for (var i = 0; i < available.length; i++) {
+                        var sn = typeof available[i] === 'object' ? available[i].size : available[i];
+                        if (sn === grp.label) { sizeEntry = available[i]; break; }
+                    }
+                    if (!sizeEntry) return;
+                    var infoText = grp.sizes.join(' \u00b7 ');
+                    tailleHtml += '<div class="sz-taille-box" onclick="quickView(' + pid + ')">' +
+                        '<div class="sz-taille-header">' +
+                            '<span class="sz-taille-label">' + grp.label + '</span>' +
+                        '</div>' +
+                        '<div class="sz-taille-info">' + infoText + '</div>' +
+                    '</div>';
+                });
+                tailleHtml += '</div>';
+                sizesHtml = tailleHtml;
+            } else {
+                var sizeLabels = available.map(function(s) { return esc(s.size); }).join(' \u2022 ');
+                sizesHtml = '<div class="product-sizes">Disponible : ' + sizeLabels + '</div>';
+            }
         }
     }
     var priceHtml = product.sale_price
