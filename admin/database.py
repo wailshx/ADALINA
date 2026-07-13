@@ -263,6 +263,26 @@ def init_db():
     for wid in range(1, 59):
         cur.execute("INSERT INTO delivery_prices (wilaya_id, price) VALUES (%s, 0) ON CONFLICT (wilaya_id) DO NOTHING", (wid,))
 
+    # Performance indexes
+    for idx_sql in [
+        'CREATE INDEX IF NOT EXISTS idx_products_status ON products(status)',
+        'CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id)',
+        'CREATE INDEX IF NOT EXISTS idx_products_created ON products(created_at DESC)',
+        'CREATE INDEX IF NOT EXISTS idx_product_variants_product ON product_variants(product_id)',
+        'CREATE INDEX IF NOT EXISTS idx_variant_images_variant ON variant_images(variant_id)',
+        'CREATE INDEX IF NOT EXISTS idx_variant_sizes_variant ON variant_sizes(variant_id)',
+        'CREATE INDEX IF NOT EXISTS idx_product_sizes_product ON product_sizes(product_id)',
+        'CREATE INDEX IF NOT EXISTS idx_product_colors_product ON product_colors(product_id)',
+        'CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)',
+        'CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC)',
+        'CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id)',
+        'CREATE INDEX IF NOT EXISTS idx_stock_history_product ON stock_history(product_id)',
+        'CREATE INDEX IF NOT EXISTS idx_inventory_product ON inventory(product_id)',
+        'CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(setting_key)',
+        'CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name)',
+    ]:
+        cur.execute(idx_sql)
+
     conn.commit()
     conn.close()
 
