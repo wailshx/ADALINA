@@ -28,6 +28,12 @@ function formatPriceDA(price) {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' DA';
 }
 
+function imgSrc(path) {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
+    return '/' + path;
+}
+
 function esc(str) {
     const d = document.createElement('div');
     d.textContent = str;
@@ -115,7 +121,7 @@ async function initDashboard() {
     if (topTbody && d.top_products) {
         topTbody.innerHTML = d.top_products.map(function(p) { return `
             <tr>
-                <td><div class="product-cell"><img src="/${esc(p.image)}" alt="" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div><div class="sku">SKU-${p.id}</div></div></div></td>
+                <td><div class="product-cell"><img src="${imgSrc(esc(p.image))}" alt="" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div><div class="sku">SKU-${p.id}</div></div></div></td>
                 <td>${formatPriceDA(p.price)}</td>
                 <td>${p.sold||0}</td>
                 <td>${formatPriceDA((p.sold||0) * Number(p.price))}</td>
@@ -128,7 +134,7 @@ async function initDashboard() {
     if (rpTbody && d.recent_products) {
         rpTbody.innerHTML = d.recent_products.map(function(p) { return `
             <tr>
-                <td><div class="product-cell"><img src="/${esc(p.image)}" alt="" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div></div></div></td>
+                <td><div class="product-cell"><img src="${imgSrc(esc(p.image))}" alt="" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div></div></div></td>
                 <td>${formatPriceDA(p.price)}</td>
                 <td>${p.stock||0}</td>
                 <td>${badge(p.stock > 0 ? (p.stock <= 5 ? 'low' : 'active') : 'hidden')}</td>
@@ -406,7 +412,7 @@ async function initProducts() {
     if (!tbody) return;
     tbody.innerHTML = products.map(p => `
         <tr>
-            <td><div class="product-cell"><img src="/${esc(p.image)}" alt="" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div></div></div></td>
+            <td><div class="product-cell"><img src="${imgSrc(esc(p.image))}" alt="" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div></div></div></td>
             <td>SKU-${p.id}</td>
             <td>${esc(p.category_name||'')}</td>
             <td>${formatPriceDA(p.price)}</td>
@@ -582,7 +588,7 @@ function renderVariants() {
                 var leftBtn = j > 0 ? '<button type="button" class="pm-card-img-reorder pm-card-img-reorder-left" data-action="move-image" data-variant="' + i + '" data-image="' + j + '" data-dir="-1" title="Gauche">&lsaquo;</button>' : '';
                 var rightBtn = j < v.images.length - 1 ? '<button type="button" class="pm-card-img-reorder pm-card-img-reorder-right" data-action="move-image" data-variant="' + i + '" data-image="' + j + '" data-dir="1" title="Droite">&rsaquo;</button>' : '';
                 return '<div class="pm-card-img-thumb">' +
-                    '<img src="/' + esc(img) + '" loading="lazy" onerror="this.src=\'https://placehold.co/72x72/e2e8f0/718096?text=?\';this.style.border=\'2px solid #f56565\'">' +
+                    '<img src="' + imgSrc(esc(img)) + '" loading="lazy" onerror="this.src=\'https://placehold.co/72x72/e2e8f0/718096?text=?\';this.style.border=\'2px solid #f56565\'">' +
                     leftBtn + rightBtn +
                     '<button type="button" class="pm-card-img-del" data-action="remove-image" data-variant="' + i + '" data-image="' + j + '">&times;</button></div>';
             }).join('');
@@ -1145,10 +1151,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Enregistrement...'; }
 
             try {
+                var result;
                 if (id) {
-                    await api('PUT', `/products/${id}`, data);
+                    result = await api('PUT', `/products/${id}`, data);
                 } else {
-                    await api('POST', '/products', data);
+                    result = await api('POST', '/products', data);
+                }
+                if (result && result.error) {
+                    alert('Erreur: ' + result.error);
+                    return;
                 }
                 document.getElementById('product-modal').classList.remove('active');
                 initProducts();
@@ -1160,7 +1171,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('pm-modal-title').textContent = 'Nouveau Produit';
                 showToast('✓ Produit enregistré avec succès !');
             } catch (e) {
-                alert('Erreur lors de l\'enregistrement du produit.');
+                alert('Erreur lors de l\'enregistrement du produit: ' + (e.message || e));
             } finally {
                 if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer le produit'; }
             }
@@ -1319,7 +1330,7 @@ async function initCollections() {
 
     grid.innerHTML = cols.map(function (c) {
         var banner = c.image
-            ? '<img src="/' + esc(c.image) + '" style="width:100%;height:140px;object-fit:cover;border-radius:8px 8px 0 0;" onerror="this.style.display=\'none\'">'
+            ? '<img src="' + imgSrc(esc(c.image)) + '" style="width:100%;height:140px;object-fit:cover;border-radius:8px 8px 0 0;" onerror="this.style.display=\'none\'">'
             : '<div style="height:140px;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:#c9a96e;font-size:2rem;"><i class="fas fa-layer-group"></i></div>';
         return '<div class="card">' +
             banner +
@@ -1977,7 +1988,7 @@ async function initInventory() {
     tbody.innerHTML = inv.map(function (i) {
         const st = i.quantity === 0 ? 'Out of Stock' : i.quantity <= i.low_stock_threshold ? 'Low Stock' : 'In Stock';
         return '<tr>' +
-            '<td><div class="product-cell"><img src="/' + esc(i.product_image) + '" alt="" onerror="this.src=\'https://placehold.co/40x40/e2e8f0/718096?text=P\'"><div class="info"><div class="name">' + esc(i.product_name) + '</div></div></div></td>' +
+            '<td><div class="product-cell"><img src="' + imgSrc(esc(i.product_image)) + '" alt="" onerror="this.src=\'https://placehold.co/40x40/e2e8f0/718096?text=P\'"><div class="info"><div class="name">' + esc(i.product_name) + '</div></div></div></td>' +
             '<td>SKU-' + i.product_id + '</td>' +
             '<td>' + esc(i.category_name || '') + '</td>' +
             '<td><div style="display:flex;align-items:center;gap:8px;"><span style="font-weight:600;min-width:28px;">' + i.quantity + '</span>' + stockBar(i.quantity, i.low_stock_threshold || 5) + '</div></td>' +
@@ -2163,7 +2174,7 @@ function renderBestSellers(products) {
     }
     tbody.innerHTML = products.map(function (p) {
         return '<tr>' +
-            '<td><div class="product-cell"><img src="/' + esc(p.image) + '" alt="" onerror="this.src=\'https://placehold.co/40x40/e2e8f0/718096?text=P\'"><div class="info"><div class="name">' + esc(p.name) + '</div><div class="sku">SKU-' + p.id + '</div></div></div></td>' +
+            '<td><div class="product-cell"><img src="' + imgSrc(esc(p.image)) + '" alt="" onerror="this.src=\'https://placehold.co/40x40/e2e8f0/718096?text=P\'"><div class="info"><div class="name">' + esc(p.name) + '</div><div class="sku">SKU-' + p.id + '</div></div></div></td>' +
             '<td>' + formatPriceDA(p.price) + '</td>' +
             '<td>' + (p.sold || 0) + '</td>' +
             '<td>' + formatPriceDA(p.revenue) + '</td>' +
@@ -2709,7 +2720,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (empty) empty.style.display = 'none';
         grid.innerHTML = currentImages.map(function (imgPath, i) {
             return '<div class="image-item' + (i === 0 ? ' primary' : '') + '" draggable="true" data-index="' + i + '" data-path="' + esc(imgPath) + '">' +
-                '<img src="/' + esc(imgPath) + '" alt="" onerror="this.src=\'https://placehold.co/200x200/e2e8f0/718096?text=?\'' +
+                '<img src="' + imgSrc(esc(imgPath)) + '" alt="" onerror="this.src=\'https://placehold.co/200x200/e2e8f0/718096?text=?\'' +
                 'this.style.border=\'2px solid #f56565\'">' +
                 (i === 0 ? '<span class="primary-badge">Primary</span>' : '') +
                 '<div class="image-actions">' +

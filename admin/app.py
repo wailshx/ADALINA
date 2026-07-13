@@ -1709,7 +1709,15 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     send_json(self, {'error': 'Missing boundary'}, 400)
             else:
                 body = read_body(self)
-                self.api_POST(path, body)
+                try:
+                    self.api_POST(path, body)
+                except Exception as e:
+                    print(f"[Admin] POST {path} error: {e}")
+                    import traceback; traceback.print_exc()
+                    db_err = get_db()
+                    db_err.rollback()
+                    db_err.close()
+                    send_json(self, {'error': str(e)}, 500)
         else:
             self.send_response(404)
             self.end_headers()
@@ -1721,7 +1729,15 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             if not require_auth(self):
                 return
             body = read_body(self)
-            self.api_PUT(path, body)
+            try:
+                self.api_PUT(path, body)
+            except Exception as e:
+                print(f"[Admin] PUT {path} error: {e}")
+                import traceback; traceback.print_exc()
+                db_err = get_db()
+                db_err.rollback()
+                db_err.close()
+                send_json(self, {'error': str(e)}, 500)
         else:
             self.send_response(404)
             self.end_headers()
@@ -1732,7 +1748,15 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         if path.startswith('/api/'):
             if not require_auth(self):
                 return
-            self.api_DELETE(path)
+            try:
+                self.api_DELETE(path)
+            except Exception as e:
+                print(f"[Admin] DELETE {path} error: {e}")
+                import traceback; traceback.print_exc()
+                db_err = get_db()
+                db_err.rollback()
+                db_err.close()
+                send_json(self, {'error': str(e)}, 500)
         else:
             self.send_response(404)
             self.end_headers()
