@@ -903,8 +903,8 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 total_stock = 0
                 cur.execute("SELECT id FROM product_variants WHERE product_id=%s", (pid,))
                 for vrow in cur.fetchall():
-                    cur.execute("SELECT COALESCE(SUM(stock), 0) FROM variant_sizes WHERE variant_id=%s", (vrow['id'],))
-                    total_stock += cur.fetchone()['COALESCE(SUM(stock), 0)']
+                    cur.execute("SELECT COALESCE(SUM(stock), 0) AS total FROM variant_sizes WHERE variant_id=%s", (vrow['id'],))
+                    total_stock += cur.fetchone()['total']
                 cur.execute("UPDATE products SET stock=%s WHERE id=%s", (total_stock, pid))
             cur.execute("INSERT INTO inventory (product_id, quantity) VALUES (%s, %s) ON CONFLICT (product_id) DO NOTHING", (pid, total_stock))
             db.commit()
