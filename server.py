@@ -480,9 +480,10 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
                 # Look up delivery price from database
                 delivery_fee = 0
-                if wilaya:
+                wid = data.get('wilaya_id')
+                if wid is not None:
                     try:
-                        wid = int(wilaya.split('-')[0].strip()) if '-' in wilaya else int(wilaya)
+                        wid = int(wid)
                         cur.execute("SELECT price FROM delivery_prices WHERE wilaya_id=%s", (wid,))
                         dp = cur.fetchone()
                         if dp:

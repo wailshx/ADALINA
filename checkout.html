@@ -95,11 +95,11 @@
                         <div class="checkout-section">
                             <h3 class="checkout-section-title">Vos informations</h3>
                             <div class="floating-group">
-                                <input type="text" id="co-full-name" class="floating-input" required autocomplete="name">
+                                <input type="text" id="co-full-name" class="floating-input" autocomplete="name">
                                 <label for="co-full-name" class="floating-label">Nom complet <span class="required-star">*</span></label>
                             </div>
                             <div class="floating-group">
-                                <input type="tel" id="co-phone" class="floating-input" required autocomplete="tel">
+                                <input type="tel" id="co-phone" class="floating-input" inputmode="numeric" autocomplete="tel">
                                 <label for="co-phone" class="floating-label">Numéro de téléphone <span class="required-star">*</span></label>
                                 <span class="input-hint">Ex: 0555 12 34 56</span>
                                 <span class="input-error" id="co-phone-error"></span>
@@ -110,7 +110,7 @@
                             <h3 class="checkout-section-title">Adresse de livraison</h3>
                             <div class="floating-group select-group">
                                 <div class="select-wrap">
-                                    <select id="co-wilaya" class="floating-input floating-select" required>
+                                    <select id="co-wilaya" class="floating-input floating-select">
                                         <option value="">Sélectionnez une wilaya</option>
                                     </select>
                                     <svg class="select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
@@ -119,7 +119,7 @@
                             </div>
                             <div class="floating-group select-group">
                                 <div class="select-wrap">
-                                    <select id="co-municipality" class="floating-input floating-select" required disabled>
+                                    <select id="co-municipality" class="floating-input floating-select" disabled>
                                         <option value="">Sélectionnez d'abord une wilaya</option>
                                     </select>
                                     <svg class="select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>

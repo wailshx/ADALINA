@@ -1140,7 +1140,7 @@ function qvBuyNow() {
     }
     addToCart(_qv.product.id, _qv.quantity, _qv.selectedSize, _qv.selectedColor);
     closeQuickView();
-    toggleCart();
+    window.location.href = 'checkout.html';
 }
 
 function qvToggleWishlist() {
@@ -1549,6 +1549,7 @@ function placeOrder() {
         customer_name: name,
         customer_phone: phone,
         wilaya: wilaya,
+        wilaya_id: wilayaId,
         commune: municipality,
         shipping: shippingAddr,
         payment_method: 'Cash on Delivery',
@@ -1998,6 +1999,7 @@ function addCurrentToWishlist() {
 
 function ppBuyNow() {
     addCurrentToCart();
+    window.location.href = 'checkout.html';
 }
 
 
