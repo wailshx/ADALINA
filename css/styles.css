@@ -1014,6 +1014,61 @@ button {
     letter-spacing: 0.03em;
 }
 
+.product-sizes-grouped {
+    margin-bottom: 0.4rem;
+}
+
+.product-sizes-label {
+    display: block;
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 5px;
+}
+
+.product-sizes-grouped .sz-group-taille-boxes {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.product-sizes-grouped .sz-taille-box {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--cream, #faf9f6);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.product-sizes-grouped .sz-taille-box:hover {
+    border-color: var(--primary);
+    background: rgba(212,175,55,0.04);
+}
+
+.product-sizes-grouped .sz-taille-label {
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--secondary);
+    white-space: nowrap;
+}
+
+.product-sizes-grouped .sz-taille-info {
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.68rem;
+    color: var(--text-light);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
 .product-price {
     font-size: 0.95rem;
     font-weight: 600;

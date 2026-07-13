@@ -186,8 +186,10 @@ function renderProductCard(product) {
         var available = product.sizes.filter(function(s) { return s.stock > 0; });
         if (available.length > 0) {
             if (product.category_size_system === 'grouped_taille') {
-                /* Show Taille group boxes on product card */
-                var tailleHtml = '<div class="sz-group-taille-boxes">';
+                /* Show Taille group boxes on product card — compact single-line layout */
+                var tailleHtml = '<div class="product-sizes-grouped">' +
+                    '<span class="product-sizes-label">Disponible</span>' +
+                    '<div class="sz-group-taille-boxes">';
                 window.SIZE_GROUPS.forEach(function(grp) {
                     var sizeEntry = null;
                     for (var i = 0; i < available.length; i++) {
@@ -197,13 +199,11 @@ function renderProductCard(product) {
                     if (!sizeEntry) return;
                     var infoText = grp.sizes.join(' \u00b7 ');
                     tailleHtml += '<div class="sz-taille-box" onclick="quickView(' + pid + ')">' +
-                        '<div class="sz-taille-header">' +
-                            '<span class="sz-taille-label">' + grp.label + '</span>' +
-                        '</div>' +
-                        '<div class="sz-taille-info">' + infoText + '</div>' +
+                        '<span class="sz-taille-label">' + grp.label + '</span>' +
+                        '<span class="sz-taille-info">(' + infoText + ')</span>' +
                     '</div>';
                 });
-                tailleHtml += '</div>';
+                tailleHtml += '</div></div>';
                 sizesHtml = tailleHtml;
             } else {
                 var sizeLabels = available.map(function(s) { return esc(s.size); }).join(' \u2022 ');
