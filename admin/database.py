@@ -94,17 +94,6 @@ def _tables_exist(conn):
 def _run_migrations(conn):
     cur = conn.cursor()
     migrations = [
-        """CREATE TABLE IF NOT EXISTS size_guides (
-            id SERIAL PRIMARY KEY,
-            category_id INTEGER,
-            guide_name TEXT NOT NULL DEFAULT '',
-            fit_type TEXT DEFAULT 'regular',
-            sizes_json TEXT DEFAULT '[]',
-            notes TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT NOW(),
-            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
-        )""",
-        "CREATE INDEX IF NOT EXISTS idx_size_guides_category ON size_guides(category_id)",
         """CREATE TABLE IF NOT EXISTS status_history (
             id SERIAL PRIMARY KEY,
             order_id INTEGER NOT NULL,
@@ -133,10 +122,6 @@ def _run_migrations(conn):
             cur.execute(sql)
         except Exception:
             pass
-    try:
-        cur.execute("GRANT SELECT ON size_guides TO adalina_public")
-    except Exception:
-        pass
     conn.commit()
 
 def init_db():
@@ -363,20 +348,6 @@ def init_db():
             FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
         )
     """)
-
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS size_guides (
-            id SERIAL PRIMARY KEY,
-            category_id INTEGER,
-            guide_name TEXT NOT NULL DEFAULT '',
-            fit_type TEXT DEFAULT 'regular',
-            sizes_json TEXT DEFAULT '[]',
-            notes TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT NOW(),
-            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
-        )
-    """)
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_size_guides_category ON size_guides(category_id)")
 
     conn.commit()
     conn.close()

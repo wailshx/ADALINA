@@ -2170,24 +2170,6 @@ button {
     margin-bottom: 0.6rem;
 }
 
-.pp-size-guide-link {
-    font-size: 0.72rem;
-    font-weight: 400;
-    text-transform: none;
-    letter-spacing: 0.02em;
-    color: var(--secondary);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-    margin-left: 0.5rem;
-    opacity: 0.8;
-    transition: opacity 0.2s;
-    cursor: pointer;
-}
-
-.pp-size-guide-link:hover {
-    opacity: 1;
-}
-
 .pp-colors {
     display: flex;
     gap: 0.6rem;

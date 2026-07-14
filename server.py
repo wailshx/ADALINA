@@ -314,50 +314,6 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, {'error': str(e)}, 500)
             return
 
-        # GET /api/public/track?order_number=X&phone=Y — order tracking
-        if path == '/api/public/track':
-            order_number = query.get('order_number', [''])[0].strip()
-            phone = query.get('phone', [''])[0].strip().replace('+', '').replace('-', '').replace(' ', '')
-            if not order_number or not phone:
-                send_json(self, {'error': 'Numéro de commande et téléphone requis'}, 400)
-                return
-            try:
-                db = get_public_db()
-                cur = db.cursor()
-                cur.execute("""
-                    SELECT id, order_number, customer_name, customer_phone, wilaya, commune,
-                           status, total, items, delivery_fee, created_at
-                    FROM orders
-                    WHERE order_number = %s AND REPLACE(REPLACE(REPLACE(customer_phone, '+', ''), '-', ''), ' ', '') = %s
-                """, (order_number, phone))
-                row = cur.fetchone()
-                if not row:
-                    send_json(self, {'error': 'Commande non trouvée'}, 404)
-                    db.close()
-                    return
-                order = dict(row)
-                if order.get('items'):
-                    try:
-                        order['items'] = json.loads(order['items'])
-                    except Exception:
-                        order['items'] = []
-                cur.execute("""
-                    SELECT status, note, created_at
-                    FROM status_history
-                    WHERE order_id = %s
-                    ORDER BY created_at ASC
-                """, (order['id'],))
-                order['history'] = [{'status': r['status'], 'note': r['note'], 'created_at': r['created_at'].isoformat() if r['created_at'] else None} for r in cur.fetchall()]
-                status_order = ['new', 'confirmed', 'preparing', 'shipped', 'in_delivery', 'arrived', 'delivered']
-                idx = status_order.index(order['status']) if order['status'] in status_order else -1
-                order['progress'] = round((idx / max(len(status_order) - 1, 1)) * 100) if idx >= 0 else 0
-                db.close()
-                send_json(self, order)
-            except Exception as e:
-                print(f'[Server] Error tracking order: {e}', flush=True)
-                send_json(self, {'error': 'Erreur serveur'}, 500)
-            return
-
         # GET /api/public/products/filters — available filter options
         if path == '/api/public/products/filters':
             cached = _cache.get('product_filters', ttl=300)
@@ -493,51 +449,6 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 db.close()
             except Exception as e:
                 print(f'[Server] Error loading categories: {e}', flush=True)
-                send_json(self, {'error': str(e)}, 500)
-            return
-
-        # GET /api/public/size-guides — all size guides (or by category)
-        if path == '/api/public/size-guides':
-            cached = _cache.get('size_guides', ttl=300)
-            if cached is not None:
-                send_json(self, cached)
-                return
-            try:
-                db = get_public_db()
-                cur = db.cursor()
-                cat_id = query.get('category_id', [''])[0].strip()
-                if cat_id:
-                    cur.execute("""
-                        SELECT sg.*, c.name AS category_name
-                        FROM size_guides sg LEFT JOIN categories c ON sg.category_id = c.id
-                        WHERE sg.category_id = %s ORDER BY sg.id
-                    """, (cat_id,))
-                else:
-                    cur.execute("""
-                        SELECT sg.*, c.name AS category_name
-                        FROM size_guides sg LEFT JOIN categories c ON sg.category_id = c.id
-                        ORDER BY sg.id
-                    """)
-                rows = cur.fetchall()
-                result = []
-                for r in rows:
-                    d = dict(r)
-                    if d.get('sizes_json'):
-                        try:
-                            d['sizes'] = json.loads(d['sizes_json'])
-                        except Exception:
-                            d['sizes'] = []
-                    else:
-                        d['sizes'] = []
-                    d.pop('sizes_json', None)
-                    if d.get('created_at'):
-                        d['created_at'] = d['created_at'].isoformat()
-                    result.append(d)
-                _cache.set('size_guides', result)
-                send_json(self, result)
-                db.close()
-            except Exception as e:
-                print(f'[Server] Error loading size guides: {e}', flush=True)
                 send_json(self, {'error': str(e)}, 500)
             return
 

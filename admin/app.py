@@ -11,14 +11,6 @@ import shutil
 import fcntl
 from functools import wraps
 
-try:
-    import cloudinary
-    import cloudinary.uploader
-    import cloudinary.api
-    _HAS_CLOUDINARY = True
-except ImportError:
-    _HAS_CLOUDINARY = False
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(BASE_DIR)
 SESSIONS_FILE = os.path.join(BASE_DIR, '.sessions.json')
@@ -31,23 +23,6 @@ from config.security import (
     generate_csrf_token, validate_csrf, escape_html,
     sanitize_dict, sanitize_list, audit_log
 )
-
-CLOUDINARY_CLOUD = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
-CLOUDINARY_KEY = os.environ.get('CLOUDINARY_API_KEY', '')
-CLOUDINARY_SECRET = os.environ.get('CLOUDINARY_API_SECRET', '')
-CLOUDINARY_FOLDER = os.environ.get('CLOUDINARY_FOLDER', 'adalina')
-
-if _HAS_CLOUDINARY and CLOUDINARY_CLOUD and CLOUDINARY_KEY and CLOUDINARY_SECRET:
-    cloudinary.config(
-        cloud_name=CLOUDINARY_CLOUD,
-        api_key=CLOUDINARY_KEY,
-        api_secret=CLOUDINARY_SECRET
-    )
-    CLOUDINARY_ENABLED = True
-    print("[Cloudinary] Enabled — images will be stored in cloud")
-else:
-    CLOUDINARY_ENABLED = False
-    print("[Cloudinary] Disabled — images stored locally (will be lost on redeploy)")
 
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '')
@@ -828,64 +803,6 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             send_json(self, cust)
             return True
 
-        if path == '/api/size-guides':
-            if method == 'GET':
-                cur.execute("SELECT sg.*, c.name AS category_name FROM size_guides sg LEFT JOIN categories c ON sg.category_id = c.id ORDER BY sg.id")
-                rows = cur.fetchall()
-                result = []
-                for r in rows:
-                    d = dict(r)
-                    if d.get('sizes_json'):
-                        try:
-                            d['sizes'] = json.loads(d['sizes_json'])
-                        except Exception:
-                            d['sizes'] = []
-                    else:
-                        d['sizes'] = []
-                    d.pop('sizes_json', None)
-                    result.append(d)
-                send_json(self, result)
-                return True
-            if method == 'POST':
-                guide_name = data.get('guide_name', '')
-                category_id = data.get('category_id')
-                fit_type = data.get('fit_type', 'regular')
-                sizes = data.get('sizes', [])
-                notes = data.get('notes', '')
-                cur.execute("INSERT INTO size_guides (category_id, guide_name, fit_type, sizes_json, notes) VALUES (%s,%s,%s,%s,%s) RETURNING id",
-                            (category_id, guide_name, fit_type, json.dumps(sizes), notes))
-                gid = cur.fetchone()['id']
-                db.commit()
-                _cache.invalidate('size_guides')
-                send_json(self, {'id': gid, 'message': 'Guide créé'}, 201)
-                return True
-
-        if path.startswith('/api/size-guides/') and path != '/api/size-guides':
-            gid = path.split('/')[-1]
-            if method == 'PUT':
-                sets = []
-                vals = []
-                for key in ('guide_name', 'category_id', 'fit_type', 'notes'):
-                    if key in data:
-                        sets.append(f"{key}=%s")
-                        vals.append(data[key])
-                if 'sizes' in data:
-                    sets.append("sizes_json=%s")
-                    vals.append(json.dumps(data['sizes']))
-                if sets:
-                    vals.append(gid)
-                    cur.execute(f"UPDATE size_guides SET {','.join(sets)} WHERE id=%s", vals)
-                    db.commit()
-                    _cache.invalidate('size_guides')
-                send_json(self, {'message': 'Guide mis à jour'})
-                return True
-            if method == 'DELETE':
-                cur.execute("DELETE FROM size_guides WHERE id=%s", (gid,))
-                db.commit()
-                _cache.invalidate('size_guides')
-                send_json(self, {'message': 'Guide supprimé'})
-                return True
-
         # GET /api/inventory
             status_filter = query.get('status', ['all'])[0].strip().lower()
             base_sql = """SELECT i.*, p.name AS product_name, p.image AS product_image,
@@ -1467,24 +1384,9 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             data = json.loads(body) if body else {}
             img_path = data.get('path', '')
             if img_path:
-                if CLOUDINARY_ENABLED and 'cloudinary.com' in img_path:
-                    try:
-                        parts_url = img_path.split('/')
-                        idx = None
-                        for i, p in enumerate(parts_url):
-                            if p == 'upload':
-                                idx = i + 1
-                                break
-                        if idx:
-                            public_id = '/'.join(parts_url[idx:])
-                            public_id = os.path.splitext(public_id)[0]
-                            cloudinary.uploader.destroy(public_id)
-                    except Exception as e:
-                        print(f"[Cloudinary] Delete error: {e}")
-                else:
-                    full_path = secure_path(PARENT_DIR, img_path)
-                    if full_path and os.path.isfile(full_path):
-                        os.remove(full_path)
+                full_path = secure_path(PARENT_DIR, img_path)
+                if full_path and os.path.isfile(full_path):
+                    os.remove(full_path)
             cur.execute("SELECT images FROM products WHERE id=%s", (pid,))
             row = cur.fetchone()
             images = json.loads(row['images']) if row and row['images'] else []
@@ -1575,28 +1477,16 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             if detected_ext and detected_ext != ext:
                 errors.append(f'{f["filename"]}: extension ne correspond pas au contenu')
                 continue
-            if CLOUDINARY_ENABLED:
-                try:
-                    result = cloudinary.uploader.upload(
-                        content,
-                        folder=f'{CLOUDINARY_FOLDER}/{category}',
-                        resource_type='image'
-                    )
-                    saved_paths.append(result['secure_url'])
-                except Exception as e:
-                    print(f"[Cloudinary] Upload error: {e}")
-                    errors.append(f'{f["filename"]}: erreur upload')
-            else:
-                subdir = 'settings' if category == 'settings' else 'products'
-                upload_dir = os.path.join(PARENT_DIR, 'uploads', subdir)
-                os.makedirs(upload_dir, exist_ok=True)
-                ts = int(__import__('time').time() * 1000)
-                safe_base = re.sub(r'[^a-zA-Z0-9._-]', '_', os.path.basename(f['filename']))
-                safe_name = f"{ts}_{safe_base}"
-                dest = os.path.join(upload_dir, safe_name)
-                with open(dest, 'wb') as out:
-                    out.write(content)
-                saved_paths.append(f'uploads/{subdir}/{safe_name}')
+            subdir = 'settings' if category == 'settings' else 'products'
+            upload_dir = os.path.join(PARENT_DIR, 'uploads', subdir)
+            os.makedirs(upload_dir, exist_ok=True)
+            ts = int(__import__('time').time() * 1000)
+            safe_base = re.sub(r'[^a-zA-Z0-9._-]', '_', os.path.basename(f['filename']))
+            safe_name = f"{ts}_{safe_base}"
+            dest = os.path.join(upload_dir, safe_name)
+            with open(dest, 'wb') as out:
+                out.write(content)
+            saved_paths.append(f'uploads/{subdir}/{safe_name}')
         result = {'paths': saved_paths, 'count': len(saved_paths)}
         if errors:
             result['errors'] = errors

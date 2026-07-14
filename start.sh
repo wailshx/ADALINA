@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
-# start.sh — Single entry point that launches both servers.
+# start.sh — Single entry point that launches all three processes.
 # Usage: ./start.sh  (or: bash start.sh)
-# The hosting platform should run this as its start command.
-#
-# Both servers must run from the project root so that
-# config/database.py and admin/database.py resolve imports correctly.
 #
 # Render sets PORT for the public-facing server. For local dev, PORT_MAIN works.
 # Database is PostgreSQL (Supabase) — no local store.db needed.
+# Images are stored locally in uploads/ (symlinked to persistent disk if available).
 
 set -euo pipefail
 
@@ -18,20 +15,6 @@ cd "$SCRIPT_DIR"
 DISK_MOUNT="${DISK_MOUNT:-/opt/render/project/src/data}"
 if [ -d "$DISK_MOUNT" ]; then
     echo "[start.sh] Persistent disk detected at $DISK_MOUNT"
-
-    # Symlink store.db → persistent disk
-    if [ ! -L "$SCRIPT_DIR/store.db" ]; then
-        if [ -f "$SCRIPT_DIR/store.db" ]; then
-            cp "$SCRIPT_DIR/store.db" "$DISK_MOUNT/store.db"
-            [ -f "$SCRIPT_DIR/store.db-shm" ] && cp "$SCRIPT_DIR/store.db-shm" "$DISK_MOUNT/store.db-shm"
-            [ -f "$SCRIPT_DIR/store.db-wal" ] && cp "$SCRIPT_DIR/store.db-wal" "$DISK_MOUNT/store.db-wal"
-            echo "[start.sh] Migrated existing DB to persistent disk"
-        fi
-        ln -sf "$DISK_MOUNT/store.db" "$SCRIPT_DIR/store.db"
-        [ -f "$DISK_MOUNT/store.db-shm" ] && ln -sf "$DISK_MOUNT/store.db-shm" "$SCRIPT_DIR/store.db-shm"
-        [ -f "$DISK_MOUNT/store.db-wal" ] && ln -sf "$DISK_MOUNT/store.db-wal" "$SCRIPT_DIR/store.db-wal"
-        echo "[start.sh] Symlinked store.db → $DISK_MOUNT/store.db"
-    fi
 
     # Symlink uploads/ → persistent disk (images survive deploys)
     DISK_UPLOADS="$DISK_MOUNT/uploads"
@@ -45,7 +28,8 @@ if [ -d "$DISK_MOUNT" ]; then
         echo "[start.sh] Symlinked uploads/ → $DISK_UPLOADS"
     fi
 else
-    echo "[start.sh] No persistent disk at $DISK_MOUNT — using local store.db and uploads/"
+    echo "[start.sh] No persistent disk at $DISK_MOUNT — using local uploads/"
+    mkdir -p "$SCRIPT_DIR/uploads/products" "$SCRIPT_DIR/uploads/settings"
 fi
 
 # Render sets PORT for the public-facing port. Internally the three processes
@@ -98,19 +82,16 @@ echo "[start.sh] All 3 processes started. Proxy listening on $PROXY_PORT."
 
 # Monitor: if any backend crashes, restart it. If proxy crashes, restart everything.
 while true; do
-    # Check if main server is alive
     if ! kill -0 "$MAIN_PID" 2>/dev/null; then
         echo "[start.sh] Main server crashed — restarting..."
         PORT_MAIN="$MAIN_PORT" python3 server.py &
         MAIN_PID=$!
     fi
-    # Check if admin server is alive
     if ! kill -0 "$ADMIN_PID" 2>/dev/null; then
         echo "[start.sh] Admin server crashed — restarting..."
         PORT_ADMIN="$ADMIN_PORT" python3 admin/app.py &
         ADMIN_PID=$!
     fi
-    # Check if proxy is alive
     if ! kill -0 "$PROXY_PID" 2>/dev/null; then
         echo "[start.sh] Proxy crashed — restarting..."
         PORT="$PROXY_PORT" PORT_MAIN="$MAIN_PORT" PORT_ADMIN="$ADMIN_PORT" python3 proxy.py &

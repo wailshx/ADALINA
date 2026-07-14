@@ -1758,7 +1758,7 @@ function displayProduct(product) {
                     return '<button class="pp-color-swatch' + sel + out + '" style="background:' + hex + '" onclick="selectProductColor(\'' + cname.replace(/'/g, "\\'") + '\', this)" title="' + cname + '"></button>';
                 }).join('') + '</div></div>' : ''}
 
-                ${availSizes.length > 0 ? '<div class="pp-section"><label>Taille <a href="size-guides.html" class="pp-size-guide-link" target="_blank">📏 Guide des tailles</a></label><div class="pp-sizes">' + buildGroupedSizesHtml(
+                ${availSizes.length > 0 ? '<div class="pp-section"><label>Taille</label><div class="pp-sizes">' + buildGroupedSizesHtml(
                     availSizes, product, curColor, curSize, hasVariants,
                     'pp-size-btn', 'pp-size-wrap',
                     'onclick="selectProductSize(\'{val}\', this)"',
