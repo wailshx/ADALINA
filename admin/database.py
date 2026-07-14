@@ -267,6 +267,18 @@ def init_db():
         updated_at TIMESTAMP DEFAULT NOW()
     )""")
 
+    cur.execute("""CREATE TABLE IF NOT EXISTS audit_logs (
+        id SERIAL PRIMARY KEY,
+        timestamp TIMESTAMP DEFAULT NOW(),
+        admin_user TEXT NOT NULL DEFAULT 'admin',
+        action TEXT NOT NULL,
+        ip TEXT DEFAULT '',
+        resource TEXT DEFAULT '',
+        details TEXT DEFAULT ''
+    )""")
+
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC)")
+
     # Seed delivery_prices for all 58 wilayas if not present
     for wid in range(1, 59):
         cur.execute("INSERT INTO delivery_prices (wilaya_id, price) VALUES (%s, 0) ON CONFLICT (wilaya_id) DO NOTHING", (wid,))

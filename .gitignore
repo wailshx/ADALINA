@@ -6,4 +6,5 @@ __pycache__/
 .env
 .DS_Store
 admin/.sessions.json
+admin/.csrf_tokens.json
 store.db.backup

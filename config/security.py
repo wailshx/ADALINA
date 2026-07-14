@@ -140,24 +140,32 @@ def validate_csrf(handler):
 
 
 class AuditLog:
-    def __init__(self):
-        self._entries = []
-
     def log(self, action, user='admin', details='', ip=''):
-        entry = {
-            'timestamp': time.time(),
-            'action': action,
-            'user': user,
-            'ip': ip,
-            'details': details,
-        }
-        self._entries.append(entry)
-        if len(self._entries) > 1000:
-            self._entries = self._entries[-500:]
         print(f'[AUDIT] {action} by {user} from {ip} — {details}')
+        try:
+            from config.database import get_db
+            db = get_db()
+            cur = db.cursor()
+            cur.execute(
+                "INSERT INTO audit_logs (admin_user, action, ip, details) VALUES (%s, %s, %s, %s)",
+                (user, action, ip, details[:500] if details else '')
+            )
+            db.commit()
+            db.close()
+        except Exception:
+            pass
 
     def get_entries(self, limit=100):
-        return list(reversed(self._entries[-limit:]))
+        try:
+            from config.database import get_db
+            db = get_db()
+            cur = db.cursor()
+            cur.execute("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT %s", (limit,))
+            rows = cur.fetchall()
+            db.close()
+            return [dict(r) for r in rows]
+        except Exception:
+            return []
 
 
 audit_log = AuditLog()

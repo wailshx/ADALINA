@@ -68,11 +68,18 @@ ALLOWED_CUSTOMER_COLUMNS = {'name', 'email', 'phone', 'address', 'status'}
 def _filter_columns(data, allowed):
     return {k: v for k, v in data.items() if k in allowed}
 
-def _hash_password(password, salt=''):
-    return hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000).hex()
+PBKDF2_ITERATIONS = 600000
+
+def _hash_password(password, salt='', iterations=PBKDF2_ITERATIONS):
+    return hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), iterations).hex()
 
 def _verify_password(password, stored_hash, salt=''):
-    return _hash_password(password, salt) == stored_hash
+    import hmac as _hmac
+    new_hash = _hash_password(password, salt, PBKDF2_ITERATIONS)
+    if _hmac.compare_digest(new_hash, stored_hash):
+        return True
+    old_hash = _hash_password(password, salt, 100000)
+    return _hmac.compare_digest(old_hash, stored_hash)
 
 # Startup check: refuse to run with default admin password
 if not ADMIN_PASSWORD_HASH or ADMIN_PASSWORD_HASH == DEFAULT_PASSWORD_HASH:
@@ -1438,26 +1445,47 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
     def api_UPLOAD(self, multipart):
         ALLOWED = ('.jpg', '.jpeg', '.png', '.webp')
+        MAGIC_BYTES = {
+            b'\xff\xd8\xff': '.jpg',
+            b'\x89PNG': '.png',
+            b'RIFF': '.webp',
+        }
         MAX_SIZE = 10 * 1024 * 1024
         fields = multipart.get('fields', {})
         category = fields.get('type', 'products')
         saved_paths = []
+        errors = []
         for f in multipart.get('files', []):
             ext = os.path.splitext(f['filename'])[1].lower()
+            if ext == '.svg':
+                errors.append(f'{f["filename"]}: SVG non autorisé')
+                continue
             if ext not in ALLOWED:
+                errors.append(f'{f["filename"]}: format non supporté')
                 continue
             if len(f['content']) > MAX_SIZE:
+                errors.append(f'{f["filename"]}: trop volumineux (max 10MB)')
+                continue
+            content = f['content']
+            detected_ext = None
+            for magic, mext in MAGIC_BYTES.items():
+                if content[:len(magic)] == magic:
+                    detected_ext = mext
+                    break
+            if detected_ext and detected_ext != ext:
+                errors.append(f'{f["filename"]}: extension ne correspond pas au contenu')
                 continue
             if CLOUDINARY_ENABLED:
                 try:
                     result = cloudinary.uploader.upload(
-                        f['content'],
+                        content,
                         folder=f'{CLOUDINARY_FOLDER}/{category}',
                         resource_type='image'
                     )
                     saved_paths.append(result['secure_url'])
                 except Exception as e:
                     print(f"[Cloudinary] Upload error: {e}")
+                    errors.append(f'{f["filename"]}: erreur upload')
             else:
                 subdir = 'settings' if category == 'settings' else 'products'
                 upload_dir = os.path.join(PARENT_DIR, 'uploads', subdir)
@@ -1467,9 +1495,12 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 safe_name = f"{ts}_{safe_base}"
                 dest = os.path.join(upload_dir, safe_name)
                 with open(dest, 'wb') as out:
-                    out.write(f['content'])
+                    out.write(content)
                 saved_paths.append(f'uploads/{subdir}/{safe_name}')
-        send_json(self, {'paths': saved_paths, 'count': len(saved_paths)})
+        result = {'paths': saved_paths, 'count': len(saved_paths)}
+        if errors:
+            result['errors'] = errors
+        send_json(self, result)
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
