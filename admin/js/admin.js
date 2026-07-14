@@ -42,6 +42,14 @@ function imgSrc(path) {
     return '/' + path;
 }
 
+function cloudinaryThumb(url, w) {
+    if (!url || !url.includes('cloudinary.com')) return url;
+    w = w || 200;
+    var parts = url.split('/upload/');
+    if (parts.length !== 2) return url;
+    return parts[0] + '/upload/w_' + w + ',q_auto,f_auto/' + parts[1];
+}
+
 function esc(str) {
     const d = document.createElement('div');
     d.textContent = str;
@@ -129,7 +137,7 @@ async function initDashboard() {
     if (topTbody && d.top_products) {
         topTbody.innerHTML = d.top_products.map(function(p) { return `
             <tr>
-                <td><div class="product-cell"><img src="${imgSrc(esc(p.image))}" alt="" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div><div class="sku">SKU-${p.id}</div></div></div></td>
+                <td><div class="product-cell"><img src="${cloudinaryThumb(imgSrc(esc(p.image)), 80)}" alt="" loading="lazy" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div><div class="sku">SKU-${p.id}</div></div></div></td>
                 <td>${formatPriceDA(p.price)}</td>
                 <td>${p.sold||0}</td>
                 <td>${formatPriceDA((p.sold||0) * Number(p.price))}</td>
@@ -142,7 +150,7 @@ async function initDashboard() {
     if (rpTbody && d.recent_products) {
         rpTbody.innerHTML = d.recent_products.map(function(p) { return `
             <tr>
-                <td><div class="product-cell"><img src="${imgSrc(esc(p.image))}" alt="" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div></div></div></td>
+                <td><div class="product-cell"><img src="${cloudinaryThumb(imgSrc(esc(p.image)), 80)}" alt="" loading="lazy" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div></div></div></td>
                 <td>${formatPriceDA(p.price)}</td>
                 <td>${p.stock||0}</td>
                 <td>${badge(p.stock > 0 ? (p.stock <= 5 ? 'low' : 'active') : 'hidden')}</td>
@@ -429,7 +437,7 @@ async function initProducts() {
     if (!tbody) return;
     tbody.innerHTML = products.map(p => `
         <tr>
-            <td><div class="product-cell"><img src="${imgSrc(esc(p.image))}" alt="" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div></div></div></td>
+            <td><div class="product-cell"><img src="${cloudinaryThumb(imgSrc(esc(p.image)), 80)}" alt="" loading="lazy" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div></div></div></td>
             <td>SKU-${p.id}</td>
             <td>${esc(p.category_name||'')}</td>
             <td>${formatPriceDA(p.price)}</td>
@@ -605,7 +613,7 @@ function renderVariants() {
                 var leftBtn = j > 0 ? '<button type="button" class="pm-card-img-reorder pm-card-img-reorder-left" data-action="move-image" data-variant="' + i + '" data-image="' + j + '" data-dir="-1" title="Gauche">&lsaquo;</button>' : '';
                 var rightBtn = j < v.images.length - 1 ? '<button type="button" class="pm-card-img-reorder pm-card-img-reorder-right" data-action="move-image" data-variant="' + i + '" data-image="' + j + '" data-dir="1" title="Droite">&rsaquo;</button>' : '';
                 return '<div class="pm-card-img-thumb">' +
-                    '<img src="' + imgSrc(esc(img)) + '" loading="lazy" onerror="this.src=\'https://placehold.co/72x72/e2e8f0/718096?text=?\';this.style.border=\'2px solid #f56565\'">' +
+                    '<img src="' + cloudinaryThumb(imgSrc(esc(img)), 200) + '" loading="lazy" onerror="this.src=\'https://placehold.co/72x72/e2e8f0/718096?text=?\';this.style.border=\'2px solid #f56565\'">' +
                     leftBtn + rightBtn +
                     '<button type="button" class="pm-card-img-del" data-action="remove-image" data-variant="' + i + '" data-image="' + j + '">&times;</button></div>';
             }).join('');
@@ -1347,7 +1355,7 @@ async function initCollections() {
 
     grid.innerHTML = cols.map(function (c) {
         var banner = c.image
-            ? '<img src="' + imgSrc(esc(c.image)) + '" style="width:100%;height:140px;object-fit:cover;border-radius:8px 8px 0 0;" onerror="this.style.display=\'none\'">'
+            ? '<img src="' + cloudinaryThumb(imgSrc(esc(c.image)), 400) + '" style="width:100%;height:140px;object-fit:cover;border-radius:8px 8px 0 0;" loading="lazy" onerror="this.style.display=\'none\'">'
             : '<div style="height:140px;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:#c9a96e;font-size:2rem;"><i class="fas fa-layer-group"></i></div>';
         return '<div class="card">' +
             banner +
@@ -2026,7 +2034,7 @@ async function initInventory() {
     tbody.innerHTML = inv.map(function (i) {
         const st = i.quantity === 0 ? 'Out of Stock' : i.quantity <= i.low_stock_threshold ? 'Low Stock' : 'In Stock';
         return '<tr>' +
-            '<td><div class="product-cell"><img src="' + imgSrc(esc(i.product_image)) + '" alt="" onerror="this.src=\'https://placehold.co/40x40/e2e8f0/718096?text=P\'"><div class="info"><div class="name">' + esc(i.product_name) + '</div></div></div></td>' +
+            '<td><div class="product-cell"><img src="' + cloudinaryThumb(imgSrc(esc(i.product_image)), 80) + '" alt="" loading="lazy" onerror="this.src=\'https://placehold.co/40x40/e2e8f0/718096?text=P\'"><div class="info"><div class="name">' + esc(i.product_name) + '</div></div></div></td>' +
             '<td>SKU-' + i.product_id + '</td>' +
             '<td>' + esc(i.category_name || '') + '</td>' +
             '<td><div style="display:flex;align-items:center;gap:8px;"><span style="font-weight:600;min-width:28px;">' + i.quantity + '</span>' + stockBar(i.quantity, i.low_stock_threshold || 5) + '</div></td>' +
@@ -2212,7 +2220,7 @@ function renderBestSellers(products) {
     }
     tbody.innerHTML = products.map(function (p) {
         return '<tr>' +
-            '<td><div class="product-cell"><img src="' + imgSrc(esc(p.image)) + '" alt="" onerror="this.src=\'https://placehold.co/40x40/e2e8f0/718096?text=P\'"><div class="info"><div class="name">' + esc(p.name) + '</div><div class="sku">SKU-' + p.id + '</div></div></div></td>' +
+            '<td><div class="product-cell"><img src="' + cloudinaryThumb(imgSrc(esc(p.image)), 80) + '" alt="" loading="lazy" onerror="this.src=\'https://placehold.co/40x40/e2e8f0/718096?text=P\'"><div class="info"><div class="name">' + esc(p.name) + '</div><div class="sku">SKU-' + p.id + '</div></div></div></td>' +
             '<td>' + formatPriceDA(p.price) + '</td>' +
             '<td>' + (p.sold || 0) + '</td>' +
             '<td>' + formatPriceDA(p.revenue) + '</td>' +

@@ -6,6 +6,14 @@ let totalProducts = 0;
 const PER_PAGE = 16;
 let currentCategory = '';
 
+function cloudinaryThumb(url, w) {
+    if (!url || !url.includes('cloudinary.com')) return url;
+    w = w || 400;
+    var parts = url.split('/upload/');
+    if (parts.length !== 2) return url;
+    return parts[0] + '/upload/w_' + w + ',q_auto,f_auto/' + parts[1];
+}
+
 async function loadProducts() {
     try {
         const res = await fetch('/api/public/products');
@@ -234,8 +242,8 @@ function renderProductCard(product) {
         : '<span class="current-price">' + formatPriceDA(product.price) + '</span>';
     return '<div class="product-card">' +
         '<div class="product-image">' +
-            '<img src="' + imgs[0] + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy">' +
-            (second ? '<img src="' + second + '" alt="' + esc(product.name) + '" class="img-secondary" loading="lazy">' : '') +
+            '<img src="' + cloudinaryThumb(imgs[0], 400) + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy">' +
+            (second ? '<img src="' + cloudinaryThumb(second, 400) + '" alt="' + esc(product.name) + '" class="img-secondary" loading="lazy">' : '') +
             ribbon +
             '<button class="product-wishlist' + (inW ? ' active' : '') + '" onclick="toggleWishlistItem(this,' + pid + ')" aria-label="Wishlist">' +
                 '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
@@ -782,11 +790,11 @@ function quickViewForCart(cartKey) {
     });
     var images = getQVariantImages();
     var mainImg = document.getElementById('quick-view-main-image');
-    if (mainImg) mainImg.src = images[0];
+    if (mainImg) mainImg.src = cloudinaryThumb(images[0], 600);
     var thumbs = document.getElementById('quick-view-thumbs');
     if (thumbs) {
         thumbs.innerHTML = images.map(function(img, i) {
-            return '<div class="qv-thumb' + (i === 0 ? ' active' : '') + '" onclick="qvGoToImage(' + i + ')"><img src="' + img + '" alt=""></div>';
+            return '<div class="qv-thumb' + (i === 0 ? ' active' : '') + '" onclick="qvGoToImage(' + i + ')"><img src="' + cloudinaryThumb(img, 120) + '" alt=""></div>';
         }).join('');
     }
     qvUpdateStockDisplay();
@@ -834,7 +842,7 @@ function quickView(productId) {
     /* Images — use variant images if a color is selected */
     var images = getQVariantImages();
     var mainImg = document.getElementById('quick-view-main-image');
-    if (mainImg) mainImg.src = images[0];
+    if (mainImg) mainImg.src = cloudinaryThumb(images[0], 600);
 
     /* Ribbon */
     var qvWrap = mainImg ? mainImg.parentElement : null;
@@ -911,7 +919,7 @@ function qvGoToImage(index) {
     _qv.currentIndex = index;
     var images = getQVariantImages();
     var mainImg = document.getElementById('quick-view-main-image');
-    if (mainImg) mainImg.src = images[index] || images[0];
+    if (mainImg) mainImg.src = cloudinaryThumb(images[index] || images[0], 600);
     var thumbs = document.querySelectorAll('#quick-view-thumbs .qv-thumb');
     thumbs.forEach(function (el, i) { el.classList.toggle('active', i === index); });
 }
@@ -945,7 +953,7 @@ function getQVariantImages() {
 function updateQVGallery(images) {
     if (!images || images.length === 0) return;
     var mainImg = document.getElementById('quick-view-main-image');
-    if (mainImg) mainImg.src = images[0];
+    if (mainImg) mainImg.src = cloudinaryThumb(images[0], 600);
     _qv.currentIndex = 0;
 
     var thumbs = document.getElementById('quick-view-thumbs');
@@ -1789,11 +1797,11 @@ function displayProduct(product) {
             <div class="pp-gallery">
                 <div class="pp-main-wrap">
                     ${productRibbonHtml(product)}
-                    <img id="main-product-image" src="${images[0]}" alt="${product.name}">
+                    <img id="main-product-image" src="${cloudinaryThumb(images[0], 800)}" alt="${product.name}">
                     ${images.length > 1 ? '<button class="pp-nav pp-nav-prev" onclick="ppPrevImage()">&#10094;</button><button class="pp-nav pp-nav-next" onclick="ppNextImage()">&#10095;</button>' : ''}
                 </div>
                 ${images.length > 1 ? '<div class="pp-thumbs" id="pp-thumbs">' + images.map(function (img, i) {
-                    return '<div class="pp-thumb' + (i === 0 ? ' active' : '') + '" onclick="switchProductImage(\'' + img + '\', this)"><img src="' + img + '" alt=""></div>';
+                    return '<div class="pp-thumb' + (i === 0 ? ' active' : '') + '" onclick="switchProductImage(\'' + img + '\', this)"><img src="' + cloudinaryThumb(img, 120) + '" data-raw="' + img + '" alt=""></div>';
                 }).join('') + '</div>' : ''}
             </div>
         </div>
@@ -1813,7 +1821,7 @@ function displayProduct(product) {
 
 function switchProductImage(src, el) {
     var mainImg = document.getElementById('main-product-image');
-    if (mainImg) mainImg.src = src;
+    if (mainImg) mainImg.src = cloudinaryThumb(src, 800);
     document.querySelectorAll('.product-thumbnail, .pp-thumb').forEach(function (t) { t.classList.remove('active'); });
     if (el) el.classList.add('active');
 }
@@ -1835,7 +1843,7 @@ function getCurrentProductImages() {
 function updateProductGallery(images) {
     if (!images || images.length === 0) return;
     var mainImg = document.getElementById('main-product-image');
-    if (mainImg) mainImg.src = images[0];
+    if (mainImg) mainImg.src = cloudinaryThumb(images[0], 800);
 
     var thumbs = document.getElementById('pp-thumbs');
     if (thumbs) {
@@ -2048,7 +2056,7 @@ function ppPrevImage() {
     var idx = activeIdx <= 0 ? thumbs.length - 1 : activeIdx - 1;
     thumbs.forEach(function (el, i) { el.classList.toggle('active', i === idx); });
     var imgs = thumbs[idx].querySelector('img');
-    if (imgs) img.src = imgs.src;
+    if (imgs) img.src = cloudinaryThumb(imgs.getAttribute('data-raw') || imgs.src, 800);
 }
 
 function ppNextImage() {
@@ -2057,10 +2065,10 @@ function ppNextImage() {
     var thumbs = document.querySelectorAll('#pp-thumbs .pp-thumb');
     var activeIdx = -1;
     thumbs.forEach(function (el, i) { if (el.classList.contains('active')) activeIdx = i; });
-    var idx = activeIdx === thumbs.length - 1 ? 0 : activeIdx + 1;
+    var idx = activeIdx >= thumbs.length - 1 ? 0 : activeIdx + 1;
     thumbs.forEach(function (el, i) { el.classList.toggle('active', i === idx); });
     var imgs = thumbs[idx].querySelector('img');
-    if (imgs) img.src = imgs.src;
+    if (imgs) img.src = cloudinaryThumb(imgs.getAttribute('data-raw') || imgs.src, 800);
 }
 
 function renderRelatedProducts(currentProduct) {

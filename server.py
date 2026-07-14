@@ -102,20 +102,29 @@ def format_product(row, cur=None):
             all_sizes = set()
             images_seen = set()
             merged_sizes = []
+            v_ids = [v['id'] for v in variant_rows]
+            cur.execute("SELECT variant_id, image_path FROM variant_images WHERE variant_id=ANY(%s) ORDER BY sort_order", (v_ids,))
+            vi_rows = cur.fetchall()
+            vi_map = {}
+            for vi in vi_rows:
+                vi_map.setdefault(vi['variant_id'], []).append(vi['image_path'])
+            cur.execute("SELECT variant_id, size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=ANY(%s) ORDER BY id", (v_ids,))
+            vs_rows = cur.fetchall()
+            vs_map = {}
+            for vs in vs_rows:
+                vs_map.setdefault(vs['variant_id'], []).append(vs)
             for v in variant_rows:
-                vdict = {'id': v['id'], 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock']}
-                cur.execute("SELECT image_path FROM variant_images WHERE variant_id=%s ORDER BY sort_order", (v['id'],))
-                vdict['images'] = [r['image_path'] for r in cur.fetchall()]
-                cur.execute("SELECT size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=%s ORDER BY id", (v['id'],))
-                vdict['sizes'] = [{'size': r['size_name'], 'stock': r['stock'], 'sku': r['sku']} for r in cur.fetchall()]
+                v_images = vi_map.get(v['id'], [])
+                v_sizes = [{'size': s['size_name'], 'stock': s['stock'], 'sku': s['sku']} for s in vs_map.get(v['id'], [])]
+                vdict = {'id': v['id'], 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock'], 'images': v_images, 'sizes': v_sizes}
                 variants.append(vdict)
                 if v['color_name'] and v['color_name'] not in all_colors:
                     all_colors[v['color_name']] = {'name': v['color_name'], 'hex': v['color_hex'], 'stock': v['stock']}
-                for s in vdict['sizes']:
+                for s in v_sizes:
                     if s['size'] not in all_sizes:
                         all_sizes.add(s['size'])
                         merged_sizes.append(s)
-                for img in vdict['images']:
+                for img in v_images:
                     if img not in images_seen:
                         images_seen.add(img)
             p['colors'] = list(all_colors.values()) if all_colors else []
@@ -134,6 +143,72 @@ def format_product(row, cur=None):
     p['category'] = p.get('category_name') or ''
     p['category_size_system'] = p.get('category_size_system') or 'standard'
     return p
+
+def batch_format_products(rows, cur):
+    if not rows:
+        return []
+    product_ids = [dict(r)['id'] for r in rows]
+    cur.execute("SELECT id, product_id, color_name, color_hex, sku, stock FROM product_variants WHERE product_id=ANY(%s) ORDER BY sort_order, id", (product_ids,))
+    all_variants = cur.fetchall()
+    if not all_variants:
+        return [format_product(r) for r in rows]
+    variant_ids = [v['id'] for v in all_variants]
+    cur.execute("SELECT variant_id, image_path FROM variant_images WHERE variant_id=ANY(%s) ORDER BY sort_order", (variant_ids,))
+    all_vi = cur.fetchall()
+    vi_map = {}
+    for vi in all_vi:
+        vi_map.setdefault(vi['variant_id'], []).append(vi['image_path'])
+    cur.execute("SELECT variant_id, size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=ANY(%s) ORDER BY id", (variant_ids,))
+    all_vs = cur.fetchall()
+    vs_map = {}
+    for vs in all_vs:
+        vs_map.setdefault(vs['variant_id'], []).append(vs)
+    pv_map = {}
+    for v in all_variants:
+        pv_map.setdefault(v['product_id'], []).append(v)
+    result = []
+    for r in rows:
+        p = dict(r)
+        if p.get('images') is None:
+            p['images'] = []
+        elif isinstance(p['images'], str):
+            p['images'] = json.loads(p['images'])
+        pid = p['id']
+        variant_rows = pv_map.get(pid, [])
+        if variant_rows:
+            variants = []
+            all_colors = {}
+            all_sizes = set()
+            images_seen = set()
+            merged_sizes = []
+            for v in variant_rows:
+                v_images = vi_map.get(v['id'], [])
+                v_sizes = [{'size': s['size_name'], 'stock': s['stock'], 'sku': s['sku']} for s in vs_map.get(v['id'], [])]
+                vdict = {'id': v['id'], 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock'], 'images': v_images, 'sizes': v_sizes}
+                variants.append(vdict)
+                if v['color_name'] and v['color_name'] not in all_colors:
+                    all_colors[v['color_name']] = {'name': v['color_name'], 'hex': v['color_hex'], 'stock': v['stock']}
+                for s in v_sizes:
+                    if s['size'] not in all_sizes:
+                        all_sizes.add(s['size'])
+                        merged_sizes.append(s)
+                for img in v_images:
+                    if img not in images_seen:
+                        images_seen.add(img)
+            p['colors'] = list(all_colors.values()) if all_colors else []
+            p['sizes'] = merged_sizes if merged_sizes else []
+            p['variants'] = variants
+            p['images'] = list(images_seen) if images_seen else (p.get('images') or [])
+        else:
+            p['colors'] = []
+            p['sizes'] = []
+            p['variants'] = []
+        p['featured'] = bool(p.get('featured', 0))
+        p['new_arrival'] = bool(p.get('new_arrival', 0))
+        p['category'] = p.get('category_name') or ''
+        p['category_size_system'] = p.get('category_size_system') or 'standard'
+        result.append(p)
+    return result
 
 MAX_REQUEST_SIZE = 1 * 1024 * 1024  # 1 MB for JSON requests
 
@@ -261,7 +336,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         LIMIT %s OFFSET %s
                     """, params + [limit, offset])
                     rows = cur.fetchall()
-                    result = [format_product(r, cur) for r in rows]
+                    result = batch_format_products(rows, cur)
                     total_pages = max(1, (total + limit - 1) // limit) if total > 0 else 1
                     send_json(self, {
                         'products': result,
@@ -279,7 +354,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         ORDER BY """ + order_by, params
                     )
                     rows = cur.fetchall()
-                    result = [format_product(r, cur) for r in rows]
+                    result = batch_format_products(rows, cur)
                     send_json(self, result)
 
                 db.close()
@@ -305,7 +380,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     ORDER BY p.created_at DESC
                 """)
                 rows = cur.fetchall()
-                result = [format_product(r, cur) for r in rows]
+                result = batch_format_products(rows, cur)
                 _cache.set('featured', result)
                 send_json(self, result)
                 db.close()
@@ -382,7 +457,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         WHERE p.id != %s AND p.status='active' AND p.category_id = %s
                         ORDER BY RANDOM() LIMIT 6
                     """, (pid, prow['category_id']))
-                    result = [format_product(r, cur) for r in cur.fetchall()]
+                    result = batch_format_products(cur.fetchall(), cur)
                 if len(result) < 6:
                     cur.execute("""
                         SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
@@ -392,11 +467,9 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         ORDER BY RANDOM() LIMIT %s
                     """, (pid, 6 - len(result)))
                     extra_ids = {r['id'] for r in result}
-                    for r in cur.fetchall():
-                        if r['id'] not in extra_ids:
-                            result.append(format_product(r, cur))
-                            if len(result) >= 6:
-                                break
+                    extra_rows = [r for r in cur.fetchall() if r['id'] not in extra_ids]
+                    if extra_rows:
+                        result.extend(batch_format_products(extra_rows, cur))
                 _cache.set(cache_key, result)
                 send_json(self, result)
                 db.close()
@@ -522,7 +595,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         WHERE cp.collection_id=%s AND p.status='active'
                     """, (c['id'],))
                     prods = cur.fetchall()
-                    c['products'] = [format_product(r, cur) for r in prods]
+                    c['products'] = batch_format_products(prods, cur)
                     c['product_count'] = len(prods)
                     result.append(c)
                 _cache.set('collections', result)
@@ -553,7 +626,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     ORDER BY p.created_at DESC
                 """)
                 rows = cur.fetchall()
-                products = [format_product(r, cur) for r in rows]
+                products = batch_format_products(rows, cur)
                 _cache.set('products_json', products)
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json; charset=utf-8')
