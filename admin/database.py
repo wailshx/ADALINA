@@ -300,8 +300,34 @@ def init_db():
         'CREATE INDEX IF NOT EXISTS idx_inventory_product ON inventory(product_id)',
         'CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(setting_key)',
         'CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name)',
+        "CREATE INDEX IF NOT EXISTS idx_status_history_order ON status_history(order_id)",
     ]:
         cur.execute(idx_sql)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS status_history (
+            id SERIAL PRIMARY KEY,
+            order_id INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            note TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT NOW(),
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS size_guides (
+            id SERIAL PRIMARY KEY,
+            category_id INTEGER,
+            guide_name TEXT NOT NULL DEFAULT '',
+            fit_type TEXT DEFAULT 'regular',
+            sizes_json TEXT DEFAULT '[]',
+            notes TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT NOW(),
+            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+        )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_size_guides_category ON size_guides(category_id)")
 
     conn.commit()
     conn.close()

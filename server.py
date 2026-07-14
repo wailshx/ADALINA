@@ -186,7 +186,15 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 category = query.get('category', [''])[0].strip().lower()
                 featured_only = query.get('featured', [''])[0].strip().lower() == 'true'
                 sort = query.get('sort', ['newest'])[0].strip().lower()
+                collection = query.get('collection', [''])[0].strip()
+                color = query.get('color', [''])[0].strip().lower()
+                size = query.get('size', ['']).strip()
+                price_min = query.get('price_min', [''])[0].strip()
+                price_max = query.get('price_max', [''])[0].strip()
+                new_arrival = query.get('new_arrival', [''])[0].strip().lower() == 'true'
+                in_stock = query.get('in_stock', [''])[0].strip().lower() == 'true'
 
+                joins = ["LEFT JOIN categories c ON p.category_id = c.id"]
                 where = ["p.status='active'"]
                 params = []
                 if category:
@@ -197,7 +205,35 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     params.extend(['%' + search + '%', '%' + search + '%'])
                 if featured_only:
                     where.append("p.featured = 1")
+                if collection:
+                    joins.append("JOIN collection_products cp ON p.id = cp.product_id")
+                    joins.append("JOIN collections co ON cp.collection_id = co.id")
+                    where.append("LOWER(co.name) = %s")
+                    params.append(collection.lower())
+                if color:
+                    where.append("EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND LOWER(pv.color_name) = %s)")
+                    params.append(color)
+                if size:
+                    where.append("EXISTS (SELECT 1 FROM product_variants pv2 JOIN variant_sizes vs ON pv2.id = vs.variant_id WHERE pv2.product_id = p.id AND vs.size_name = %s)")
+                    params.append(size)
+                if price_min:
+                    try:
+                        where.append("COALESCE(p.sale_price, p.price) >= %s")
+                        params.append(float(price_min))
+                    except ValueError:
+                        pass
+                if price_max:
+                    try:
+                        where.append("COALESCE(p.sale_price, p.price) <= %s")
+                        params.append(float(price_max))
+                    except ValueError:
+                        pass
+                if new_arrival:
+                    where.append("p.new_arrival = 1")
+                if in_stock:
+                    where.append("EXISTS (SELECT 1 FROM product_variants pv3 JOIN variant_sizes vs3 ON pv3.id = vs3.variant_id WHERE pv3.product_id = p.id AND vs3.stock > 0)")
                 where_clause = " AND ".join(where)
+                join_clause = " ".join(joins)
 
                 order_map = {
                     'newest': 'p.created_at DESC',
@@ -210,16 +246,16 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     sort = 'newest'
                 order_by = order_map[sort]
 
-                cur.execute("SELECT COUNT(*) AS cnt FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE " + where_clause, params)
+                cur.execute("SELECT COUNT(DISTINCT p.id) AS cnt FROM products p " + join_clause + " WHERE " + where_clause, params)
                 row = cur.fetchone()
                 total = row['cnt'] if row else 0
 
                 if limit > 0:
                     offset = (page - 1) * limit
                     cur.execute("""
-                        SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
+                        SELECT DISTINCT p.*, c.name AS category_name, c.size_system AS category_size_system
                         FROM products p
-                        LEFT JOIN categories c ON p.category_id = c.id
+                        """ + join_clause + """
                         WHERE """ + where_clause + """
                         ORDER BY """ + order_by + """
                         LIMIT %s OFFSET %s
@@ -236,9 +272,9 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     })
                 else:
                     cur.execute("""
-                        SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
+                        SELECT DISTINCT p.*, c.name AS category_name, c.size_system AS category_size_system
                         FROM products p
-                        LEFT JOIN categories c ON p.category_id = c.id
+                        """ + join_clause + """
                         WHERE """ + where_clause + """
                         ORDER BY """ + order_by, params
                     )
@@ -278,6 +314,96 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, {'error': str(e)}, 500)
             return
 
+        # GET /api/public/track?order_number=X&phone=Y — order tracking
+        if path == '/api/public/track':
+            order_number = query.get('order_number', [''])[0].strip()
+            phone = query.get('phone', [''])[0].strip().replace('+', '').replace('-', '').replace(' ', '')
+            if not order_number or not phone:
+                send_json(self, {'error': 'Numéro de commande et téléphone requis'}, 400)
+                return
+            try:
+                db = get_public_db()
+                cur = db.cursor()
+                cur.execute("""
+                    SELECT id, order_number, customer_name, customer_phone, wilaya, commune,
+                           status, total, items, delivery_fee, created_at
+                    FROM orders
+                    WHERE order_number = %s AND REPLACE(REPLACE(REPLACE(customer_phone, '+', ''), '-', ''), ' ', '') = %s
+                """, (order_number, phone))
+                row = cur.fetchone()
+                if not row:
+                    send_json(self, {'error': 'Commande non trouvée'}, 404)
+                    db.close()
+                    return
+                order = dict(row)
+                if order.get('items'):
+                    try:
+                        order['items'] = json.loads(order['items'])
+                    except Exception:
+                        order['items'] = []
+                cur.execute("""
+                    SELECT status, note, created_at
+                    FROM status_history
+                    WHERE order_id = %s
+                    ORDER BY created_at ASC
+                """, (order['id'],))
+                order['history'] = [{'status': r['status'], 'note': r['note'], 'created_at': r['created_at'].isoformat() if r['created_at'] else None} for r in cur.fetchall()]
+                status_order = ['new', 'confirmed', 'preparing', 'shipped', 'in_delivery', 'arrived', 'delivered']
+                idx = status_order.index(order['status']) if order['status'] in status_order else -1
+                order['progress'] = round((idx / max(len(status_order) - 1, 1)) * 100) if idx >= 0 else 0
+                db.close()
+                send_json(self, order)
+            except Exception as e:
+                print(f'[Server] Error tracking order: {e}', flush=True)
+                send_json(self, {'error': 'Erreur serveur'}, 500)
+            return
+
+        # GET /api/public/products/filters — available filter options
+        if path == '/api/public/products/filters':
+            cached = _cache.get('product_filters', ttl=300)
+            if cached is not None:
+                send_json(self, cached)
+                return
+            try:
+                db = get_public_db()
+                cur = db.cursor()
+                cur.execute("""
+                    SELECT DISTINCT pv.color_name, pv.color_hex
+                    FROM product_variants pv
+                    JOIN products p ON pv.product_id = p.id
+                    WHERE p.status='active' AND pv.color_name IS NOT NULL AND pv.color_name != ''
+                    ORDER BY pv.color_name
+                """)
+                colors = [{'name': r['color_name'], 'hex': r['color_hex']} for r in cur.fetchall()]
+
+                cur.execute("""
+                    SELECT DISTINCT vs.size_name
+                    FROM variant_sizes vs
+                    JOIN product_variants pv ON vs.variant_id = pv.id
+                    JOIN products p ON pv.product_id = p.id
+                    WHERE p.status='active' AND vs.stock > 0 AND vs.size_name IS NOT NULL AND vs.size_name != ''
+                    ORDER BY vs.size_name
+                """)
+                sizes = [r['size_name'] for r in cur.fetchall()]
+
+                cur.execute("""
+                    SELECT MIN(COALESCE(p.sale_price, p.price)) AS min_price,
+                           MAX(COALESCE(p.sale_price, p.price)) AS max_price
+                    FROM products p WHERE p.status='active'
+                """)
+                price_row = cur.fetchone()
+                price_min = float(price_row['min_price']) if price_row and price_row['min_price'] else 0
+                price_max = float(price_row['max_price']) if price_row and price_row['max_price'] else 100000
+
+                result = {'colors': colors, 'sizes': sizes, 'price_min': price_min, 'price_max': price_max}
+                _cache.set('product_filters', result)
+                send_json(self, result)
+                db.close()
+            except Exception as e:
+                print(f'[Server] Error loading filters: {e}', flush=True)
+                send_json(self, {'error': str(e)}, 500)
+            return
+
         # GET /api/public/products/{id} — single product
         if path.startswith('/api/public/products/') and path != '/api/public/products' and path != '/api/public/products/featured':
             pid = path.split('/')[-1]
@@ -302,6 +428,51 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, {'error': 'Erreur serveur'}, 500)
             return
 
+        # GET /api/public/products/{id}/recommendations — related products
+        if '/recommendations' in path and path.startswith('/api/public/products/'):
+            pid = path.split('/')[4]
+            try:
+                cache_key = f'recommendations:{pid}'
+                cached = _cache.get(cache_key, ttl=120)
+                if cached is not None:
+                    send_json(self, cached)
+                    return
+                db = get_public_db()
+                cur = db.cursor()
+                cur.execute("SELECT category_id FROM products WHERE id=%s AND status='active'", (pid,))
+                prow = cur.fetchone()
+                result = []
+                if prow and prow['category_id']:
+                    cur.execute("""
+                        SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
+                        FROM products p
+                        LEFT JOIN categories c ON p.category_id = c.id
+                        WHERE p.id != %s AND p.status='active' AND p.category_id = %s
+                        ORDER BY RANDOM() LIMIT 6
+                    """, (pid, prow['category_id']))
+                    result = [format_product(r, cur) for r in cur.fetchall()]
+                if len(result) < 6:
+                    cur.execute("""
+                        SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
+                        FROM products p
+                        LEFT JOIN categories c ON p.category_id = c.id
+                        WHERE p.id != %s AND p.status='active'
+                        ORDER BY RANDOM() LIMIT %s
+                    """, (pid, 6 - len(result)))
+                    extra_ids = {r['id'] for r in result}
+                    for r in cur.fetchall():
+                        if r['id'] not in extra_ids:
+                            result.append(format_product(r, cur))
+                            if len(result) >= 6:
+                                break
+                _cache.set(cache_key, result)
+                send_json(self, result)
+                db.close()
+            except Exception as e:
+                print(f'[Server] Error loading recommendations: {e}', flush=True)
+                send_json(self, [], 200)
+            return
+
         # GET /api/public/categories
         if path == '/api/public/categories':
             cached = _cache.get('categories', ttl=300)
@@ -322,6 +493,51 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 db.close()
             except Exception as e:
                 print(f'[Server] Error loading categories: {e}', flush=True)
+                send_json(self, {'error': str(e)}, 500)
+            return
+
+        # GET /api/public/size-guides — all size guides (or by category)
+        if path == '/api/public/size-guides':
+            cached = _cache.get('size_guides', ttl=300)
+            if cached is not None:
+                send_json(self, cached)
+                return
+            try:
+                db = get_public_db()
+                cur = db.cursor()
+                cat_id = query.get('category_id', [''])[0].strip()
+                if cat_id:
+                    cur.execute("""
+                        SELECT sg.*, c.name AS category_name
+                        FROM size_guides sg LEFT JOIN categories c ON sg.category_id = c.id
+                        WHERE sg.category_id = %s ORDER BY sg.id
+                    """, (cat_id,))
+                else:
+                    cur.execute("""
+                        SELECT sg.*, c.name AS category_name
+                        FROM size_guides sg LEFT JOIN categories c ON sg.category_id = c.id
+                        ORDER BY sg.id
+                    """)
+                rows = cur.fetchall()
+                result = []
+                for r in rows:
+                    d = dict(r)
+                    if d.get('sizes_json'):
+                        try:
+                            d['sizes'] = json.loads(d['sizes_json'])
+                        except Exception:
+                            d['sizes'] = []
+                    else:
+                        d['sizes'] = []
+                    d.pop('sizes_json', None)
+                    if d.get('created_at'):
+                        d['created_at'] = d['created_at'].isoformat()
+                    result.append(d)
+                _cache.set('size_guides', result)
+                send_json(self, result)
+                db.close()
+            except Exception as e:
+                print(f'[Server] Error loading size guides: {e}', flush=True)
                 send_json(self, {'error': str(e)}, 500)
             return
 
@@ -522,7 +738,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 cur = db.cursor()
                 cur.execute("BEGIN")
 
-                order_number = 'MEMO-' + __import__('datetime').datetime.now().strftime('%Y%m%d-') + str(__import__('random').randint(1000, 9999))
+                order_number = 'ADL-' + __import__('datetime').datetime.now().strftime('%Y%m%d-') + str(__import__('random').randint(1000, 9999))
                 commune = (data.get('commune') or '').strip()
                 shipping = data.get('shipping', '')
                 shipping_address = f"Name: {customer_name}, Phone: {customer_phone}, Address: {shipping}"
@@ -580,6 +796,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 """, (order_number, customer_name, customer_phone, wilaya, commune, 'new', server_total, json.dumps(items), shipping_address, payment, delivery_fee))
 
                 oid = cur.fetchone()['id']
+                cur.execute("INSERT INTO status_history (order_id, status, note) VALUES (%s, %s, %s)",
+                            (oid, 'new', 'Commande créée'))
                 cur.execute("COMMIT")
                 db.commit()
                 _cache.invalidate('products')
@@ -593,6 +811,38 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 except Exception:
                     pass
                 send_json(self, {'error': 'Erreur lors de la création de la commande'}, 500)
+            return
+
+        if path == '/api/public/log-event':
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                if length > MAX_REQUEST_SIZE:
+                    return
+                body = self.rfile.read(length).decode('utf-8')
+                data = json.loads(body) if body else {}
+                event_type = str(data.get('type', ''))[:50]
+                payload = data.get('payload', {})
+                if event_type and payload:
+                    try:
+                        db = get_public_db()
+                        cur = db.cursor()
+                        cur.execute("""
+                            CREATE TABLE IF NOT EXISTS search_events (
+                                id SERIAL PRIMARY KEY,
+                                event_type VARCHAR(50),
+                                payload JSONB,
+                                created_at TIMESTAMP DEFAULT NOW()
+                            )
+                        """)
+                        cur.execute("INSERT INTO search_events (event_type, payload) VALUES (%s, %s)",
+                                    (event_type, json.dumps(payload)))
+                        db.commit()
+                        db.close()
+                    except Exception:
+                        pass
+                send_json(self, {'ok': True})
+            except Exception:
+                send_json(self, {'ok': True})
             return
 
         self.send_response(404)

@@ -1080,6 +1080,11 @@ textarea.form-control { resize: vertical; min-height: 80px; }
     color: var(--primary);
     font-size: 0.82rem;
 }
+.notif-item .notif-icon.notif-icon-warning {
+    background: #fef9e7;
+    color: #d4a017;
+}
+.notif-item.notif-low-stock { cursor: default; }
 .notif-item .notif-content { flex: 1; min-width: 0; }
 .notif-item .notif-title {
     font-size: 0.8rem;

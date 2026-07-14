@@ -78,7 +78,8 @@
                     <ul class="nav-list">
                         <li class="nav-item"><a href="index.html" class="nav-link">HOME</a></li>
                         <li class="nav-item"><a href="shop.html" class="nav-link active">SHOP</a></li>
-                        
+                        <li class="nav-item"><a href="track.html" class="nav-link">SUIVI</a></li>
+                        <li class="nav-item"><a href="size-guides.html" class="nav-link">TALLAGE</a></li>
                     </ul>
                 </nav>
                 <span class="header-nav-location">𝐀𝐓𝐄𝐋𝐈𝐄𝐑 𝐀𝐃𝐀𝐋𝐈𝐍𝐀 • 𝐂𝐇𝐋𝐄𝐅</span>
@@ -93,16 +94,71 @@
                     <h1 class="shop-title">Notre Collection</h1>
                 </div>
 
+                <div class="shop-search-bar">
+                    <div class="shop-search-wrap">
+                        <svg class="shop-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="M21 21l-6.35-6.35"></path>
+                        </svg>
+                        <input type="text" id="shop-search-input" class="shop-search-input" placeholder="Rechercher un produit..." autocomplete="off">
+                        <button class="shop-search-clear" id="shop-search-clear" onclick="clearShopSearch()" style="display:none">&times;</button>
+                    </div>
+                </div>
+
                 <div class="shop-filters" id="shop-filters">
-                    <div class="shop-filter-row" id="size-filter-row"></div>
                     <div class="shop-filter-row" id="category-filter-row"></div>
+                    <div class="shop-filter-row" id="collection-filter-row"></div>
+                    <div class="shop-filter-row" id="size-filter-row"></div>
+                    <div class="shop-filter-row" id="color-filter-row"></div>
+                    <div class="shop-filter-row shop-filter-row-toggle">
+                        <label class="stock-toggle" for="in-stock-toggle">
+                            <input type="checkbox" id="in-stock-toggle" onchange="handleStockToggle(this.checked)">
+                            <span class="stock-toggle-slider"></span>
+                            <span class="stock-toggle-label">En stock uniquement</span>
+                        </label>
+                    </div>
+                    <div class="shop-filter-row shop-filter-row-price" id="price-filter-row">
+                        <span class="filter-label">Prix</span>
+                        <div class="price-range-wrap">
+                            <input type="number" id="price-min-input" class="price-range-input" placeholder="Min" min="0">
+                            <span class="price-range-sep">—</span>
+                            <input type="number" id="price-max-input" class="price-range-input" placeholder="Max" min="0">
+                            <button class="filter-chip" id="price-apply-btn" onclick="applyPriceFilter()">OK</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shop-active-filters" id="shop-active-filters" style="display:none">
+                    <div class="active-filters-list" id="active-filters-list"></div>
+                    <button class="active-filters-clear" onclick="clearAllFilters()">Tout effacer</button>
                 </div>
 
                 <div class="products-section">
-                    <div class="results-count">
+                    <div class="results-bar">
                         <span id="results-count">0 produits</span>
+                        <div class="shop-sort-wrap">
+                            <label class="shop-sort-label" for="shop-sort-select">Trier par</label>
+                            <select id="shop-sort-select" class="shop-sort-select" onchange="handleSortChange(this.value)">
+                                <option value="newest">Nouveautés</option>
+                                <option value="price-low">Prix croissant</option>
+                                <option value="price-high">Prix décroissant</option>
+                                <option value="rating">Meilleures notes</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="products-grid" id="products-grid"></div>
+                    <div class="shop-loading" id="shop-loading" style="display:none">
+                        <div class="shop-spinner"></div>
+                    </div>
+                    <div class="shop-empty" id="shop-empty" style="display:none">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-lighter);margin-bottom:1rem">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="M21 21l-6.35-6.35"></path>
+                        </svg>
+                        <p class="shop-empty-title">Aucun produit trouvé</p>
+                        <p class="shop-empty-text">Essayez de modifier vos filtres ou votre recherche.</p>
+                        <button class="btn btn-primary shop-empty-clear" onclick="clearAllFilters()">Effacer les filtres</button>
+                    </div>
                     <div class="pagination" id="pagination"></div>
                 </div>
             </div>

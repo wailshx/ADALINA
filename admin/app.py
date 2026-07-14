@@ -714,6 +714,16 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             send_json(self, data)
             return True
 
+        if path.startswith('/api/orders/') and path.endswith('/history'):
+            parts = path.split('/')
+            oid = parts[2]
+            cur.execute("SELECT status, note, created_at FROM status_history WHERE order_id=%s ORDER BY created_at ASC", (oid,))
+            rows = cur.fetchall()
+            result = [{'status': r['status'], 'note': r['note'], 'created_at': r['created_at'].isoformat() if r['created_at'] else None} for r in rows]
+            send_json(self, result)
+            return True
+
+        # GET /api/settings
         if path == '/api/settings':
             cur.execute("SELECT * FROM settings ORDER BY category, id")
             rows = cur.fetchall()
@@ -754,9 +764,30 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             for r in rows:
                 n = dict(r)
                 n['id'] = n['order_id']
+                n['type'] = 'order'
                 n['customer_name'] = n.get('customer_name', '') or ''
                 n['total'] = float(n.get('total', 0))
                 notifs.append(n)
+            try:
+                cur.execute("""
+                    SELECT i.product_id, i.quantity, p.name AS product_name
+                    FROM inventory i
+                    JOIN products p ON i.product_id = p.id
+                    WHERE p.status = 'active' AND i.quantity <= 5 AND i.quantity >= 0
+                    ORDER BY i.quantity ASC LIMIT 5
+                """)
+                low_stock = cur.fetchall()
+                for ls in low_stock:
+                    notifs.append({
+                        'id': 'low_stock_' + str(ls['product_id']),
+                        'type': 'low_stock',
+                        'product_id': ls['product_id'],
+                        'product_name': ls['product_name'],
+                        'quantity': ls['quantity'],
+                        'message': f"Stock faible ({ls['quantity']}) pour {ls['product_name']}"
+                    })
+            except Exception:
+                pass
             send_json(self, {'notifications': notifs, 'unread_count': unread})
             return True
 
@@ -797,7 +828,65 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             send_json(self, cust)
             return True
 
-        if path == '/api/inventory':
+        if path == '/api/size-guides':
+            if method == 'GET':
+                cur.execute("SELECT sg.*, c.name AS category_name FROM size_guides sg LEFT JOIN categories c ON sg.category_id = c.id ORDER BY sg.id")
+                rows = cur.fetchall()
+                result = []
+                for r in rows:
+                    d = dict(r)
+                    if d.get('sizes_json'):
+                        try:
+                            d['sizes'] = json.loads(d['sizes_json'])
+                        except Exception:
+                            d['sizes'] = []
+                    else:
+                        d['sizes'] = []
+                    d.pop('sizes_json', None)
+                    result.append(d)
+                send_json(self, result)
+                return True
+            if method == 'POST':
+                guide_name = data.get('guide_name', '')
+                category_id = data.get('category_id')
+                fit_type = data.get('fit_type', 'regular')
+                sizes = data.get('sizes', [])
+                notes = data.get('notes', '')
+                cur.execute("INSERT INTO size_guides (category_id, guide_name, fit_type, sizes_json, notes) VALUES (%s,%s,%s,%s,%s) RETURNING id",
+                            (category_id, guide_name, fit_type, json.dumps(sizes), notes))
+                gid = cur.fetchone()['id']
+                db.commit()
+                _cache.invalidate('size_guides')
+                send_json(self, {'id': gid, 'message': 'Guide créé'}, 201)
+                return True
+
+        if path.startswith('/api/size-guides/') and path != '/api/size-guides':
+            gid = path.split('/')[-1]
+            if method == 'PUT':
+                sets = []
+                vals = []
+                for key in ('guide_name', 'category_id', 'fit_type', 'notes'):
+                    if key in data:
+                        sets.append(f"{key}=%s")
+                        vals.append(data[key])
+                if 'sizes' in data:
+                    sets.append("sizes_json=%s")
+                    vals.append(json.dumps(data['sizes']))
+                if sets:
+                    vals.append(gid)
+                    cur.execute(f"UPDATE size_guides SET {','.join(sets)} WHERE id=%s", vals)
+                    db.commit()
+                    _cache.invalidate('size_guides')
+                send_json(self, {'message': 'Guide mis à jour'})
+                return True
+            if method == 'DELETE':
+                cur.execute("DELETE FROM size_guides WHERE id=%s", (gid,))
+                db.commit()
+                _cache.invalidate('size_guides')
+                send_json(self, {'message': 'Guide supprimé'})
+                return True
+
+        # GET /api/inventory
             status_filter = query.get('status', ['all'])[0].strip().lower()
             base_sql = """SELECT i.*, p.name AS product_name, p.image AS product_image,
                                 c.name AS category_name
@@ -1003,6 +1092,11 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                          data.get('status','pending'), data.get('total',0), items_json,
                          data.get('delivery_fee', 0)))
             oid = cur.fetchone()['id']
+            try:
+                cur.execute("INSERT INTO status_history (order_id, status, note) VALUES (%s, %s, %s)",
+                            (oid, data.get('status', 'new'), 'Commande créée'))
+            except Exception:
+                pass
             new_status = data.get('status', 'pending')
             if new_status in ('confirmed', 'processing'):
                 items = data.get('items', [])
@@ -1315,6 +1409,12 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                             db.commit()
                             send_json(self, {'error': f"Impossible de réactiver la commande : {msg}"}, 409)
                             return True
+            if new_status and old_status and new_status != old_status:
+                try:
+                    cur.execute("INSERT INTO status_history (order_id, status, note) VALUES (%s, %s, %s)",
+                                (oid, new_status, ''))
+                except Exception:
+                    pass
             db.commit()
             send_json(self, {'message': 'Order updated'})
             return True

@@ -283,6 +283,15 @@ async function fetchNotifications() {
     }
 
     list.innerHTML = res.notifications.map(function (n) {
+        if (n.type === 'low_stock') {
+            return '<div class="notif-item notif-low-stock" data-id="' + n.id + '" data-product-id="' + (n.product_id || '') + '">' +
+                '<div class="notif-icon notif-icon-warning"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>' +
+                '<div class="notif-content">' +
+                    '<div class="notif-title">Stock faible</div>' +
+                    '<div class="notif-desc">' + esc(n.product_name || '') + ' — ' + (n.quantity || 0) + ' restant(s)</div>' +
+                '</div>' +
+            '</div>';
+        }
         return '<div class="notif-item" data-id="' + n.id + '" data-order-id="' + (n.order_id || n.id) + '">' +
             '<div class="notif-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div>' +
             '<div class="notif-content">' +
@@ -1596,6 +1605,13 @@ window.viewOrder = async function (id) {
 
     currentOrder = o;
 
+    /* Fetch status history */
+    var history = [];
+    try {
+        var hRes = await api('GET', '/orders/' + id + '/history');
+        if (Array.isArray(hRes)) history = hRes;
+    } catch (e) {}
+
     /* Mark as read */
     api('PUT', '/notifications/read/' + id);
 
@@ -1731,7 +1747,21 @@ window.viewOrder = async function (id) {
             '</p>' +
             '<button class="btn btn-danger" id="od-delete-btn"><i class="fas fa-trash-alt"></i> Supprimer définitivement</button>' +
         '</div>' +
-    '</div>';
+    '</div>' +
+    /* Status history */
+    (history.length > 0 ?
+    '<div class="detail-card" style="grid-column:1/-1;">' +
+        '<div class="detail-card-header"><i class="fas fa-clock"></i> Historique des statuts</div>' +
+        '<div class="detail-card-body" style="padding:0;">' +
+            '<table class="od-items-table">' +
+                '<thead><tr><th>Statut</th><th>Note</th><th>Date</th></tr></thead>' +
+                '<tbody>' + history.map(function(h) {
+                    var hd = h.created_at ? new Date(h.created_at).toLocaleString('fr-DZ', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+                    return '<tr><td>' + (statusLabels[h.status] || h.status) + '</td><td>' + esc(h.note || '—') + '</td><td>' + hd + '</td></tr>';
+                }).join('') + '</tbody>' +
+            '</table>' +
+        '</div>' +
+    '</div>' : '');
 
     document.getElementById('order-detail-content').innerHTML = content;
 

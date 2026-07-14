@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Guide des tailles ADALINA. Trouvez votre taille idéale avec nos tableaux de conversion et conseils d'ajustement.">
+    <title>Guide des tailles - ADALINA</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='serif' font-weight='300'>A</text></svg>">
+    <link rel="stylesheet" href="css/styles.css?v=__BUILD__">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+    window.__settingsReady = fetch('/api/public/settings').then(function(r){return r.json()}).then(function(s){
+        var colors = {primary:'primary_color',primaryDark:'primary_dark',secondary:'secondary_color',background:'background_color',text:'text_color',textLight:'text_light_color',border:'border_color'};
+        for (var cssName in colors) {
+            var key = colors[cssName];
+            if (s[key]) document.documentElement.style.setProperty('--'+cssName.replace(/([A-Z])/g,'-$1').toLowerCase(), s[key]);
+        }
+        if (s.heading_font) document.documentElement.style.setProperty('--font-heading', "'"+s.heading_font+"', serif");
+        if (s.body_font) document.documentElement.style.setProperty('--font-body', "'"+s.body_font+"', sans-serif");
+        var titleEl = document.querySelector('[data-setting="site_title"]');
+        if (titleEl && s.site_title) { titleEl.textContent = s.site_title; document.title = 'Guide des tailles - ' + s.site_title; }
+        window.__settings = s;
+        return s;
+    }).catch(function(){ return null; });
+    </script>
+    <style>
+    .sg-page { padding: 6rem 0 4rem; }
+    .sg-title { font-family: var(--font-heading); font-size: 2.2rem; text-align: center; margin-bottom: 0.5rem; color: var(--secondary); }
+    .sg-subtitle { text-align: center; color: var(--text-lighter); font-size: 0.88rem; margin-bottom: 3rem; max-width: 560px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+
+    .sg-how-to { background: var(--cream); border-radius: var(--radius-sm); padding: 2rem; margin-bottom: 3rem; }
+    .sg-how-to h2 { font-family: var(--font-heading); font-size: 1.3rem; margin-bottom: 1rem; color: var(--secondary); }
+    .sg-measurements { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
+    .sg-measurement { text-align: center; }
+    .sg-measurement-icon { width: 48px; height: 48px; margin: 0 auto 0.5rem; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .sg-measurement-icon svg { width: 24px; height: 24px; color: var(--secondary); }
+    .sg-measurement h4 { font-size: 0.82rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .sg-measurement p { font-size: 0.75rem; color: var(--text-lighter); line-height: 1.5; }
+
+    .sg-tabs { display: flex; gap: 0; margin-bottom: 2rem; border-bottom: 2px solid var(--border); overflow-x: auto; }
+    .sg-tab { padding: 0.8rem 1.5rem; font-size: 0.78rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-lighter); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; white-space: nowrap; background: none; border-top: none; border-left: none; border-right: none; font-family: var(--font-body); }
+    .sg-tab:hover { color: var(--text); }
+    .sg-tab.active { color: var(--secondary); border-bottom-color: var(--secondary); font-weight: 600; }
+
+    .sg-guide { display: none; }
+    .sg-guide.active { display: block; }
+    .sg-guide-header { margin-bottom: 1.5rem; }
+    .sg-guide-name { font-family: var(--font-heading); font-size: 1.4rem; color: var(--secondary); margin-bottom: 0.25rem; }
+    .sg-fit { display: inline-block; padding: 0.3rem 0.7rem; border-radius: var(--radius-lg); font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .sg-fit.slim { background: #e8f4fd; color: #2980b9; }
+    .sg-fit.regular { background: #eaf2e3; color: #27ae60; }
+    .sg-fit.oversized { background: #fef9e7; color: #d4a017; }
+    .sg-fit-relaxed { background: #f4ecf7; color: #8e44ad; }
+
+    .sg-table-wrap { overflow-x: auto; margin-bottom: 1.5rem; -webkit-overflow-scrolling: touch; }
+    .sg-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .sg-table th { background: var(--secondary); color: #fff; padding: 10px 14px; text-align: left; font-weight: 500; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+    .sg-table td { padding: 10px 14px; border-bottom: 1px solid var(--border-light); }
+    .sg-table tr:hover td { background: var(--cream); }
+    .sg-table .sg-size-name { font-weight: 600; color: var(--secondary); }
+
+    .sg-notes { background: var(--cream); padding: 1rem 1.25rem; border-radius: var(--radius-sm); font-size: 0.82rem; color: var(--text-light); line-height: 1.7; margin-top: 1rem; }
+    .sg-notes strong { color: var(--text); }
+
+    .sg-empty { text-align: center; padding: 4rem 2rem; color: var(--text-lighter); }
+    .sg-empty svg { width: 48px; height: 48px; margin-bottom: 1rem; color: var(--border); }
+
+    @media (max-width: 768px) {
+        .sg-page { padding: 5rem 0 3rem; }
+        .sg-title { font-size: 1.6rem; }
+        .sg-how-to { padding: 1.5rem; }
+        .sg-tab { padding: 0.7rem 1rem; font-size: 0.72rem; }
+    }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <header class="header">
+            <div class="header-top-row">
+                <div class="header-left">
+                    <a href="https://www.instagram.com/adalina.boutique" target="_blank" rel="noopener noreferrer" class="header-instagram" aria-label="Instagram" data-setting-href="instagram_url">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
+                        </svg>
+                    </a>
+                    <span class="header-availability">𝐃𝐢𝐬𝐩𝐨𝐧𝐢𝐛𝐥𝐞 𝟐𝟒𝐡/𝟐𝟒 𝐞𝐭 𝟕𝐣/𝟕</span>
+                </div>
+                <a href="index.html" class="logo-block">
+                    <span class="logo">ADALINA</span>
+                    <span class="logo-sub">BOUTIQUE EN LIGNE</span>
+                </a>
+                <div class="header-right">
+                    <button class="header-icon-btn" onclick="openSearchModal()" aria-label="Rechercher">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="M21 21l-6.35-6.35"></path></svg>
+                    </button>
+                    <button class="header-icon-btn" onclick="toggleWishlist()" aria-label="Liste d'envies">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                    </button>
+                    <button class="header-icon-btn" onclick="toggleCart()" aria-label="Panier">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                    </button>
+                    <button class="hamburger" id="hamburger-btn">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="header-nav-row">
+                <nav class="nav" id="nav-menu">
+                    <ul class="nav-list">
+                        <li class="nav-item"><a href="index.html" class="nav-link">HOME</a></li>
+                        <li class="nav-item"><a href="shop.html" class="nav-link">SHOP</a></li>
+                        <li class="nav-item"><a href="track.html" class="nav-link">SUIVI</a></li>
+                        <li class="nav-item"><a href="size-guides.html" class="nav-link active">TALLAGE</a></li>
+                    </ul>
+                </nav>
+                <span class="header-nav-location">𝐀𝐓𝐄𝐋𝐈𝐄𝐑 𝐀𝐃𝐀𝐋𝐈𝐍𝐀 • 𝐂𝐇𝐋𝐄𝐅</span>
+            </div>
+        </header>
+
+        <main class="sg-page">
+            <div class="container">
+                <h1 class="sg-title">Guide des tailles</h1>
+                <p class="sg-subtitle">Trouvez votre taille idéale. Mesurez-vous chez vous et comparez avec nos tableaux ci-dessous.</p>
+
+                <div class="sg-how-to">
+                    <h2>Comment se mesurer</h2>
+                    <div class="sg-measurements">
+                        <div class="sg-measurement">
+                            <div class="sg-measurement-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg>
+                            </div>
+                            <h4>Tour de poitrine</h4>
+                            <p>Mesurez au niveau du point le plus fort de la poitrine, en passant sous les bras.</p>
+                        </div>
+                        <div class="sg-measurement">
+                            <div class="sg-measurement-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                            </div>
+                            <h4>Tour de taille</h4>
+                            <p>Mesurez à la taille, au point le plus étroit du tronc.</p>
+                        </div>
+                        <div class="sg-measurement">
+                            <div class="sg-measurement-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22V2M5 9l7-7 7 7"/></svg>
+                            </div>
+                            <h4>Tour de hanches</h4>
+                            <p>Mesurez au niveau du point le plus large des hanches.</p>
+                        </div>
+                        <div class="sg-measurement">
+                            <div class="sg-measurement-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12h18M12 3v18"/></svg>
+                            </div>
+                            <h4>Longueur</h4>
+                            <p>De l'épaule jusqu'au bas du vêtement (pour les robes et abayas).</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sg-tabs" id="sg-tabs"></div>
+                <div id="sg-guides-container"></div>
+            </div>
+        </main>
+
+        <div id="cart-sidebar" class="sidebar">
+            <div class="sidebar-header"><h3>Mon Panier</h3><span class="close-sidebar" onclick="toggleCart()">×</span></div>
+            <div class="sidebar-content" id="cart-items"><div class="empty-cart" style="display: block;"><p>Votre panier est vide</p></div></div>
+            <div class="sidebar-footer"><div class="cart-total"><span>Total :</span><span id="cart-total-price">0 DA</span></div><button class="btn btn-primary" onclick="toggleCart(); window.location.href='checkout.html'">Commander</button><p class="continue-shopping" onclick="toggleCart()">Continuer mes achats</p></div>
+        </div>
+
+        <div id="overlay" class="overlay" onclick="closeAllDrawers()"></div>
+
+        <footer class="footer">
+            <div class="container">
+                <div class="footer-inner">
+                    <div class="footer-brand"><h3 class="footer-logo">ADALINA</h3><p class="footer-tagline">Vêtements prêt-à-porter pour femmes</p></div>
+                    <div class="footer-social">
+                        <a href="#" target="_blank" rel="noopener noreferrer" class="footer-social-link" data-setting-href="whatsapp_url" aria-label="WhatsApp">
+                            <span class="footer-social-icon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
+                            <span class="footer-social-label">WhatsApp</span>
+                        </a>
+                    </div>
+                </div>
+                <div class="footer-bottom"><p>&copy; ADALINA. Tous droits réservés.</p></div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="js/sizes.js"></script>
+    <script src="js/script.js?v=__BUILD__"></script>
+    <script>
+    function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    async function loadSizeGuides() {
+        var tabsEl = document.getElementById('sg-tabs');
+        var container = document.getElementById('sg-guides-container');
+        try {
+            var res = await fetch('/api/public/size-guides');
+            var guides = await res.json();
+            if (!guides || guides.length === 0) {
+                tabsEl.innerHTML = '';
+                container.innerHTML = '<div class="sg-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>Aucun guide de tailles disponible pour le moment.</p></div>';
+                return;
+            }
+            var tabsHtml = '';
+            var guidesHtml = '';
+            guides.forEach(function(g, i) {
+                var tabClass = i === 0 ? 'sg-tab active' : 'sg-tab';
+                tabsHtml += '<button class="' + tabClass + '" onclick="switchSGTab(' + i + ')">' + esc(g.guide_name || g.category_name || 'Guide ' + (i + 1)) + '</button>';
+                var fitClass = g.fit_type || 'regular';
+                guidesHtml += '<div class="sg-guide' + (i === 0 ? ' active' : '') + '" id="sg-guide-' + i + '">';
+                guidesHtml += '<div class="sg-guide-header">';
+                guidesHtml += '<div class="sg-guide-name">' + esc(g.guide_name || g.category_name || '') + '</div>';
+                guidesHtml += '<span class="sg-fit ' + fitClass + '">' + fitClass.charAt(0).toUpperCase() + fitClass.slice(1) + '</span>';
+                guidesHtml += '</div>';
+                var sizes = g.sizes || [];
+                if (sizes.length > 0) {
+                    var headers = Object.keys(sizes[0]);
+                    guidesHtml += '<div class="sg-table-wrap"><table class="sg-table"><thead><tr>';
+                    headers.forEach(function(h) {
+                        guidesHtml += '<th>' + esc(h) + '</th>';
+                    });
+                    guidesHtml += '</tr></thead><tbody>';
+                    sizes.forEach(function(row) {
+                        guidesHtml += '<tr>';
+                        headers.forEach(function(h, hi) {
+                            guidesHtml += '<td' + (hi === 0 ? ' class="sg-size-name"' : '') + '>' + esc(String(row[h] || '—')) + '</td>';
+                        });
+                        guidesHtml += '</tr>';
+                    });
+                    guidesHtml += '</tbody></table></div>';
+                }
+                if (g.notes) {
+                    guidesHtml += '<div class="sg-notes">' + esc(g.notes) + '</div>';
+                }
+                guidesHtml += '</div>';
+            });
+            tabsEl.innerHTML = tabsHtml;
+            container.innerHTML = guidesHtml;
+        } catch (e) {
+            console.error('Error loading size guides:', e);
+            container.innerHTML = '<div class="sg-empty"><p>Erreur de chargement.</p></div>';
+        }
+    }
+
+    function switchSGTab(idx) {
+        document.querySelectorAll('.sg-tab').forEach(function(t, i) {
+            t.classList.toggle('active', i === idx);
+        });
+        document.querySelectorAll('.sg-guide').forEach(function(g, i) {
+            g.classList.toggle('active', i === idx);
+        });
+    }
+
+    loadSizeGuides();
+
+    var hamburger = document.getElementById('hamburger-btn');
+    if (hamburger) hamburger.addEventListener('click', function() {
+        document.getElementById('nav-menu').classList.toggle('active');
+        hamburger.classList.toggle('active');
+        document.querySelector('.header-nav-row').classList.toggle('nav-open');
+    });
+
+    (function() {
+        function applyStoredSettings(s) {
+            if (!s) return;
+            document.querySelectorAll('[data-setting]').forEach(function(el) { var key = el.getAttribute('data-setting'); if (s[key]) el.textContent = s[key]; });
+            document.querySelectorAll('[data-setting-href]').forEach(function(el) { var key = el.getAttribute('data-setting-href'); if (s[key]) { var url = s[key]; if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url; el.setAttribute('href', url); el.style.display = ''; } else if (el.getAttribute('href') === '#') { el.style.display = 'none'; } });
+        }
+        if (window.__settingsReady) { window.__settingsReady.then(applyStoredSettings); } else { applyStoredSettings(window.__settings); }
+    })();
+    </script>
+</body>
+</html>
