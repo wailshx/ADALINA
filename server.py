@@ -404,30 +404,6 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, {'error': str(e)}, 500)
             return
 
-        # GET /api/public/products/{id} — single product
-        if path.startswith('/api/public/products/') and path != '/api/public/products' and path != '/api/public/products/featured':
-            pid = path.split('/')[-1]
-            try:
-                db = get_public_db()
-                cur = db.cursor()
-                cur.execute("""
-                    SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
-                    FROM products p
-                    LEFT JOIN categories c ON p.category_id = c.id
-                    WHERE p.id=%s AND p.status='active'
-                """, (pid,))
-                row = cur.fetchone()
-                if not row:
-                    send_json(self, {'error': 'Not found'}, 404)
-                    db.close()
-                    return
-                send_json(self, format_product(row, cur))
-                db.close()
-            except Exception as e:
-                logger.exception("Error loading product %s", pid)
-                send_json(self, {'error': 'Erreur serveur'}, 500)
-            return
-
         # GET /api/public/products/{id}/recommendations — related products
         if '/recommendations' in path and path.startswith('/api/public/products/'):
             pid = path.split('/')[4]
@@ -471,6 +447,30 @@ class AdalinaServer(SimpleHTTPRequestHandler):
             except Exception as e:
                 print(f'[Server] Error loading recommendations: {e}', flush=True)
                 send_json(self, [], 200)
+            return
+
+        # GET /api/public/products/{id} — single product
+        if path.startswith('/api/public/products/') and path != '/api/public/products' and path != '/api/public/products/featured':
+            pid = path.split('/')[-1]
+            try:
+                db = get_public_db()
+                cur = db.cursor()
+                cur.execute("""
+                    SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
+                    FROM products p
+                    LEFT JOIN categories c ON p.category_id = c.id
+                    WHERE p.id=%s AND p.status='active'
+                """, (pid,))
+                row = cur.fetchone()
+                if not row:
+                    send_json(self, {'error': 'Not found'}, 404)
+                    db.close()
+                    return
+                send_json(self, format_product(row, cur))
+                db.close()
+            except Exception as e:
+                logger.exception("Error loading product %s", pid)
+                send_json(self, {'error': 'Erreur serveur'}, 500)
             return
 
         # GET /api/public/categories

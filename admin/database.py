@@ -91,9 +91,58 @@ def _tables_exist(conn):
     cur.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='products'")
     return cur.fetchone()[0] > 0
 
+def _run_migrations(conn):
+    cur = conn.cursor()
+    migrations = [
+        """CREATE TABLE IF NOT EXISTS size_guides (
+            id SERIAL PRIMARY KEY,
+            category_id INTEGER,
+            guide_name TEXT NOT NULL DEFAULT '',
+            fit_type TEXT DEFAULT 'regular',
+            sizes_json TEXT DEFAULT '[]',
+            notes TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT NOW(),
+            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+        )""",
+        "CREATE INDEX IF NOT EXISTS idx_size_guides_category ON size_guides(category_id)",
+        """CREATE TABLE IF NOT EXISTS status_history (
+            id SERIAL PRIMARY KEY,
+            order_id INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            note TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT NOW(),
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+        )""",
+        """CREATE TABLE IF NOT EXISTS audit_logs (
+            id SERIAL PRIMARY KEY,
+            event_type TEXT NOT NULL,
+            details TEXT DEFAULT '',
+            ip TEXT DEFAULT '',
+            username TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
+        """CREATE TABLE IF NOT EXISTS search_events (
+            id SERIAL PRIMARY KEY,
+            event_type VARCHAR(50),
+            payload JSONB,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
+    ]
+    for sql in migrations:
+        try:
+            cur.execute(sql)
+        except Exception:
+            pass
+    try:
+        cur.execute("GRANT SELECT ON size_guides TO adalina_public")
+    except Exception:
+        pass
+    conn.commit()
+
 def init_db():
     conn = get_db()
     if _tables_exist(conn):
+        _run_migrations(conn)
         conn.close()
         return
     cur = conn.cursor()
