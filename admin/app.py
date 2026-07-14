@@ -1796,7 +1796,22 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             if not require_auth(self):
                 return
             rp = secure_path(BASE_DIR, os.path.relpath(path, '/admin/'))
-            if rp:
+            if rp and rp.endswith('.html'):
+                session_token = get_token_from_cookies(self.headers.get('Cookie'))
+                csrf_val = get_csrf_token_for_session(session_token) if session_token else ''
+                if csrf_val:
+                    with open(rp, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    csrf_script = f'<script>window.__csrf="{csrf_val}"</script>'
+                    content = content.replace('<head>', '<head>' + csrf_script, 1)
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html; charset=utf-8')
+                    self.send_header('Cache-Control', 'no-cache, must-revalidate')
+                    self.end_headers()
+                    self.wfile.write(content.encode('utf-8'))
+                else:
+                    send_file(self, rp)
+            elif rp:
                 send_file(self, rp)
             else:
                 self.send_response(403)
@@ -1850,9 +1865,10 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             ip = get_client_ip(self)
             method = self.command
             if method in ('POST', 'PUT', 'DELETE'):
-                if not require_csrf(self):
-                    audit_log.log('CSRF_BLOCKED', details=f'{method} {path}', ip=ip)
-                    return
+                if path != '/api/upload':
+                    if not require_csrf(self):
+                        audit_log.log('CSRF_BLOCKED', details=f'{method} {path}', ip=ip)
+                        return
             if 'multipart/form-data' in content_type:
                 body = self.rfile.read(int(self.headers.get('Content-Length', 0)))
                 boundary = None

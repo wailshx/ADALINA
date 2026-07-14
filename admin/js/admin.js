@@ -1,6 +1,7 @@
 /* ── API Client ── */
 const API = '/api';
 function getCookie(name) {
+    if (name === 'csrf_token' && window.__csrf) return window.__csrf;
     const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return m ? m[2] : '';
 }
