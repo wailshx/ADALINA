@@ -1890,11 +1890,12 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 csrf = generate_csrf_token()
                 save_csrf_token(token, csrf)
                 max_age = 30 * 24 * 3600 if remember else None
-                cookie = f'admin_session={token}; Path=/; HttpOnly; SameSite=Lax; Secure'
+                secure = 'Secure' if os.environ.get('HTTPS', '') else ''
+                cookie = f'admin_session={token}; Path=/; HttpOnly; SameSite=Lax; {secure}'.strip()
                 if max_age: cookie += f'; Max-Age={max_age}'
                 self.send_response(302)
                 self.send_header('Set-Cookie', cookie)
-                self.send_header('Set-Cookie', f'csrf_token={csrf}; Path=/admin; SameSite=Lax; Secure')
+                self.send_header('Set-Cookie', f'csrf_token={csrf}; Path=/admin; SameSite=Lax; {secure}'.strip())
                 self.send_header('Location', '/admin/dashboard.html')
                 self.end_headers()
                 audit_log.log('LOGIN_SUCCESS', username, ip=ip)
