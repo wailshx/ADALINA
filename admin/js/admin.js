@@ -43,11 +43,7 @@ function imgSrc(path) {
 }
 
 function cloudinaryThumb(url, w) {
-    if (!url || !url.includes('cloudinary.com')) return url;
-    w = w || 200;
-    var parts = url.split('/upload/');
-    if (parts.length !== 2) return url;
-    return parts[0] + '/upload/w_' + w + ',q_auto,f_auto/' + parts[1];
+    return url || '';
 }
 
 function esc(str) {
@@ -554,7 +550,7 @@ window.deleteProduct = async function(id) {
 
 window.deleteAllProducts = async function() {
     if (!confirm('Delete ALL products and their images? This cannot be undone.')) return;
-    if (!confirm('Are you absolutely sure? All product data and Cloudinary images will be removed.')) return;
+    if (!confirm('Are you absolutely sure? All product data and images will be removed.')) return;
     var result = await api('DELETE', '/products/delete-all');
     if (result && result.message) {
         showToast('✓ ' + result.message);

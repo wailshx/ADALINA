@@ -7,11 +7,7 @@ const PER_PAGE = 16;
 let currentCategory = '';
 
 function cloudinaryThumb(url, w) {
-    if (!url || !url.includes('cloudinary.com')) return url;
-    w = w || 400;
-    var parts = url.split('/upload/');
-    if (parts.length !== 2) return url;
-    return parts[0] + '/upload/w_' + w + ',q_auto,f_auto/' + parts[1];
+    return url || '';
 }
 
 async function loadProducts() {
