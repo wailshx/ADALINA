@@ -111,8 +111,9 @@
             <p>Manage your product catalog</p>
         </div>
         <div style="display:flex;gap:8px;">
-            <button class="btn btn-outline btn-sm"><i class="fas fa-filter"></i> Filter</button>
-            <button class="btn btn-primary btn-sm" onclick="openAddProduct()"><i class="fas fa-plus"></i> Ajouter un produit</button>
+            <button class="btn btn-outline btn-sm"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Filter</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteAllProducts()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Tout supprimer</button>
+            <button class="btn btn-primary btn-sm" onclick="openAddProduct()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter un produit</button>
         </div>
     </div>
 
@@ -122,10 +123,10 @@
                 <table id="products-table">
                     <thead>
                         <tr>
-                            <th class="table-sort" style="cursor:pointer;">Product <i class="fas fa-sort" style="font-size:0.6rem;"></i></th>
-                            <th class="table-sort" style="cursor:pointer;">SKU <i class="fas fa-sort" style="font-size:0.6rem;"></i></th>
-                            <th class="table-sort" style="cursor:pointer;">Category <i class="fas fa-sort" style="font-size:0.6rem;"></i></th>
-                            <th class="table-sort" style="cursor:pointer;">Price <i class="fas fa-sort" style="font-size:0.6rem;"></i></th>
+                            <th class="table-sort" style="cursor:pointer;">Product <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;"><path d="M12 5v14M5 12l7 7 7-7"/></svg></th>
+                            <th class="table-sort" style="cursor:pointer;">SKU <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;"><path d="M12 5v14M5 12l7 7 7-7"/></svg></th>
+                            <th class="table-sort" style="cursor:pointer;">Category <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;"><path d="M12 5v14M5 12l7 7 7-7"/></svg></th>
+                            <th class="table-sort" style="cursor:pointer;">Price <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;"><path d="M12 5v14M5 12l7 7 7-7"/></svg></th>
                             <th>Status</th>
                             <th style="text-align:right;">Actions</th>
                         </tr>
@@ -141,7 +142,7 @@
     <div class="modal modal-lg product-modal">
         <div class="modal-header">
             <h2 id="pm-modal-title">Nouveau Produit</h2>
-            <button class="modal-close">&times;</button>
+            <button class="modal-close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div class="modal-body">
             <!-- Step Progress -->
@@ -280,7 +281,7 @@
 
                     <div class="pm-nav-buttons">
                         <button type="button" class="btn btn-outline" onclick="pmPrevStep(3)">← Retour</button>
-                        <button type="submit" class="btn btn-primary" id="pm-save-btn"><i class="fas fa-save"></i> Enregistrer le produit</button>
+                        <button type="submit" class="btn btn-primary" id="pm-save-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Enregistrer le produit</button>
                     </div>
                 </div>
             </form>
@@ -293,12 +294,12 @@
     <div class="modal modal-lg img-manager-modal">
         <div class="modal-header">
             <h2>Images: <span id="im-product-name"></span></h2>
-            <button class="modal-close">&times;</button>
+            <button class="modal-close"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div class="modal-body">
             <input type="hidden" id="im-product-id">
             <div class="upload-zone" id="upload-zone">
-                <i class="fas fa-cloud-upload-alt"></i>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);margin-bottom:12px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 <p>Drag &amp; drop images here, or <a href="#" id="upload-link">click to browse</a></p>
                 <p class="upload-hint">Supports JPG, PNG, WEBP (max 10MB each)</p>
                 <input type="file" id="file-input" multiple accept=".jpg,.jpeg,.png,.webp" style="display:none">

@@ -1420,6 +1420,54 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             send_json(self, {'message': 'Deleted'})
             return True
 
+        if path == '/api/products/delete-all':
+            cur.execute("SELECT id, image, images FROM products")
+            products = cur.fetchall()
+            deleted_images = 0
+            for p in products:
+                pid = p['id']
+                all_images = []
+                if p['image']:
+                    all_images.append(p['image'])
+                if p['images']:
+                    try:
+                        imgs = json.loads(p['images']) if isinstance(p['images'], str) else p['images']
+                        if isinstance(imgs, list):
+                            all_images.extend(imgs)
+                    except Exception:
+                        pass
+                cur.execute("SELECT image_path FROM variant_images vi JOIN product_variants pv ON vi.variant_id = pv.id WHERE pv.product_id=%s", (pid,))
+                for row in cur.fetchall():
+                    if row['image_path'] and row['image_path'] not in all_images:
+                        all_images.append(row['image_path'])
+                for img_path in all_images:
+                    if CLOUDINARY_ENABLED and img_path and 'cloudinary.com' in img_path:
+                        try:
+                            parts_url = img_path.split('/')
+                            idx = None
+                            for i, p_part in enumerate(parts_url):
+                                if p_part == 'upload':
+                                    idx = i + 1
+                                    break
+                            if idx:
+                                public_id = '/'.join(parts_url[idx:])
+                                public_id = os.path.splitext(public_id)[0]
+                                cloudinary.uploader.destroy(public_id)
+                                deleted_images += 1
+                        except Exception as e:
+                            print(f"[Cloudinary] Delete error: {e}")
+            cur.execute("DELETE FROM variant_images")
+            cur.execute("DELETE FROM variant_sizes")
+            cur.execute("DELETE FROM product_variants")
+            cur.execute("DELETE FROM product_sizes")
+            cur.execute("DELETE FROM product_colors")
+            cur.execute("DELETE FROM collection_products")
+            cur.execute("DELETE FROM inventory")
+            cur.execute("DELETE FROM products")
+            db.commit()
+            send_json(self, {'message': f'All products deleted. {deleted_images} Cloudinary images removed.'})
+            return True
+
         if path.startswith('/api/products/') and path.endswith('/images'):
             parts = path.split('/')
             pid = parts[-2]

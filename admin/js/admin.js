@@ -443,10 +443,10 @@ async function initProducts() {
             <td>${formatPriceDA(p.price)}</td>
             <td>${badge(p.status||'active')}</td>
             <td style="text-align:right;">
-                <button class="btn btn-outline btn-sm" onclick="openImageManager(${p.id})" title="Manage Images"><i class="fas fa-images"></i></button>
-                <button class="btn btn-outline btn-sm" onclick="editProduct(${p.id})"><i class="fas fa-edit"></i></button>
-                <button class="btn btn-outline btn-sm" onclick="archiveProduct(${p.id})" title="Archive"><i class="fas fa-archive"></i></button>
-                <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i></button>
+                <button class="btn btn-outline btn-sm" onclick="openImageManager(${p.id})" title="Manage Images"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
+                <button class="btn btn-outline btn-sm" onclick="editProduct(${p.id})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                <button class="btn btn-outline btn-sm" onclick="archiveProduct(${p.id})" title="Archive"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg></button>
+                <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
             </td>
         </tr>
     `).join('');
@@ -552,6 +552,16 @@ window.deleteProduct = async function(id) {
     initProducts();
 };
 
+window.deleteAllProducts = async function() {
+    if (!confirm('Delete ALL products and their images? This cannot be undone.')) return;
+    if (!confirm('Are you absolutely sure? All product data and Cloudinary images will be removed.')) return;
+    var result = await api('DELETE', '/products/delete-all');
+    if (result && result.message) {
+        showToast('✓ ' + result.message);
+    }
+    initProducts();
+};
+
 /* ── Step Navigation ── */
 window.pmNextStep = function(current) {
     var next = current + 1;
@@ -602,7 +612,7 @@ function renderVariants() {
         var sizeSystem = getCurrentCategorySizeSystem();
 
         if (productVariants.length === 0) {
-            container.innerHTML = '<div class="pm-empty-variants"><i class="fas fa-palette"></i><p>Aucune couleur ajoutée.</p></div>';
+            container.innerHTML = '<div class="pm-empty-variants"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);margin-bottom:8px;"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/><circle cx="8.5" cy="15.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/></svg><p>Aucune couleur ajoutée.</p></div>';
             _appendAddColorForm(container, sizeSystem);
             return;
         }
@@ -610,14 +620,14 @@ function renderVariants() {
         var html = productVariants.map(function(v, i) {
             /* ── Images section ── */
             var imagesHtml = (v.images || []).map(function(img, j) {
-                var leftBtn = j > 0 ? '<button type="button" class="pm-card-img-reorder pm-card-img-reorder-left" data-action="move-image" data-variant="' + i + '" data-image="' + j + '" data-dir="-1" title="Gauche">&lsaquo;</button>' : '';
-                var rightBtn = j < v.images.length - 1 ? '<button type="button" class="pm-card-img-reorder pm-card-img-reorder-right" data-action="move-image" data-variant="' + i + '" data-image="' + j + '" data-dir="1" title="Droite">&rsaquo;</button>' : '';
+                var leftBtn = j > 0 ? '<button type="button" class="pm-card-img-reorder pm-card-img-reorder-left" data-action="move-image" data-variant="' + i + '" data-image="' + j + '" data-dir="-1" title="Gauche"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>' : '';
+                var rightBtn = j < v.images.length - 1 ? '<button type="button" class="pm-card-img-reorder pm-card-img-reorder-right" data-action="move-image" data-variant="' + i + '" data-image="' + j + '" data-dir="1" title="Droite"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>' : '';
                 return '<div class="pm-card-img-thumb">' +
                     '<img src="' + cloudinaryThumb(imgSrc(esc(img)), 200) + '" loading="lazy" onerror="this.src=\'https://placehold.co/72x72/e2e8f0/718096?text=?\';this.style.border=\'2px solid #f56565\'">' +
                     leftBtn + rightBtn +
-                    '<button type="button" class="pm-card-img-del" data-action="remove-image" data-variant="' + i + '" data-image="' + j + '">&times;</button></div>';
+                    '<button type="button" class="pm-card-img-del" data-action="remove-image" data-variant="' + i + '" data-image="' + j + '"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';
             }).join('');
-            imagesHtml += '<label class="pm-card-img-add" title="Ajouter des images"><input type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" data-action="upload-images" data-variant="' + i + '"><i class="fas fa-plus"></i></label>';
+            imagesHtml += '<label class="pm-card-img-add" title="Ajouter des images"><input type="file" accept="image/jpeg,image/png,image/webp" multiple style="display:none" data-action="upload-images" data-variant="' + i + '"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></label>';
 
             /* ── Size section (grouped_taille vs standard) ── */
             var sizeHtml = '';
@@ -652,7 +662,7 @@ function renderVariants() {
                         '<td>' + esc(s.size) + '</td>' +
                         '<td><input type="number" min="0" value="' + (s.stock || 0) + '" data-action="size-stock" data-variant="' + i + '" data-size="' + j + '"></td>' +
                         '<td><input type="text" value="' + esc(s.sku || '') + '" placeholder="SKU" data-action="size-sku" data-variant="' + i + '" data-size="' + j + '"></td>' +
-                        '<td><button type="button" class="pm-size-remove" data-action="remove-size" data-variant="' + i + '" data-size="' + j + '">&times;</button></td>' +
+                        '<td><button type="button" class="pm-size-remove" data-action="remove-size" data-variant="' + i + '" data-size="' + j + '"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></td>' +
                     '</tr>';
                 }).join('');
                 sizeHtml = '<div class="pm-taille-sizes" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">' +
@@ -674,7 +684,7 @@ function renderVariants() {
                     '<input type="text" placeholder="Taille" data-action="new-size-name" data-variant="' + i + '">' +
                     '<input type="number" min="0" value="0" placeholder="Stock" data-action="new-size-stock" data-variant="' + i + '">' +
                     '<input type="text" placeholder="SKU" data-action="new-size-sku" data-variant="' + i + '">' +
-                    '<button type="button" class="btn btn-outline btn-sm" data-action="add-size" data-variant="' + i + '">+ Ajouter</button>' +
+                    '<button type="button" class="btn btn-outline btn-sm" data-action="add-size" data-variant="' + i + '"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter</button>' +
                 '</div>';
             }
 
@@ -688,16 +698,16 @@ function renderVariants() {
                     '<input type="text" class="pm-card-name-input" value="' + esc(v.color_name) + '" data-action="variant-name" data-variant="' + i + '" placeholder="Nom de la couleur">' +
                     '<span class="pm-card-sku-label">SKU</span>' +
                     '<input type="text" class="pm-card-sku-input" value="' + esc(v.sku || '') + '" data-action="variant-sku" data-variant="' + i + '" placeholder="SKU couleur">' +
-                    '<button type="button" class="pm-card-remove-btn" data-action="remove-variant" data-variant="' + i + '"><i class="fas fa-trash-alt"></i> Supprimer</button>' +
+                    '<button type="button" class="pm-card-remove-btn" data-action="remove-variant" data-variant="' + i + '"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Supprimer</button>' +
                 '</div>' +
                 /* Section: Images */
                 '<div class="pm-card-section">' +
-                    '<div class="pm-card-section-title"><i class="fas fa-image"></i> Images</div>' +
+                    '<div class="pm-card-section-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> Images</div>' +
                     '<div class="pm-card-images">' + imagesHtml + '</div>' +
                 '</div>' +
                 /* Section: Sizes */
                 '<div class="pm-card-section">' +
-                    '<div class="pm-card-section-title"><i class="fas fa-ruler-vertical"></i> ' + (sizeSystem === 'grouped_taille' ? 'Groupes de tailles' : 'Tailles') + '</div>' +
+                    '<div class="pm-card-section-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> ' + (sizeSystem === 'grouped_taille' ? 'Groupes de tailles' : 'Tailles') + '</div>' +
                     sizeHtml +
                 '</div>' +
             '</div>';
@@ -717,10 +727,10 @@ function renderVariants() {
 function _appendAddColorForm(container, sizeSystem) {
     var form = document.createElement('div');
     form.className = 'pm-add-color-form';
-    form.innerHTML = '<i class="fas fa-palette" style="color:var(--text-muted);font-size:1.1rem;"></i>' +
+    form.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted);"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/><circle cx="8.5" cy="15.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/></svg>' +
         '<input type="text" class="pm-add-color-name" placeholder="Nom de la couleur (ex. Noir, Blanc, Rose)">' +
         '<input type="color" class="pm-add-color-hex" value="#cccccc">' +
-        '<button type="button" class="btn btn-primary btn-sm" data-action="add-color-submit"><i class="fas fa-plus"></i> Ajouter</button>';
+        '<button type="button" class="btn btn-primary btn-sm" data-action="add-color-submit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajouter</button>';
     container.appendChild(form);
 }
 
@@ -1198,7 +1208,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (e) {
                 alert('Erreur lors de l\'enregistrement du produit: ' + (e.message || e));
             } finally {
-                if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer le produit'; }
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Enregistrer le produit'; }
             }
         });
     }
@@ -1250,8 +1260,8 @@ async function initCategories() {
     tbody.innerHTML = cats.map(c => {
         var isProtected = c.size_system === 'grouped_taille';
         var deleteBtn = isProtected
-            ? '<button class="btn btn-outline btn-sm" disabled title="Catégorie protégée — ne peut pas être supprimée" style="opacity:0.4;cursor:not-allowed;"><i class="fas fa-trash"></i></button>'
-            : '<button class="btn btn-danger btn-sm" onclick="deleteCategory(' + c.id + ')"><i class="fas fa-trash"></i></button>';
+            ? '<button class="btn btn-outline btn-sm" disabled title="Catégorie protégée — ne peut pas être supprimée" style="opacity:0.4;cursor:not-allowed;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>'
+            : '<button class="btn btn-danger btn-sm" onclick="deleteCategory(' + c.id + ')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
         var sizeSystemBadge = isProtected ? ' <span class="badge" style="background:var(--primary);color:#fff;font-size:0.65rem;vertical-align:middle;">Taille groupée</span>' : '';
         return '<tr>' +
             '<td><strong>' + esc(c.name) + '</strong>' + sizeSystemBadge + '</td>' +
@@ -1260,7 +1270,7 @@ async function initCategories() {
             '<td>' + (c.product_count || 0) + '</td>' +
             '<td>' + badge(c.status) + '</td>' +
             '<td style="text-align:right;">' +
-            '<button class="btn btn-outline btn-sm" onclick="editCategory(' + c.id + ')"><i class="fas fa-edit"></i></button> ' +
+            '<button class="btn btn-outline btn-sm" onclick="editCategory(' + c.id + ')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button> ' +
             deleteBtn +
             '</td></tr>';
     }).join('');
@@ -1356,7 +1366,7 @@ async function initCollections() {
     grid.innerHTML = cols.map(function (c) {
         var banner = c.image
             ? '<img src="' + cloudinaryThumb(imgSrc(esc(c.image)), 400) + '" style="width:100%;height:140px;object-fit:cover;border-radius:8px 8px 0 0;" loading="lazy" onerror="this.style.display=\'none\'">'
-            : '<div style="height:140px;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:#c9a96e;font-size:2rem;"><i class="fas fa-layer-group"></i></div>';
+            : '<div style="height:140px;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:#c9a96e;font-size:2rem;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div>';
         return '<div class="card">' +
             banner +
             '<div class="card-body">' +
@@ -1367,8 +1377,8 @@ async function initCollections() {
             '<small style="color:var(--text-muted);">' + (c.product_count || 0) + ' products</small>' +
             '</div>' +
             '<div style="display:flex;gap:6px;">' +
-            '<button class="btn btn-outline btn-sm" style="flex:1;" onclick="editCollection(' + c.id + ')"><i class="fas fa-edit"></i> Edit</button>' +
-            '<button class="btn btn-danger btn-sm" style="flex:1;" onclick="deleteCollection(' + c.id + ')"><i class="fas fa-trash"></i> Delete</button>' +
+            '<button class="btn btn-outline btn-sm" style="flex:1;" onclick="editCollection(' + c.id + ')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit</button>' +
+            '<button class="btn btn-danger btn-sm" style="flex:1;" onclick="deleteCollection(' + c.id + ')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Delete</button>' +
             '</div></div></div>';
     }).join('');
 }
@@ -1599,7 +1609,7 @@ function renderOrdersTable() {
             '<td class="td-total">' + formatPriceDA(o.total) + '</td>' +
             '<td class="td-status">' + badge(o.status) + '</td>' +
             '<td class="td-date" data-sort-val="' + (o.created_at || '') + '">' + timeAgo(o.created_at) + '</td>' +
-            '<td class="td-actions"><button class="btn btn-outline btn-sm" onclick="viewOrder(' + o.id + ')" title="Voir la commande"><i class="fas fa-eye"></i> Voir</button></td>' +
+            '<td class="td-actions"><button class="btn btn-outline btn-sm" onclick="viewOrder(' + o.id + ')" title="Voir la commande"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Voir</button></td>' +
             '</tr>';
     }).join('');
 }
@@ -1671,7 +1681,7 @@ window.viewOrder = async function (id) {
     var content = '<div class="order-detail-grid">' +
         /* Customer card */
         '<div class="detail-card">' +
-            '<div class="detail-card-header"><i class="fas fa-user"></i> Client</div>' +
+            '<div class="detail-card-header"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Client</div>' +
             '<div class="detail-card-body">' +
                 '<div class="detail-row"><span class="detail-label">Nom</span><span class="detail-value">' + esc(o.customer_name || '—') + '</span></div>' +
                 '<div class="detail-row"><span class="detail-label">Téléphone</span><span class="detail-value"><a href="tel:' + esc(o.customer_phone) + '">' + esc(o.customer_phone || '—') + '</a></span></div>' +
@@ -1683,7 +1693,7 @@ window.viewOrder = async function (id) {
 
         /* Order info card */
         '<div class="detail-card">' +
-            '<div class="detail-card-header"><i class="fas fa-receipt"></i> Commande</div>' +
+            '<div class="detail-card-header"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Commande</div>' +
             '<div class="detail-card-body">' +
                 '<div class="detail-row"><span class="detail-label">Date</span><span class="detail-value">' + dateStr + '</span></div>' +
                 '<div class="detail-row"><span class="detail-label">Paiement</span><span class="detail-value">' + esc(o.payment_method || '—') + '</span></div>' +
@@ -1696,7 +1706,7 @@ window.viewOrder = async function (id) {
 
     /* Items table */
     '<div class="detail-card" style="grid-column:1/-1;">' +
-        '<div class="detail-card-header"><i class="fas fa-box"></i> Produits commandés (' + items.length + ')</div>' +
+        '<div class="detail-card-header"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Produits commandés (' + items.length + ')</div>' +
         '<div class="detail-card-body" style="padding:0;">' +
             '<div class="table-container">' +
                 '<table class="od-items-table">' +
@@ -1728,7 +1738,7 @@ window.viewOrder = async function (id) {
 
     /* Status update */
     '<div class="detail-card od-status-card" style="grid-column:1/-1;">' +
-        '<div class="detail-card-header"><i class="fas fa-tag"></i> Statut de la commande</div>' +
+        '<div class="detail-card-header"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> Statut de la commande</div>' +
         '<div class="detail-card-body">' +
             '<div class="od-status-update">' +
                 '<select id="od-status-select" class="form-control">' +
@@ -1741,25 +1751,25 @@ window.viewOrder = async function (id) {
                     '<option value="delivered"' + (o.status === 'delivered' ? ' selected' : '') + '>Livrée</option>' +
                     '<option value="cancelled"' + (o.status === 'cancelled' ? ' selected' : '') + '>Annulée</option>' +
                 '</select>' +
-                '<button class="btn btn-primary" id="od-save-status"><i class="fas fa-save"></i> Sauvegarder</button>' +
+                '<button class="btn btn-primary" id="od-save-status"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Sauvegarder</button>' +
             '</div>' +
             '<p id="od-status-msg" class="od-status-msg" style="display:none;"></p>' +
         '</div>' +
     '</div>' +
     /* Delete button */
     '<div class="detail-card od-delete-card" style="grid-column:1/-1;' + (o.status === 'arrived' || o.status === 'delivered' ? '' : 'display:none;') + '">' +
-        '<div class="detail-card-header"><i class="fas fa-trash-alt"></i> Supprimer la commande</div>' +
+        '<div class="detail-card-header"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Supprimer la commande</div>' +
         '<div class="detail-card-body">' +
             '<p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:12px;">' +
                 'Une fois la commande arrivée, vous pouvez la supprimer définitivement. Cette action est irréversible.' +
             '</p>' +
-            '<button class="btn btn-danger" id="od-delete-btn"><i class="fas fa-trash-alt"></i> Supprimer définitivement</button>' +
+            '<button class="btn btn-danger" id="od-delete-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Supprimer définitivement</button>' +
         '</div>' +
     '</div>' +
     /* Status history */
     (history.length > 0 ?
     '<div class="detail-card" style="grid-column:1/-1;">' +
-        '<div class="detail-card-header"><i class="fas fa-clock"></i> Historique des statuts</div>' +
+        '<div class="detail-card-header"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Historique des statuts</div>' +
         '<div class="detail-card-body" style="padding:0;">' +
             '<table class="od-items-table">' +
                 '<thead><tr><th>Statut</th><th>Note</th><th>Date</th></tr></thead>' +
@@ -1843,8 +1853,8 @@ async function loadCustomers() {
             <td>${c.joined_at ? formatDate(c.joined_at) : '—'}</td>
             <td>${badge(c.status)}</td>
             <td style="text-align:right;">
-                <button class="btn btn-outline btn-sm" onclick="viewCustomer(${c.id})"><i class="fas fa-eye"></i></button>
-                <button class="btn btn-outline btn-sm" onclick="editCustomer(${c.id})"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-outline btn-sm" onclick="viewCustomer(${c.id})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                <button class="btn btn-outline btn-sm" onclick="editCustomer(${c.id})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
             </td>
         </tr>
     `).join('');
@@ -1855,7 +1865,7 @@ async function loadCustomers() {
     if (pages <= 1) return;
     const prevBtn = document.createElement('button');
     prevBtn.className = 'btn btn-outline btn-sm' + (page <= 1 ? ' disabled' : '');
-    prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+    prevBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>';
     if (page > 1) { prevBtn.onclick = function () { s.page = page - 1; loadCustomers(); }; }
     pag.appendChild(prevBtn);
     const span = document.createElement('span');
@@ -1864,7 +1874,7 @@ async function loadCustomers() {
     pag.appendChild(span);
     const nextBtn = document.createElement('button');
     nextBtn.className = 'btn btn-outline btn-sm' + (page >= pages ? ' disabled' : '');
-    nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+    nextBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
     if (page < pages) { nextBtn.onclick = function () { s.page = page + 1; loadCustomers(); }; }
     pag.appendChild(nextBtn);
 
@@ -2040,8 +2050,8 @@ async function initInventory() {
             '<td><div style="display:flex;align-items:center;gap:8px;"><span style="font-weight:600;min-width:28px;">' + i.quantity + '</span>' + stockBar(i.quantity, i.low_stock_threshold || 5) + '</div></td>' +
             '<td>' + badge(st) + '</td>' +
             '<td style="text-align:right;">' +
-                '<button class="btn btn-outline btn-sm" onclick="openStockModal(' + i.product_id + ')" title="Update Stock"><i class="fas fa-edit"></i></button> ' +
-                '<button class="btn btn-outline btn-sm" onclick="viewStockHistory(' + i.product_id + ')" title="History"><i class="fas fa-history"></i></button>' +
+                '<button class="btn btn-outline btn-sm" onclick="openStockModal(' + i.product_id + ')" title="Update Stock"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button> ' +
+                '<button class="btn btn-outline btn-sm" onclick="viewStockHistory(' + i.product_id + ')" title="History"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>' +
             '</td>' +
             '</tr>';
     }).join('');
@@ -2314,7 +2324,7 @@ function initSettings() {
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         var saveBtn = document.getElementById('saveBtn');
-        if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...'; }
+        if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;animation:spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Saving...'; }
 
         var payload = {};
         form.querySelectorAll('[data-setting]').forEach(function(el) {
@@ -2369,10 +2379,10 @@ function initSettings() {
             } else {
                 showSaveMsg('Failed to save settings. Check server logs.', 'error');
             }
-            if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes'; }
+            if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Changes'; }
         }).catch(function() {
             showSaveMsg('Network error. Please try again.', 'error');
-            if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes'; }
+            if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save Changes'; }
         });
     });
 }
@@ -2770,8 +2780,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 'this.style.border=\'2px solid #f56565\'">' +
                 (i === 0 ? '<span class="primary-badge">Primary</span>' : '') +
                 '<div class="image-actions">' +
-                (i !== 0 ? '<button class="main-btn" onclick="setMainImage(' + i + ')" title="Set as Main Image"><i class="fas fa-star"></i></button>' : '') +
-                '<button class="del-btn" onclick="deleteImage(event,' + i + ')" title="Delete"><i class="fas fa-times"></i></button>' +
+                (i !== 0 ? '<button class="main-btn" onclick="setMainImage(' + i + ')" title="Set as Main Image"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></button>' : '') +
+                '<button class="del-btn" onclick="deleteImage(event,' + i + ')" title="Delete"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
                 '</div>' +
                 '</div>';
         }).join('');

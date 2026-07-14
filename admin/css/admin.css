@@ -2294,3 +2294,8 @@ input[data-setting]:checked + .toggle-slider {
     #orders-table .td-wilaya,
     #orders-table .td-phone { display: none; }
 }
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
