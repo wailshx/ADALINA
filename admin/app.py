@@ -1837,7 +1837,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 if max_age: cookie += f'; Max-Age={max_age}'
                 self.send_response(302)
                 self.send_header('Set-Cookie', cookie)
-                self.send_header('Set-Cookie', f'csrf_token={csrf}; Path=/admin; SameSite=Lax; {secure}'.strip())
+                self.send_header('Set-Cookie', f'csrf_token={csrf}; Path=/; SameSite=Lax; {secure}'.strip())
                 self.send_header('Location', '/admin/dashboard.html')
                 self.end_headers()
                 audit_log.log('LOGIN_SUCCESS', username, ip=ip)
