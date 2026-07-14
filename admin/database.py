@@ -122,6 +122,16 @@ def _run_migrations(conn):
             cur.execute(sql)
         except Exception:
             pass
+    idx_migrations = [
+        "CREATE INDEX IF NOT EXISTS idx_products_category_status ON products(category_id, status)",
+        "CREATE INDEX IF NOT EXISTS idx_variant_sizes_variant_stock ON variant_sizes(variant_id, size_name, stock)",
+        "CREATE INDEX IF NOT EXISTS idx_orders_is_read ON orders(is_read)",
+    ]
+    for idx_sql in idx_migrations:
+        try:
+            cur.execute(idx_sql)
+        except Exception:
+            pass
     conn.commit()
 
 def init_db():
@@ -335,6 +345,9 @@ def init_db():
         'CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(setting_key)',
         'CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name)',
         "CREATE INDEX IF NOT EXISTS idx_status_history_order ON status_history(order_id)",
+        "CREATE INDEX IF NOT EXISTS idx_products_category_status ON products(category_id, status)",
+        "CREATE INDEX IF NOT EXISTS idx_variant_sizes_variant_stock ON variant_sizes(variant_id, size_name, stock)",
+        "CREATE INDEX IF NOT EXISTS idx_orders_is_read ON orders(is_read)",
     ]:
         cur.execute(idx_sql)
 

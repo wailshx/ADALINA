@@ -295,50 +295,80 @@ def row_to_dict(row):
 def rows_to_list(rows):
     return [dict(r) for r in rows]
 
-def enrich_product(row, cur):
-    """Enrich a product row with variant images, colors, sizes — shared by products & collections APIs."""
-    d = dict(row)
-    pid = d['id']
+def _parse_product_fields(d):
     if d.get('images') and isinstance(d['images'], str):
         d['images'] = json.loads(d['images'])
     if d.get('sizes') and isinstance(d['sizes'], str):
         d['sizes'] = json.loads(d['sizes'])
     if d.get('colors') and isinstance(d['colors'], str):
         d['colors'] = json.loads(d['colors'])
-    cur.execute("SELECT id, color_name, color_hex, sku, stock FROM product_variants WHERE product_id=%s ORDER BY sort_order, id", (pid,))
-    variant_rows = cur.fetchall()
-    if variant_rows:
-        variants = []
-        all_colors = {}
-        all_sizes = set()
-        images_seen = set()
-        merged_sizes = []
-        for v in variant_rows:
-            vdict = {'id': v['id'], 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock']}
-            cur.execute("SELECT image_path FROM variant_images WHERE variant_id=%s ORDER BY sort_order", (v['id'],))
-            vdict['images'] = [r['image_path'] for r in cur.fetchall()]
-            cur.execute("SELECT size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=%s ORDER BY id", (v['id'],))
-            vdict['sizes'] = [{'size': r['size_name'], 'stock': r['stock'], 'sku': r.get('sku', '')} for r in cur.fetchall()]
-            variants.append(vdict)
-            if v['color_name'] and v['color_name'] not in all_colors:
-                all_colors[v['color_name']] = {'name': v['color_name'], 'hex': v['color_hex'], 'stock': v['stock']}
-            for s in vdict['sizes']:
-                if s['size'] not in all_sizes:
-                    all_sizes.add(s['size'])
-                    merged_sizes.append(s)
-            for img in vdict['images']:
-                if img not in images_seen:
-                    images_seen.add(img)
-        d['colors'] = list(all_colors.values()) if all_colors else []
-        d['sizes'] = merged_sizes if merged_sizes else []
-        d['variants'] = variants
-        d['images'] = list(images_seen) if images_seen else (d.get('images') or [])
-    else:
-        d['variants'] = []
     d['featured'] = bool(d.get('featured', 0))
     d['new_arrival'] = bool(d.get('new_arrival', 0))
     d['category'] = d.get('category_name') or ''
-    return d
+
+def batch_enrich_products(rows, cur):
+    if not rows:
+        return []
+    product_ids = [dict(r)['id'] for r in rows]
+    cur.execute("SELECT id, product_id, color_name, color_hex, sku, stock FROM product_variants WHERE product_id=ANY(%s) ORDER BY sort_order, id", (product_ids,))
+    all_variants = cur.fetchall()
+    if not all_variants:
+        result = []
+        for r in rows:
+            d = dict(r)
+            _parse_product_fields(d)
+            d['variants'] = []
+            result.append(d)
+        return result
+    variant_ids = [v['id'] for v in all_variants]
+    cur.execute("SELECT variant_id, image_path FROM variant_images WHERE variant_id=ANY(%s) ORDER BY sort_order", (variant_ids,))
+    vi_map = {}
+    for vi in cur.fetchall():
+        vi_map.setdefault(vi['variant_id'], []).append(vi['image_path'])
+    cur.execute("SELECT variant_id, size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=ANY(%s) ORDER BY id", (variant_ids,))
+    vs_map = {}
+    for vs in cur.fetchall():
+        vs_map.setdefault(vs['variant_id'], []).append(vs)
+    pv_map = {}
+    for v in all_variants:
+        pv_map.setdefault(v['product_id'], []).append(v)
+    result = []
+    for r in rows:
+        d = dict(r)
+        _parse_product_fields(d)
+        pid = d['id']
+        variant_rows = pv_map.get(pid, [])
+        if variant_rows:
+            variants = []
+            all_colors = {}
+            all_sizes = set()
+            images_seen = set()
+            merged_sizes = []
+            for v in variant_rows:
+                v_images = vi_map.get(v['id'], [])
+                v_sizes = [{'size': s['size_name'], 'stock': s['stock'], 'sku': s['sku']} for s in vs_map.get(v['id'], [])]
+                vdict = {'id': v['id'], 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock'], 'images': v_images, 'sizes': v_sizes}
+                variants.append(vdict)
+                if v['color_name'] and v['color_name'] not in all_colors:
+                    all_colors[v['color_name']] = {'name': v['color_name'], 'hex': v['color_hex'], 'stock': v['stock']}
+                for s in v_sizes:
+                    if s['size'] not in all_sizes:
+                        all_sizes.add(s['size'])
+                        merged_sizes.append(s)
+                for img in v_images:
+                    if img not in images_seen:
+                        images_seen.add(img)
+            d['colors'] = list(all_colors.values()) if all_colors else []
+            d['sizes'] = merged_sizes if merged_sizes else []
+            d['variants'] = variants
+            d['images'] = list(images_seen) if images_seen else (d.get('images') or [])
+        else:
+            d['variants'] = []
+        result.append(d)
+    return result
+
+def enrich_product(row, cur):
+    return batch_enrich_products([row], cur)[0]
 
 class AdminHandler(http.server.BaseHTTPRequestHandler):
 
@@ -372,27 +402,23 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             cur.execute("SELECT id, name, price, image, stock FROM products ORDER BY id DESC LIMIT 5")
             recent_products = cur.fetchall()
 
-            cur.execute("SELECT id, items FROM orders")
-            all_orders = cur.fetchall()
-            sold_map = {}
-            for order in all_orders:
-                items = json.loads(order['items']) if order.get('items') else []
-                for item in items:
-                    pid = item.get('product_id')
-                    qty = item.get('quantity', 1)
-                    if pid:
-                        sold_map[pid] = sold_map.get(pid, 0) + qty
-            cur.execute("SELECT id, name, price, image, stock FROM products")
-            all_products = cur.fetchall()
-            top_products_data = []
-            for p in all_products:
-                top_products_data.append({
-                    'id': p['id'], 'name': p['name'], 'price': p['price'],
-                    'image': p['image'], 'stock': p['stock'],
-                    'sold': sold_map.get(p['id'], 0)
-                })
-            top_products_data.sort(key=lambda x: x['sold'], reverse=True)
-            top_products_data = top_products_data[:5]
+            cur.execute("""
+                WITH order_items AS (
+                    SELECT (item->>'product_id')::int AS product_id,
+                           COALESCE((item->>'quantity')::int, 1) AS quantity
+                    FROM orders o,
+                         jsonb_array_elements(o.items::jsonb) AS item
+                    WHERE o.items IS NOT NULL AND o.items != '[]'
+                )
+                SELECT p.id, p.name, p.price, p.image, p.stock,
+                       COALESCE(SUM(oi.quantity), 0) AS sold
+                FROM products p
+                LEFT JOIN order_items oi ON oi.product_id = p.id
+                GROUP BY p.id, p.name, p.price, p.image, p.stock
+                ORDER BY sold DESC
+                LIMIT 5
+            """)
+            top_products_data = [dict(r) for r in cur.fetchall()]
 
             cur.execute("SELECT COUNT(*) AS cnt FROM inventory WHERE quantity > 0 AND quantity <= low_stock_threshold")
             low_stock = cur.fetchone()['cnt']
@@ -455,60 +481,48 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             """)
             monthly_sales = cur.fetchall()
 
-            cur.execute("SELECT id, items FROM orders")
-            orders_for_analytics = cur.fetchall()
             cur.execute("""
-                SELECT p.id, c.id AS cat_id, c.name AS cat_name
-                FROM products p JOIN categories c ON p.category_id = c.id
+                WITH order_items AS (
+                    SELECT o.id AS order_id,
+                           (item->>'product_id')::int AS product_id,
+                           COALESCE((item->>'quantity')::int, 1) AS quantity,
+                           COALESCE((item->>'price')::numeric, 0) AS price
+                    FROM orders o,
+                         jsonb_array_elements(o.items::jsonb) AS item
+                    WHERE o.items IS NOT NULL AND o.items != '[]'
+                )
+                SELECT c.id, c.name,
+                       COUNT(DISTINCT oi.order_id) AS order_count,
+                       COALESCE(SUM(oi.quantity * oi.price), 0) AS revenue
+                FROM categories c
+                JOIN products p ON p.category_id = c.id
+                JOIN order_items oi ON oi.product_id = p.id
+                GROUP BY c.id, c.name
+                ORDER BY revenue DESC
             """)
-            prod_cat = cur.fetchall()
-            prod_to_cat = {p['id']: {'id': p['cat_id'], 'name': p['cat_name']} for p in prod_cat}
+            category_perf = [dict(r) for r in cur.fetchall()]
 
-            cat_stats = {}
-            for order in orders_for_analytics:
-                items = json.loads(order['items']) if order.get('items') else []
-                order_cats = set()
-                for item in items:
-                    pid = item.get('product_id')
-                    qty = item.get('quantity', 1)
-                    price = item.get('price', 0)
-                    cat = prod_to_cat.get(pid)
-                    if cat:
-                        cid = cat['id']
-                        order_cats.add(cid)
-                        if cid not in cat_stats:
-                            cat_stats[cid] = {'id': cid, 'name': cat['name'], 'order_count': 0, 'revenue': 0.0}
-                        cat_stats[cid]['revenue'] += qty * price
-                for cid in order_cats:
-                    cat_stats[cid]['order_count'] += 1
-            category_perf = sorted(cat_stats.values(), key=lambda x: x['revenue'], reverse=True)
-
-            cur.execute("SELECT p.id, p.name, p.price, p.image, p.stock FROM products p")
-            all_prods = cur.fetchall()
-            all_order_items = []
-            for order in orders_for_analytics:
-                items = json.loads(order['items']) if order.get('items') else []
-                all_order_items.extend(items)
-            prod_sales = {}
-            for item in all_order_items:
-                pid = item.get('product_id')
-                qty = item.get('quantity', 1)
-                price = item.get('price', 0)
-                if pid:
-                    if pid not in prod_sales:
-                        prod_sales[pid] = {'sold': 0, 'revenue': 0.0}
-                    prod_sales[pid]['sold'] += qty
-                    prod_sales[pid]['revenue'] += qty * price
-            best_sellers_list = []
-            for p in all_prods:
-                s = prod_sales.get(p['id'], {'sold': 0, 'revenue': 0.0})
-                best_sellers_list.append({
-                    'id': p['id'], 'name': p['name'], 'price': p['price'],
-                    'image': p['image'], 'stock': p['stock'],
-                    'sold': s['sold'], 'revenue': round(s['revenue'], 2)
-                })
-            best_sellers_list.sort(key=lambda x: x['sold'], reverse=True)
-            best_sellers_list = best_sellers_list[:10]
+            cur.execute("""
+                WITH order_items AS (
+                    SELECT (item->>'product_id')::int AS product_id,
+                           COALESCE((item->>'quantity')::int, 1) AS quantity,
+                           COALESCE((item->>'price')::numeric, 0) AS price
+                    FROM orders o,
+                         jsonb_array_elements(o.items::jsonb) AS item
+                    WHERE o.items IS NOT NULL AND o.items != '[]'
+                )
+                SELECT p.id, p.name, p.price, p.image, p.stock,
+                       COALESCE(SUM(oi.quantity), 0) AS sold,
+                       COALESCE(SUM(oi.quantity * oi.price), 0) AS revenue
+                FROM products p
+                LEFT JOIN order_items oi ON oi.product_id = p.id
+                GROUP BY p.id, p.name, p.price, p.image, p.stock
+                ORDER BY sold DESC
+                LIMIT 10
+            """)
+            best_sellers_list = [dict(r) for r in cur.fetchall()]
+            for item in best_sellers_list:
+                item['revenue'] = round(float(item['revenue']), 2)
 
             cur.execute("""
                 SELECT DATE(created_at) AS day,
@@ -805,10 +819,14 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             cur.execute("SELECT COUNT(*) AS cnt FROM customers" + where_clause, params)
             total = cur.fetchone()['cnt']
             cur.execute("""
-                SELECT c.*,
-                    (SELECT COUNT(*) FROM orders o WHERE o.customer_id = c.id) AS orders_count,
-                    (SELECT COALESCE(SUM(o.total), 0) FROM orders o WHERE o.customer_id = c.id) AS total_spent
-                FROM customers c""" + where_clause + " ORDER BY c.id DESC LIMIT %s OFFSET %s", params + [per_page, offset])
+                SELECT c.*, COALESCE(oa.orders_count, 0) AS orders_count,
+                       COALESCE(oa.total_spent, 0) AS total_spent
+                FROM customers c
+                LEFT JOIN (
+                    SELECT customer_id, COUNT(*) AS orders_count, COALESCE(SUM(total), 0) AS total_spent
+                    FROM orders WHERE customer_id IS NOT NULL GROUP BY customer_id
+                ) oa ON oa.customer_id = c.id
+            """ + where_clause + " ORDER BY c.id DESC LIMIT %s OFFSET %s", params + [per_page, offset])
             rows = cur.fetchall()
             total_pages = max(1, (total + per_page - 1) // per_page) if total > 0 else 1
             send_json(self, {'customers': rows_to_list(rows), 'total': total, 'page': page, 'per_page': per_page, 'total_pages': total_pages})
@@ -1594,7 +1612,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     LIMIT %s OFFSET %s
                 """, params + [limit, offset])
                 rows = cur.fetchall()
-                result = [enrich_product(r, cur) for r in rows]
+                result = batch_enrich_products(rows, cur)
                 total_pages = max(1, (total + limit - 1) // limit) if total > 0 else 1
                 send_json(self, {
                     'products': result,
@@ -1612,7 +1630,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     ORDER BY """ + order_by
                 )
                 rows = cur.fetchall()
-                result = [enrich_product(r, cur) for r in rows]
+                result = batch_enrich_products(rows, cur)
                 send_json(self, result)
             db.close()
             return
@@ -1697,14 +1715,26 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 FROM collections c ORDER BY c.id
             """)
             data = rows_to_list(cur.fetchall())
-            for coll in data:
+            coll_ids = [coll['id'] for coll in data]
+            if coll_ids:
                 cur.execute("""
-                    SELECT p.*, c2.name AS category_name FROM products p
+                    SELECT p.*, c2.name AS category_name, cp.collection_id FROM products p
                     JOIN collection_products cp ON cp.product_id = p.id
                     LEFT JOIN categories c2 ON p.category_id = c2.id
-                    WHERE cp.collection_id = %s AND p.status='active'
-                """, (coll['id'],))
-                coll['products'] = [enrich_product(r, cur) for r in cur.fetchall()]
+                    WHERE cp.collection_id = ANY(%s) AND p.status='active'
+                """, (coll_ids,))
+                all_prod_rows = cur.fetchall()
+                all_prods = batch_enrich_products(all_prod_rows, cur) if all_prod_rows else []
+                coll_map = {r['collection_id']: r['id'] for r in all_prod_rows}
+                prod_by_coll = {}
+                for prod_row, prod_data in zip(all_prod_rows, all_prods):
+                    cid = prod_row['collection_id']
+                    prod_by_coll.setdefault(cid, []).append(prod_data)
+                for coll in data:
+                    coll['products'] = prod_by_coll.get(coll['id'], [])
+            else:
+                for coll in data:
+                    coll['products'] = []
             send_json(self, data)
             return
 

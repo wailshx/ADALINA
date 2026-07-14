@@ -84,6 +84,15 @@ def send_json(handler, data, status=200):
     handler.end_headers()
     handler.wfile.write(json.dumps(data, default=str, ensure_ascii=False).encode('utf-8'))
 
+def send_json_cached(handler, data, max_age=60, status=200):
+    handler.send_response(status)
+    handler.send_header('Content-Type', 'application/json; charset=utf-8')
+    handler.send_header('Access-Control-Allow-Origin', CORS_ORIGIN)
+    handler.send_header('Cache-Control', f'public, max-age={max_age}')
+    add_security_headers(handler)
+    handler.end_headers()
+    handler.wfile.write(json.dumps(data, default=str, ensure_ascii=False).encode('utf-8'))
+
 def format_product(row, cur=None):
     p = dict(row)
     if p.get('images') is None:
@@ -223,7 +232,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         super().send_response(code, message)
         path = getattr(self, 'path', '').lower()
         if any(path.endswith(ext) for ext in self.STATIC_EXTS):
-            self.send_header('Cache-Control', 'no-cache, must-revalidate')
+            self.send_header('Cache-Control', f'public, max-age=604800, immutable')
         elif any(path.endswith(ext) for ext in self.HTML_EXTS) or path in ('/', ''):
             self.send_header('Cache-Control', 'no-cache, must-revalidate')
 
@@ -338,13 +347,18 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     rows = cur.fetchall()
                     result = batch_format_products(rows, cur)
                     total_pages = max(1, (total + limit - 1) // limit) if total > 0 else 1
-                    send_json(self, {
+                    response = {
                         'products': result,
                         'total': total,
                         'page': page,
                         'per_page': limit,
                         'total_pages': total_pages
-                    })
+                    }
+                    use_cache = not (search or color or size or price_min or price_max or new_arrival or in_stock)
+                    if use_cache:
+                        send_json_cached(self, response, max_age=30)
+                    else:
+                        send_json(self, response)
                 else:
                     cur.execute("""
                         SELECT DISTINCT p.*, c.name AS category_name, c.size_system AS category_size_system
@@ -810,18 +824,9 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     try:
                         db = get_public_db()
                         cur = db.cursor()
-                        cur.execute("""
-                            CREATE TABLE IF NOT EXISTS search_events (
-                                id SERIAL PRIMARY KEY,
-                                event_type VARCHAR(50),
-                                payload JSONB,
-                                created_at TIMESTAMP DEFAULT NOW()
-                            )
-                        """)
                         cur.execute("INSERT INTO search_events (event_type, payload) VALUES (%s, %s)",
                                     (event_type, json.dumps(payload)))
                         db.commit()
-                        db.close()
                     except Exception:
                         pass
                 send_json(self, {'ok': True})
