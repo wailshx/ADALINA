@@ -188,7 +188,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 sort = query.get('sort', ['newest'])[0].strip().lower()
                 collection = query.get('collection', [''])[0].strip()
                 color = query.get('color', [''])[0].strip().lower()
-                size = query.get('size', ['']).strip()
+                size = query.get('size', [''])[0].strip()
                 price_min = query.get('price_min', [''])[0].strip()
                 price_max = query.get('price_max', [''])[0].strip()
                 new_arrival = query.get('new_arrival', [''])[0].strip().lower() == 'true'
