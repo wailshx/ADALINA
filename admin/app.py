@@ -24,6 +24,13 @@ PARENT_DIR = os.path.dirname(BASE_DIR)
 SESSIONS_FILE = os.path.join(BASE_DIR, '.sessions.json')
 
 from database import get_db, init_db, seed_db, log_stock_change, deduct_order_stock, restore_order_stock, get_variant_stock
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(BASE_DIR)))
+from config.security import (
+    RateLimiter, add_security_headers, get_client_ip,
+    generate_csrf_token, validate_csrf, escape_html,
+    sanitize_dict, sanitize_list, audit_log
+)
 
 CLOUDINARY_CLOUD = os.environ.get('CLOUDINARY_CLOUD_NAME', '')
 CLOUDINARY_KEY = os.environ.get('CLOUDINARY_API_KEY', '')
@@ -46,6 +53,8 @@ ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '')
 ADMIN_PASSWORD_SALT = os.environ.get('ADMIN_PASSWORD_SALT', '')
 CORS_ORIGIN = os.environ.get('CORS_ORIGIN', 'https://adalina.onrender.com')
+
+_login_limiter = RateLimiter()
 
 DEFAULT_PASSWORD_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'
 
@@ -119,6 +128,7 @@ def create_session(remember=False):
         'admin_logged_in': True,
         'admin_username': ADMIN_USERNAME,
         'created_at': time.time(),
+        'last_active': time.time(),
         'remember': remember
     }
     save_sessions(sessions)
@@ -128,6 +138,32 @@ def delete_session(token):
     sessions = load_sessions()
     sessions.pop(token, None)
     save_sessions(sessions)
+
+CSRF_FILE = os.path.join(BASE_DIR, '.csrf_tokens.json')
+
+def save_csrf_token(session_token, csrf_token):
+    try:
+        with open(CSRF_FILE, 'r') as f:
+            tokens = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        tokens = {}
+    tokens[session_token] = csrf_token
+    with open(CSRF_FILE, 'w') as f:
+        json.dump(tokens, f)
+
+def get_csrf_token_for_session(session_token):
+    try:
+        with open(CSRF_FILE, 'r') as f:
+            tokens = json.load(f)
+        return tokens.get(session_token)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+def touch_session(token):
+    sessions = load_sessions()
+    if token in sessions:
+        sessions[token]['last_active'] = time.time()
+        save_sessions(sessions)
 
 def get_token_from_cookies(cookie_header):
     if not cookie_header:
@@ -146,12 +182,22 @@ def require_auth(self):
         self.send_header('Location', '/admin/login')
         self.end_headers()
         return False
+    token = get_token_from_cookies(self.headers.get('Cookie'))
+    if token:
+        touch_session(token)
+    return True
+
+def require_csrf(self):
+    if not validate_csrf(self):
+        send_json(self, {'error': 'CSRF token missing or invalid'}, 403)
+        return False
     return True
 
 def send_file(self, path, status=200):
     if not os.path.isfile(path):
         self.send_response(404)
         self.send_header('Content-Type', 'text/html')
+        add_security_headers(self, admin=True)
         self.end_headers()
         self.wfile.write(b'404 Not Found')
         return
@@ -162,6 +208,7 @@ def send_file(self, path, status=200):
     if 'text/' in ctype or 'application/javascript' in ctype:
         self.send_header('Cache-Control', 'no-store, must-revalidate')
         self.send_header('Pragma', 'no-cache')
+    add_security_headers(self, admin=True)
     self.end_headers()
     with open(path, 'rb') as f:
         self.wfile.write(f.read())
@@ -173,6 +220,7 @@ def send_json(self, data, status=200):
     self.send_header('Access-Control-Allow-Origin', CORS_ORIGIN)
     self.send_header('Cache-Control', 'no-store, must-revalidate')
     self.send_header('Pragma', 'no-cache')
+    add_security_headers(self, admin=True)
     self.end_headers()
     self.wfile.write(body)
 
@@ -1676,6 +1724,11 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         content_type = self.headers.get('Content-Type', '')
 
         if path == '/admin/login':
+            ip = get_client_ip(self)
+            if not _login_limiter.is_allowed(f'login:{ip}', max_requests=5, window=900):
+                retry = _login_limiter.retry_after(f'login:{ip}', window=900)
+                send_json(self, {'error': f'Trop de tentatives. Réessayez dans {retry}s.'}, 429)
+                return
             body = read_body(self)
             params = urllib.parse.parse_qs(body)
             username = params.get('username', [''])[0].strip()
@@ -1683,18 +1736,29 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             remember = params.get('remember', [None])[0]
             if username == ADMIN_USERNAME and _verify_password(password, ADMIN_PASSWORD_HASH, ADMIN_PASSWORD_SALT):
                 token = create_session(remember=(remember == 'on'))
+                csrf = generate_csrf_token()
+                save_csrf_token(token, csrf)
                 max_age = 30 * 24 * 3600 if remember else None
                 cookie = f'admin_session={token}; Path=/; HttpOnly; SameSite=Lax; Secure'
                 if max_age: cookie += f'; Max-Age={max_age}'
                 self.send_response(302)
                 self.send_header('Set-Cookie', cookie)
+                self.send_header('Set-Cookie', f'csrf_token={csrf}; Path=/admin; SameSite=Lax; Secure')
                 self.send_header('Location', '/admin/dashboard.html')
                 self.end_headers()
+                audit_log.log('LOGIN_SUCCESS', username, ip=ip)
             else:
+                audit_log.log('LOGIN_FAILED', username, f'bad password from {ip}', ip=ip)
                 redirect(self, '/admin/login?error=1')
         elif path.startswith('/api/'):
             if not require_auth(self):
                 return
+            ip = get_client_ip(self)
+            method = self.command
+            if method in ('POST', 'PUT', 'DELETE'):
+                if not require_csrf(self):
+                    audit_log.log('CSRF_BLOCKED', details=f'{method} {path}', ip=ip)
+                    return
             if 'multipart/form-data' in content_type:
                 body = self.rfile.read(int(self.headers.get('Content-Length', 0)))
                 boundary = None
@@ -1728,9 +1792,13 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         if path.startswith('/api/'):
             if not require_auth(self):
                 return
+            if not require_csrf(self):
+                audit_log.log('CSRF_BLOCKED', details=f'PUT {path}', ip=get_client_ip(self))
+                return
             body = read_body(self)
             try:
                 self.api_PUT(path, body)
+                audit_log.log('API_PUT', details=path, ip=get_client_ip(self))
             except Exception as e:
                 print(f"[Admin] PUT {path} error: {e}")
                 import traceback; traceback.print_exc()
@@ -1748,8 +1816,12 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         if path.startswith('/api/'):
             if not require_auth(self):
                 return
+            if not require_csrf(self):
+                audit_log.log('CSRF_BLOCKED', details=f'DELETE {path}', ip=get_client_ip(self))
+                return
             try:
                 self.api_DELETE(path)
+                audit_log.log('API_DELETE', details=path, ip=get_client_ip(self))
             except Exception as e:
                 print(f"[Admin] DELETE {path} error: {e}")
                 import traceback; traceback.print_exc()
@@ -1765,7 +1837,8 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         self.send_response(204)
         self.send_header('Access-Control-Allow-Origin', CORS_ORIGIN)
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token')
+        add_security_headers(self, admin=True)
         self.end_headers()
 
     def do_HEAD(self):

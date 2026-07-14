@@ -28,12 +28,16 @@ BUILD_VERSION = get_build_version()
 import sys
 sys.path.insert(0, str(BASE_DIR))
 from config.database import get_db, get_public_db
+from config.security import RateLimiter, add_security_headers, get_client_ip, escape_html, sanitize_dict, sanitize_list
 try:
     from admin.database import deduct_order_stock
 except ImportError:
     def deduct_order_stock(cur, pid, color, size, qty): return (False, "Stock system unavailable")
 
 logger = logging.getLogger('adalina')
+
+_order_limiter = RateLimiter()
+_cleanup_counter = 0
 
 class _Cache:
     def __init__(self):
@@ -76,6 +80,7 @@ def send_json(handler, data, status=200):
     handler.send_header('Content-Type', 'application/json; charset=utf-8')
     handler.send_header('Access-Control-Allow-Origin', CORS_ORIGIN)
     handler.send_header('Cache-Control', 'no-store, must-revalidate')
+    add_security_headers(handler)
     handler.end_headers()
     handler.wfile.write(json.dumps(data, default=str, ensure_ascii=False).encode('utf-8'))
 
@@ -157,10 +162,15 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(content)))
+        add_security_headers(self)
         self.end_headers()
         self.wfile.write(content)
 
     def do_GET(self):
+        global _cleanup_counter
+        _cleanup_counter += 1
+        if _cleanup_counter % 100 == 0:
+            _order_limiter.cleanup()
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
@@ -479,6 +489,12 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         content_type = self.headers.get('Content-Type', '')
 
         if path == '/api/orders':
+            ip = get_client_ip(self)
+            if not _order_limiter.is_allowed(f'order:{ip}', max_requests=5, window=300):
+                retry = _order_limiter.retry_after(f'order:{ip}', window=300)
+                send_json(self, {'error': f'Trop de requêtes. Réessayez dans {retry}s.'}, 429)
+                self.send_header('Retry-After', str(retry))
+                return
             try:
                 length = int(self.headers.get('Content-Length', 0))
                 if length > MAX_REQUEST_SIZE:
@@ -492,11 +508,14 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 if not items or not isinstance(items, list):
                     send_json(self, {'error': 'Panier vide'}, 400)
                     return
-                customer_name = (data.get('customer_name') or '').strip()
-                customer_phone = (data.get('customer_phone') or '').strip()
-                wilaya = (data.get('wilaya') or '').strip()
+                customer_name = escape_html((data.get('customer_name') or '').strip()[:100])
+                customer_phone = (data.get('customer_phone') or '').strip()[:20].replace('+', '').replace('-', '').replace(' ', '')
+                wilaya = escape_html((data.get('wilaya') or '').strip()[:50])
                 if not customer_name or not customer_phone or not wilaya:
                     send_json(self, {'error': 'Informations client requises (nom, téléphone, wilaya)'}, 400)
+                    return
+                if not customer_phone.isdigit() or len(customer_phone) < 9:
+                    send_json(self, {'error': 'Numéro de téléphone invalide'}, 400)
                     return
 
                 db = get_public_db()

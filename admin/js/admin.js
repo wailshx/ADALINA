@@ -1,10 +1,18 @@
 /* ── API Client ── */
 const API = '/api';
+function getCookie(name) {
+    const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return m ? m[2] : '';
+}
 async function api(method, url, data) {
-    const opts = { method, headers: {} };
+    const opts = { method, headers: {}, credentials: 'same-origin' };
     if (data) {
         opts.headers['Content-Type'] = 'application/json';
         opts.body = JSON.stringify(data);
+    }
+    const csrf = getCookie('csrf_token');
+    if (csrf && method !== 'GET') {
+        opts.headers['X-CSRF-Token'] = csrf;
     }
     try {
         const res = await fetch(API + url, opts);
@@ -814,7 +822,7 @@ function _handleVariantChange(action, el) {
                 var fd = new FormData();
                 fd.append('images', f);
                 try {
-                    var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd });
+                    var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd, headers: { 'X-CSRF-Token': getCookie('csrf_token') } });
                     var data = await res.json();
                     if (data.paths && data.paths[0]) {
                         v.images.push(data.paths[0]);
@@ -1467,7 +1475,7 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             var fd = new FormData();
             fd.append('images', file);
-            var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd });
+            var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd, headers: { 'X-CSRF-Token': getCookie('csrf_token') } });
             var data = await res.json();
             if (data.paths && data.paths[0]) {
                 imageInput.value = data.paths[0];
@@ -2864,7 +2872,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (text) text.textContent = 'Uploading ' + (file.name || 'image') + ' (' + (i + 1) + '/' + files.length + ')...';
             var fd = new FormData();
             fd.append('images', file);
-            var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd });
+            var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd, headers: { 'X-CSRF-Token': getCookie('csrf_token') } });
             var data = await res.json();
             if (data.paths && data.paths.length > 0) {
                 for (var j = 0; j < data.paths.length; j++) {
