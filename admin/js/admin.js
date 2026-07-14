@@ -2492,6 +2492,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const mobileMenu = document.getElementById('mobile-menu');
 
     if (mobileToggle && mobileMenu) {
+        /* populate mobile menu from topbar-nav */
+        var topbarNav = document.getElementById('topbar-nav');
+        if (topbarNav && mobileMenu.children.length === 0) {
+            topbarNav.querySelectorAll('a').forEach(function(a) {
+                var clone = a.cloneNode(true);
+                clone.classList.remove('active');
+                if (page && a.getAttribute('href') === page) clone.classList.add('active');
+                mobileMenu.appendChild(clone);
+            });
+        }
         mobileToggle.addEventListener('click', function() {
             mobileMenu.classList.toggle('active');
         });
