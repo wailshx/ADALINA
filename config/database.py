@@ -36,10 +36,7 @@ class _ConnectionWrapper:
         return self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     def close(self):
-        try:
-            self._conn.rollback()
-        except Exception:
-            pass
+        pass
 
     def commit(self):
         self._conn.commit()
@@ -57,10 +54,6 @@ def _get_persistent(ref, url):
     else:
         conn = _public_conn
     if conn is not None and _is_alive(conn):
-        try:
-            conn.rollback()
-        except Exception:
-            pass
         return _ConnectionWrapper(conn)
     conn = _connect(url)
     if ref == 'admin':

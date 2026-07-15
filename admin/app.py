@@ -995,11 +995,21 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 return True
             slug = data.get('slug', '') or name.lower().replace(' ', '-')
             size_system = data.get('size_system', 'standard')
-            cur.execute("INSERT INTO categories (name, slug, description, image, status, size_system) VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (name) DO NOTHING RETURNING id",
-                        (name, slug, data.get('description',''), data.get('image',''), data.get('status','active'), size_system))
-            db.commit()
-            row_id = cur.fetchone()
-            send_json(self, {'id': row_id['id'] if row_id else None, 'message': 'Category created'}, 201)
+            try:
+                cur.execute("INSERT INTO categories (name, slug, description, image, status, size_system) VALUES (%s,%s,%s,%s,%s,%s) RETURNING id",
+                            (name, slug, data.get('description',''), data.get('image',''), data.get('status','active'), size_system))
+                row_id = cur.fetchone()
+                db.commit()
+                send_json(self, {'id': row_id['id'] if row_id else None, 'message': 'Category created'}, 201)
+            except Exception as e:
+                db.rollback()
+                msg = str(e)
+                if 'duplicate key' in msg and 'name' in msg:
+                    send_json(self, {'error': f'A category named "{name}" already exists'}, 409)
+                elif 'duplicate key' in msg and 'slug' in msg:
+                    send_json(self, {'error': f'A category with slug "{slug}" already exists'}, 409)
+                else:
+                    send_json(self, {'error': msg}, 500)
             return True
 
         if path == '/api/collections':
