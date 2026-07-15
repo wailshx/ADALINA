@@ -6,6 +6,10 @@ let totalProducts = 0;
 const PER_PAGE = 16;
 let currentCategory = '';
 
+const PLACEHOLDER_IMG = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="533" fill="%23f0f0f0"><rect width="400" height="533"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23ccc" font-size="16">No Image</text></svg>';
+
+function onImgError(el) { if (el && el.src !== PLACEHOLDER_IMG) el.src = PLACEHOLDER_IMG; }
+
 function cloudinaryThumb(url, w) {
     return url || '';
 }
@@ -196,7 +200,7 @@ function renderProductCard(product) {
     if (!product) return '';
     var pid = product.id || 0;
     var inW = pid && wishlist.indexOf(pid) !== -1;
-    var imgs = product.images && product.images.length > 0 ? product.images : (product.image ? [product.image] : ['data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="533" fill="%23f0f0f0"><rect width="400" height="533"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23ccc" font-size="16">No Image</text></svg>']);
+    var imgs = product.images && product.images.length > 0 ? product.images : (product.image ? [product.image] : [PLACEHOLDER_IMG]);
     var second = imgs.length > 1 ? imgs[1] : null;
     var ribbon = productRibbonHtml(product);
     var sizesHtml = '';
@@ -239,8 +243,8 @@ function renderProductCard(product) {
         : '<span class="current-price">' + formatPriceDA(product.price) + '</span>';
     return '<div class="product-card">' +
         '<div class="product-image">' +
-            '<img src="' + cloudinaryThumb(imgs[0], 400) + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy">' +
-            (second ? '<img src="' + cloudinaryThumb(second, 400) + '" alt="' + esc(product.name) + '" class="img-secondary" loading="lazy">' : '') +
+            '<img src="' + cloudinaryThumb(imgs[0], 400) + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy" onerror="onImgError(this)">' +
+            (second ? '<img src="' + cloudinaryThumb(second, 400) + '" alt="' + esc(product.name) + '" class="img-secondary" loading="lazy" onerror="onImgError(this)">' : '') +
             ribbon +
             '<button class="product-wishlist' + (inW ? ' active' : '') + '" onclick="toggleWishlistItem(this,' + pid + ')" aria-label="Wishlist">' +
                 '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
@@ -283,15 +287,16 @@ function searchProducts(query) {
         container.innerHTML = '<p class="no-results" style="display:block;">Aucun produit trouvé</p>';
         return;
     }
-    container.innerHTML = results.slice(0, 8).map(p => `
-        <div class="search-suggestion" onclick="closeSearchModal(); window.location.href='product.html?id=${p.id}'">
-            <img src="${p.image}" alt="${p.name}" class="search-suggestion-img" loading="lazy">
+    container.innerHTML = results.slice(0, 8).map(p => {
+        var thumb = (p.images && p.images.length > 0) ? p.images[0] : PLACEHOLDER_IMG;
+        return `<div class="search-suggestion" onclick="closeSearchModal(); window.location.href='product.html?id=${p.id}'">
+            <img src="${thumb}" alt="${p.name}" class="search-suggestion-img" loading="lazy" onerror="onImgError(this)">
             <div class="search-suggestion-info">
-                <div class="search-suggestion-name">${p.name}</div>
+                <div class="search-suggestion-name">${esc(p.name)}</div>
                 <div class="search-suggestion-meta">${p.category}${p.brand ? ' &middot; ' + p.brand : ''} &middot; ${formatPriceDA(p.price)}</div>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 }
 
 function handleSearchInput(event) {
@@ -350,11 +355,11 @@ function updateWishlistDisplay() {
     wishlist.forEach(id => {
         const p = products.find(pr => pr.id === id);
         if (p) {
-            var wImg = (p.images && p.images.length > 0) ? p.images[0] : (p.image || '');
+            var wImg = (p.images && p.images.length > 0) ? p.images[0] : PLACEHOLDER_IMG;
             container.innerHTML += `
                 <div class="wishlist-item">
                     <a href="product.html?id=${p.id}">
-                        <img src="${wImg}" alt="${p.name}" class="cart-item-image">
+                        <img src="${wImg}" alt="${p.name}" class="cart-item-image" onerror="onImgError(this)">
                     </a>
                     <div class="cart-item-details">
                         <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit">
@@ -476,7 +481,7 @@ function getCartItemImage(item) {
             return variant.images[0];
         }
     }
-    return item.images && item.images.length > 0 ? item.images[0] : item.image;
+    return item.images && item.images.length > 0 ? item.images[0] : PLACEHOLDER_IMG;
 }
 
 function updateCartDisplay() {
@@ -511,7 +516,7 @@ function updateCartDisplay() {
         var cartKey = item.id + '-' + (item.selectedSize || '') + '-' + (item.selectedColor || '');
         container.innerHTML += `
             <div class="cart-item">
-                <img src="${getCartItemImage(item)}" alt="${item.name}" class="cart-item-image" loading="lazy">
+                <img src="${getCartItemImage(item)}" alt="${item.name}" class="cart-item-image" loading="lazy" onerror="onImgError(this)">
                 <div class="cart-item-details">
                     <h3 class="cart-item-title">${item.name}</h3>
                     ${variantInfo}
@@ -839,7 +844,7 @@ function quickView(productId) {
     /* Images — use variant images if a color is selected */
     var images = getQVariantImages();
     var mainImg = document.getElementById('quick-view-main-image');
-    if (mainImg) mainImg.src = cloudinaryThumb(images[0], 600);
+    if (mainImg) { mainImg.src = cloudinaryThumb(images[0], 600); mainImg.onerror = function() { onImgError(this); }; }
 
     /* Ribbon */
     var qvWrap = mainImg ? mainImg.parentElement : null;
@@ -853,7 +858,7 @@ function quickView(productId) {
     var thumbs = document.getElementById('quick-view-thumbs');
     if (thumbs) {
         thumbs.innerHTML = images.map(function (img, i) {
-            return '<div class="qv-thumb' + (i === 0 ? ' active' : '') + '" onclick="qvGoToImage(' + i + ')"><img src="' + img + '" alt=""></div>';
+            return '<div class="qv-thumb' + (i === 0 ? ' active' : '') + '" onclick="qvGoToImage(' + i + ')"><img src="' + img + '" alt="" onerror="onImgError(this)"></div>';
         }).join('');
     }
 
@@ -916,7 +921,7 @@ function qvGoToImage(index) {
     _qv.currentIndex = index;
     var images = getQVariantImages();
     var mainImg = document.getElementById('quick-view-main-image');
-    if (mainImg) mainImg.src = cloudinaryThumb(images[index] || images[0], 600);
+    if (mainImg) { mainImg.src = cloudinaryThumb(images[index] || images[0], 600); mainImg.onerror = function() { onImgError(this); }; }
     var thumbs = document.querySelectorAll('#quick-view-thumbs .qv-thumb');
     thumbs.forEach(function (el, i) { el.classList.toggle('active', i === index); });
 }
@@ -944,7 +949,7 @@ function getQVariantImages() {
             return variant.images;
         }
     }
-    return product.images && product.images.length > 0 ? product.images : [product.image];
+    return product.images && product.images.length > 0 ? product.images : [PLACEHOLDER_IMG];
 }
 
 function updateQVGallery(images) {
@@ -1713,7 +1718,7 @@ function displayProduct(product) {
     if (!container) return;
 
     var isInWishlist = wishlist.indexOf(product.id) !== -1;
-    var images = product.images && product.images.length > 0 ? product.images : [product.image];
+    var images = product.images && product.images.length > 0 ? product.images : [PLACEHOLDER_IMG];
     var variants = product.variants || [];
     var hasVariants = variants.length > 0;
     // Determine available colors and sizes based on variant stock
@@ -1794,11 +1799,11 @@ function displayProduct(product) {
             <div class="pp-gallery">
                 <div class="pp-main-wrap">
                     ${productRibbonHtml(product)}
-                    <img id="main-product-image" src="${cloudinaryThumb(images[0], 800)}" alt="${product.name}">
+                    <img id="main-product-image" src="${cloudinaryThumb(images[0], 800)}" alt="${product.name}" onerror="onImgError(this)">
                     ${images.length > 1 ? '<button class="pp-nav pp-nav-prev" onclick="ppPrevImage()">&#10094;</button><button class="pp-nav pp-nav-next" onclick="ppNextImage()">&#10095;</button>' : ''}
                 </div>
                 ${images.length > 1 ? '<div class="pp-thumbs" id="pp-thumbs">' + images.map(function (img, i) {
-                    return '<div class="pp-thumb' + (i === 0 ? ' active' : '') + '" onclick="switchProductImage(\'' + img + '\', this)"><img src="' + cloudinaryThumb(img, 120) + '" data-raw="' + img + '" alt=""></div>';
+                    return '<div class="pp-thumb' + (i === 0 ? ' active' : '') + '" onclick="switchProductImage(\'' + img + '\', this)"><img src="' + cloudinaryThumb(img, 120) + '" data-raw="' + img + '" alt="" onerror="onImgError(this)"></div>';
                 }).join('') + '</div>' : ''}
             </div>
         </div>
@@ -1818,7 +1823,7 @@ function displayProduct(product) {
 
 function switchProductImage(src, el) {
     var mainImg = document.getElementById('main-product-image');
-    if (mainImg) mainImg.src = cloudinaryThumb(src, 800);
+    if (mainImg) { mainImg.src = cloudinaryThumb(src, 800); mainImg.onerror = function() { onImgError(this); }; }
     document.querySelectorAll('.product-thumbnail, .pp-thumb').forEach(function (t) { t.classList.remove('active'); });
     if (el) el.classList.add('active');
 }
@@ -1834,7 +1839,7 @@ function getCurrentProductImages() {
             return variant.images;
         }
     }
-    return product.images && product.images.length > 0 ? product.images : [product.image];
+    return product.images && product.images.length > 0 ? product.images : [PLACEHOLDER_IMG];
 }
 
 function updateProductGallery(images) {
@@ -1846,7 +1851,7 @@ function updateProductGallery(images) {
     if (thumbs) {
         if (images.length > 1) {
             thumbs.innerHTML = images.map(function(img, i) {
-                return '<div class="pp-thumb' + (i === 0 ? ' active' : '') + '" onclick="switchProductImage(\'' + img.replace(/'/g, "\\'") + '\', this)"><img src="' + img + '" alt=""></div>';
+                return '<div class="pp-thumb' + (i === 0 ? ' active' : '') + '" onclick="switchProductImage(\'' + img.replace(/'/g, "\\'") + '\', this)"><img src="' + img + '" alt="" onerror="onImgError(this)"></div>';
             }).join('');
             thumbs.style.display = '';
         } else {
