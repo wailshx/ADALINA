@@ -702,6 +702,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 self.send_header('Retry-After', str(retry))
                 return
             try:
+                db = None
                 length = int(self.headers.get('Content-Length', 0))
                 if length > MAX_REQUEST_SIZE:
                     send_json(self, {'error': 'Requête trop volumineuse'}, 413)
@@ -792,15 +793,16 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 db.close()
             except Exception as e:
                 logger.exception("Error creating order")
-                try:
-                    db.rollback()
-                except Exception:
-                    pass
-                try:
-                    db.close()
-                except Exception:
-                    pass
-                send_json(self, {'error': 'Erreur lors de la création de la commande'}, 500)
+                if db:
+                    try:
+                        db.rollback()
+                    except Exception:
+                        pass
+                    try:
+                        db.close()
+                    except Exception:
+                        pass
+                send_json(self, {'error': str(e)}, 500)
             return
 
         if path == '/api/public/log-event':
