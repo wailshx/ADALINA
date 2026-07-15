@@ -26,6 +26,7 @@ def _is_alive(conn):
         cur = conn.cursor()
         cur.execute("SELECT 1")
         cur.fetchone()
+        cur.close()
         return True
     except (psycopg2.OperationalError, psycopg2.InterfaceError, psycopg2.ProgrammingError):
         return False
