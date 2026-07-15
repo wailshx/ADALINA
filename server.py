@@ -671,14 +671,6 @@ class AdalinaServer(SimpleHTTPRequestHandler):
             self.path = '/' + clean_path
             return super().do_GET()
 
-        elif path.startswith('/uploads/'):
-            clean_path = path.lstrip('/')
-            if '..' in clean_path or clean_path.startswith('.'):
-                self.send_error(403, 'Forbidden')
-                return
-            self.path = '/' + clean_path
-            return super().do_GET()
-
         elif path.startswith('/images/'):
             clean_path = path.lstrip('/')
             if '..' in clean_path or clean_path.startswith('.'):

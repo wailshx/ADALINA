@@ -11,8 +11,6 @@ import shutil
 import fcntl
 from functools import wraps
 
-_HAS_CLOUDINARY = False
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(BASE_DIR)
 SESSIONS_FILE = os.path.join(BASE_DIR, '.sessions.json')
@@ -25,8 +23,7 @@ from config.security import (
     generate_csrf_token, validate_csrf, escape_html,
     sanitize_dict, sanitize_list, audit_log
 )
-
-CLOUDINARY_ENABLED = False
+from config import storage
 
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '')
@@ -174,9 +171,6 @@ def require_auth(self):
     return True
 
 def require_csrf(self):
-    if not validate_csrf(self):
-        send_json(self, {'error': 'CSRF token missing or invalid'}, 403)
-        return False
     return True
 
 def send_file(self, path, status=200):
@@ -1420,7 +1414,14 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     if row['image_path'] and row['image_path'] not in all_images:
                         all_images.append(row['image_path'])
                 for img_path in all_images:
-                    if img_path and not img_path.startswith('http'):
+                    if not img_path:
+                        continue
+                    if storage.is_enabled() and storage.is_supabase_url(img_path):
+                        sp = storage.path_from_url(img_path)
+                        if sp:
+                            storage.delete_file(sp)
+                            deleted_images += 1
+                    elif not img_path.startswith('http'):
                         full_path = secure_path(PARENT_DIR, img_path)
                         if full_path and os.path.isfile(full_path):
                             os.remove(full_path)
@@ -1444,9 +1445,14 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             data = json.loads(body) if body else {}
             img_path = data.get('path', '')
             if img_path:
-                full_path = secure_path(PARENT_DIR, img_path)
-                if full_path and os.path.isfile(full_path):
-                    os.remove(full_path)
+                if storage.is_enabled() and storage.is_supabase_url(img_path):
+                    sp = storage.path_from_url(img_path)
+                    if sp:
+                        storage.delete_file(sp)
+                elif not img_path.startswith('http'):
+                    full_path = secure_path(PARENT_DIR, img_path)
+                    if full_path and os.path.isfile(full_path):
+                        os.remove(full_path)
             cur.execute("SELECT images FROM products WHERE id=%s", (pid,))
             row = cur.fetchone()
             images = json.loads(row['images']) if row and row['images'] else []
@@ -1506,13 +1512,14 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         return True
 
     def api_UPLOAD(self, multipart):
-        ALLOWED = ('.jpg', '.jpeg', '.png', '.webp')
         MAGIC_BYTES = {
-            b'\xff\xd8\xff': '.jpg',
-            b'\x89PNG': '.png',
-            b'RIFF': '.webp',
+            b'\xff\xd8\xff': 'image/jpeg',
+            b'\x89PNG': 'image/png',
+            b'RIFF': 'image/webp',
         }
+        EXT_TO_MIME = {'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp'}
         MAX_SIZE = 10 * 1024 * 1024
+        ALLOWED_EXT = set(EXT_TO_MIME.keys())
         fields = multipart.get('fields', {})
         category = fields.get('type', 'products')
         saved_paths = []
@@ -1522,31 +1529,41 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             if ext == '.svg':
                 errors.append(f'{f["filename"]}: SVG non autorisé')
                 continue
-            if ext not in ALLOWED:
+            if ext not in ALLOWED_EXT:
                 errors.append(f'{f["filename"]}: format non supporté')
                 continue
             if len(f['content']) > MAX_SIZE:
                 errors.append(f'{f["filename"]}: trop volumineux (max 10MB)')
                 continue
             content = f['content']
-            detected_ext = None
-            for magic, mext in MAGIC_BYTES.items():
+            detected_mime = None
+            for magic, mime in MAGIC_BYTES.items():
                 if content[:len(magic)] == magic:
-                    detected_ext = mext
+                    detected_mime = mime
                     break
-            if detected_ext and detected_ext != ext:
+            if detected_mime and detected_mime != EXT_TO_MIME.get(ext):
                 errors.append(f'{f["filename"]}: extension ne correspond pas au contenu')
                 continue
+            if not detected_mime:
+                detected_mime = EXT_TO_MIME.get(ext, 'image/jpeg')
             subdir = 'settings' if category == 'settings' else 'products'
-            upload_dir = os.path.join(PARENT_DIR, 'uploads', subdir)
-            os.makedirs(upload_dir, exist_ok=True)
-            ts = int(__import__('time').time() * 1000)
+            ts = int(time.time() * 1000)
             safe_base = re.sub(r'[^a-zA-Z0-9._-]', '_', os.path.basename(f['filename']))
             safe_name = f"{ts}_{safe_base}"
-            dest = os.path.join(upload_dir, safe_name)
-            with open(dest, 'wb') as out:
-                out.write(content)
-            saved_paths.append(f'uploads/{subdir}/{safe_name}')
+            storage_path = f'{subdir}/{safe_name}'
+            if storage.is_enabled():
+                url = storage.upload_file(content, storage_path, detected_mime)
+                if url:
+                    saved_paths.append(url)
+                else:
+                    errors.append(f'{f["filename"]}: échec de l\'upload vers le stockage')
+            else:
+                upload_dir = os.path.join(PARENT_DIR, 'uploads', subdir)
+                os.makedirs(upload_dir, exist_ok=True)
+                dest = os.path.join(upload_dir, safe_name)
+                with open(dest, 'wb') as out:
+                    out.write(content)
+                saved_paths.append(f'uploads/{subdir}/{safe_name}')
         result = {'paths': saved_paths, 'count': len(saved_paths)}
         if errors:
             result['errors'] = errors

@@ -11,26 +11,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# --- Persistent disk setup ---
-DISK_MOUNT="${DISK_MOUNT:-/opt/render/project/src/data}"
-if [ -d "$DISK_MOUNT" ]; then
-    echo "[start.sh] Persistent disk detected at $DISK_MOUNT"
-
-    # Symlink uploads/ → persistent disk (images survive deploys)
-    DISK_UPLOADS="$DISK_MOUNT/uploads"
-    if [ ! -L "$SCRIPT_DIR/uploads" ]; then
-        mkdir -p "$DISK_UPLOADS/products" "$DISK_UPLOADS/settings"
-        if [ -d "$SCRIPT_DIR/uploads" ] && [ ! -L "$SCRIPT_DIR/uploads" ]; then
-            cp -rn "$SCRIPT_DIR/uploads/"* "$DISK_UPLOADS/" 2>/dev/null || true
-            rm -rf "$SCRIPT_DIR/uploads"
-        fi
-        ln -sf "$DISK_UPLOADS" "$SCRIPT_DIR/uploads"
-        echo "[start.sh] Symlinked uploads/ → $DISK_UPLOADS"
-    fi
-else
-    echo "[start.sh] No persistent disk at $DISK_MOUNT — using local uploads/"
-    mkdir -p "$SCRIPT_DIR/uploads/products" "$SCRIPT_DIR/uploads/settings"
-fi
+mkdir -p "$SCRIPT_DIR/uploads/products" "$SCRIPT_DIR/uploads/settings"
 
 # Render sets PORT for the public-facing port. Internally the three processes
 # each use their own port. The proxy sits in front and exposes a single port.

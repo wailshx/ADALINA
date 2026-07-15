@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: adalina
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash start.sh
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_PUBLIC_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://adalina.onrender.com
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: ADMIN_PASSWORD_SALT
+        sync: false

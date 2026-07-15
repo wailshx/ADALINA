@@ -1394,7 +1394,7 @@ window.editCollection = async function (id) {
     var preview = document.getElementById('coll-image-preview');
     var removeBtn = document.getElementById('coll-remove-image');
     if (coll.image) {
-        preview.src = '/' + coll.image;
+        preview.src = (coll.image && coll.image.startsWith('http')) ? coll.image : '/' + coll.image;
         preview.style.display = 'block';
         removeBtn.style.display = 'inline-flex';
     } else {
@@ -1503,7 +1503,7 @@ document.addEventListener('DOMContentLoaded', function () {
             var data = await res.json();
             if (data.paths && data.paths[0]) {
                 imageInput.value = data.paths[0];
-                preview.src = '/' + data.paths[0];
+                preview.src = (data.paths[0] && data.paths[0].startsWith('http')) ? data.paths[0] : '/' + data.paths[0];
                 preview.style.display = 'block';
                 removeBtn.style.display = 'inline-flex';
             } else {
@@ -2409,7 +2409,7 @@ function populateField(key, val, type) {
     var nameEl = document.getElementById(key + '_name');
     var clearBtn = document.getElementById(key + '_clear');
     if (preview && val) {
-        preview.src = '/' + val;
+        preview.src = (val && val.startsWith('http')) ? val : '/' + val;
         preview.style.display = 'block';
         if (nameEl) nameEl.textContent = val.split('/').pop();
         if (clearBtn) clearBtn.style.display = 'inline-block';

@@ -310,7 +310,7 @@
             else { brandEl.textContent = s.store_name; }
         }
         if (s.logo_header) {
-            document.querySelectorAll('.topbar-brand img').forEach(function(img) { img.src = '/' + s.logo_header; });
+            document.querySelectorAll('.topbar-brand img').forEach(function(img) { var v = s.logo_header; img.src = (v && v.startsWith('http')) ? v : '/' + v; });
         }
         var titleEl = document.querySelector('title');
         if (titleEl && s.site_title) {
@@ -799,7 +799,7 @@ window.uploadSettingsImage = async function(evt, key) {
         var data = await res.json();
         if (data.paths && data.paths.length > 0) {
             var path = data.paths[0];
-            document.getElementById(key + '_preview').src = '/' + path;
+            document.getElementById(key + '_preview').src = (path.startsWith('http') ? path : '/' + path);
             document.getElementById(key + '_preview').style.display = 'block';
             document.getElementById(key + '_name').textContent = path.split('/').pop();
             document.getElementById(key + '_clear').style.display = 'inline-block';
