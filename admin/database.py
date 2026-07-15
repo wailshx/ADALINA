@@ -148,6 +148,13 @@ def _run_migrations(conn):
                 cur.execute(f"ALTER TABLE {tbl} DISABLE ROW LEVEL SECURITY")
             except Exception:
                 pass
+        try:
+            cur.execute("SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname='public'")
+            rls_status = cur.fetchall()
+            for r in rls_status:
+                print(f"[DB] RLS: {r['tablename']} = {r['rowsecurity']}")
+        except Exception as e:
+            print(f"[DB] RLS check failed: {e}")
         conn.commit()
     finally:
         cur.close()
