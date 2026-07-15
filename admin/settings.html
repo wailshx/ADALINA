@@ -298,7 +298,6 @@
         if (s.primary_dark) document.documentElement.style.setProperty('--primary-dark', s.primary_dark);
         if (s.secondary_color) document.documentElement.style.setProperty('--secondary', s.secondary_color);
         if (s.background_color) document.documentElement.style.setProperty('--content-bg', s.background_color);
-        if (s.text_color) document.documentElement.style.setProperty('--text-dark', s.text_color);
         var brandEl = document.querySelector('.sidebar-brand-name');
         if (brandEl && s.store_name) {
             var parts = s.store_name.trim().split(/\s+/);
@@ -517,34 +516,6 @@
                                 <div class="color-input-row">
                                     <input type="color" data-setting="background_color">
                                     <input type="text" class="form-control" data-setting="background_color" placeholder="#hex">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>Couleur crème</label>
-                                <div class="color-input-row">
-                                    <input type="color" data-setting="cream_color">
-                                    <input type="text" class="form-control" data-setting="cream_color" placeholder="#hex">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>Couleur du texte</label>
-                                <div class="color-input-row">
-                                    <input type="color" data-setting="text_color">
-                                    <input type="text" class="form-control" data-setting="text_color" placeholder="#hex">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>Texte clair</label>
-                                <div class="color-input-row">
-                                    <input type="color" data-setting="text_light_color">
-                                    <input type="text" class="form-control" data-setting="text_light_color" placeholder="#hex">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label>Couleur des bordures</label>
-                                <div class="color-input-row">
-                                    <input type="color" data-setting="border_color">
-                                    <input type="text" class="form-control" data-setting="border_color" placeholder="#hex">
                                 </div>
                             </div>
                     </div>

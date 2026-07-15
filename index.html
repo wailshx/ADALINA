@@ -10,7 +10,7 @@
     /* Apply store settings from API */
     window.__settingsReady = fetch('/api/public/settings').then(function(r){return r.json()}).then(function(s){
         /* Theme colors */
-        var colors = {primary:'primary_color',primaryDark:'primary_dark',secondary:'secondary_color',background:'background_color',text:'text_color',textLight:'text_light_color',border:'border_color'};
+        var colors = {primary:'primary_color',primaryDark:'primary_dark',secondary:'secondary_color',background:'background_color'};
         for (var cssName in colors) {
             var key = colors[cssName];
             if (s[key]) document.documentElement.style.setProperty('--'+cssName.replace(/([A-Z])/g,'-$1').toLowerCase(), s[key]);
