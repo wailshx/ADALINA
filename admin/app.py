@@ -937,15 +937,15 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             # Calculate total stock from variants or fallback
             total_stock = data.get('stock', 0)
             cur.execute("""INSERT INTO products (name, description, price, sale_price, category_id, image, images, badge, sizes, colors, stock, brand, rating, featured, new_arrival, status, created_at)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
-                           RETURNING id""",
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())""",
                         (data.get('name',''), data.get('description',''), data.get('price',0),
                          data.get('sale_price'), cat_id, data.get('image',''),
                          json.dumps(data.get('images',[])), data.get('badge'),
                          json.dumps(sizes), json.dumps(colors),
                          total_stock, data.get('brand',''), data.get('rating',0),
                          data.get('featured', 0), data.get('new_arrival', 0), status))
-            pid = cur.fetchone()['id']
+            cur.execute("SELECT lastval()")
+            pid = cur.fetchone()['lastval']
             color_names = [c.get('name', c) if isinstance(c, dict) else c for c in colors] if colors else []
             size_names = [s.get('size', s) if isinstance(s, dict) else s for s in sizes] if sizes else []
             for s_name in size_names:
@@ -961,11 +961,11 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             if variants and isinstance(variants, list):
                 for idx, v in enumerate(variants):
                     cur.execute("""INSERT INTO product_variants (product_id, color_name, color_hex, sku, sort_order, stock)
-                                   VALUES (%s,%s,%s,%s,%s,0)
-                                   RETURNING id""",
+                                   VALUES (%s,%s,%s,%s,%s,0)""",
                                 (pid, v.get('color_name', ''), v.get('color_hex', ''),
                                  v.get('sku', ''), idx))
-                    vid = cur.fetchone()['id']
+                    cur.execute("SELECT lastval()")
+                    vid = cur.fetchone()['lastval']
                     # Insert variant images
                     for img_idx, img_path in enumerate(v.get('images', [])):
                         if img_path:
@@ -997,11 +997,12 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             slug = data.get('slug', '') or name.lower().replace(' ', '-')
             size_system = data.get('size_system', 'standard')
             try:
-                cur.execute("INSERT INTO categories (name, slug, description, image, status, size_system) VALUES (%s,%s,%s,%s,%s,%s) RETURNING id",
+                cur.execute("INSERT INTO categories (name, slug, description, image, status, size_system) VALUES (%s,%s,%s,%s,%s,%s)",
                             (name, slug, data.get('description',''), data.get('image',''), data.get('status','active'), size_system))
+                cur.execute("SELECT lastval()")
                 row_id = cur.fetchone()
                 db.commit()
-                send_json(self, {'id': row_id['id'] if row_id else None, 'message': 'Category created'}, 201)
+                send_json(self, {'id': row_id['lastval'] if row_id else None, 'message': 'Category created'}, 201)
             except Exception as e:
                 db.rollback()
                 msg = str(e)
@@ -1014,9 +1015,10 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             return True
 
         if path == '/api/collections':
-            cur.execute("INSERT INTO collections (name, description, image, status) VALUES (%s,%s,%s,%s) RETURNING id",
+            cur.execute("INSERT INTO collections (name, description, image, status) VALUES (%s,%s,%s,%s)",
                         (data.get('name',''), data.get('description',''), data.get('image',''), data.get('status','active')))
-            cid = cur.fetchone()['id']
+            cur.execute("SELECT lastval()")
+            cid = cur.fetchone()['lastval']
             for pid in data.get('product_ids', []):
                 cur.execute("INSERT INTO collection_products (collection_id, product_id) VALUES (%s,%s) ON CONFLICT DO NOTHING", (cid, pid))
             db.commit()
@@ -1026,8 +1028,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         if path == '/api/orders':
             items_json = json.dumps(data.get('items', []))
             cur.execute("""INSERT INTO orders (order_number, customer_id, customer_name, customer_phone, wilaya, commune, shipping_address, payment_method, status, total, items, delivery_fee)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                           RETURNING id""",
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                         (data.get('order_number',''), data.get('customer_id'),
                          data.get('customer_name',''), data.get('customer_phone',''),
                          data.get('wilaya',''), data.get('commune',''),
@@ -1035,7 +1036,8 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                          data.get('payment_method',''),
                          data.get('status','pending'), data.get('total',0), items_json,
                          data.get('delivery_fee', 0)))
-            oid = cur.fetchone()['id']
+            cur.execute("SELECT lastval()")
+            oid = cur.fetchone()['lastval']
             try:
                 cur.execute("INSERT INTO status_history (order_id, status, note) VALUES (%s, %s, %s)",
                             (oid, data.get('status', 'new'), 'Commande créée'))
@@ -1061,10 +1063,11 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             return True
 
         if path == '/api/customers':
-            cur.execute("INSERT INTO customers (name, email, status) VALUES (%s,%s,%s) RETURNING id",
+            cur.execute("INSERT INTO customers (name, email, status) VALUES (%s,%s,%s)",
                         (data.get('name',''), data.get('email',''), data.get('status','active')))
+            cur.execute("SELECT lastval()")
             db.commit()
-            send_json(self, {'id': cur.fetchone()['id'], 'message': 'Customer created'}, 201)
+            send_json(self, {'id': cur.fetchone()['lastval'], 'message': 'Customer created'}, 201)
             return True
 
         if path.startswith('/api/inventory/') and path.endswith('/adjust'):
@@ -1187,7 +1190,8 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                                        VALUES (%s,%s,%s,%s,%s,0)""",
                                     (pid, v.get('color_name', ''), v.get('color_hex', ''),
                                      v.get('sku', ''), idx))
-                        vid = cur.fetchone()['id']
+                        cur.execute("SELECT lastval()")
+                        vid = cur.fetchone()['lastval']
                         for img_idx, img_path in enumerate(v.get('images', [])):
                             if img_path:
                                 cur.execute("INSERT INTO variant_images (variant_id, image_path, sort_order) VALUES (%s, %s, %s)",
