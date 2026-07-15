@@ -354,6 +354,15 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
     def api_GET(self, path, query):
         db = get_db()
         cur = db.cursor()
+        try:
+            return self._api_GET_inner(path, query, db, cur)
+        finally:
+            try: cur.close()
+            except Exception: pass
+            try: db.rollback()
+            except Exception: pass
+
+    def _api_GET_inner(self, path, query, db, cur):
 
         if path == '/api/dashboard/stats':
             cur.execute("SELECT COALESCE(SUM(total),0) AS val FROM orders WHERE status='delivered'")
@@ -917,6 +926,15 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         db = get_db()
         cur = db.cursor()
         try:
+            return self._api_POST_inner(path, body, db, cur)
+        finally:
+            try: cur.close()
+            except Exception: pass
+            try: db.rollback()
+            except Exception: pass
+
+    def _api_POST_inner(self, path, body, db, cur):
+        try:
             data = json.loads(body) if body else {}
         except json.JSONDecodeError:
             send_json(self, {'error': 'Invalid JSON'}, 400)
@@ -1085,6 +1103,15 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
     def api_PUT(self, path, body):
         db = get_db()
         cur = db.cursor()
+        try:
+            return self._api_PUT_inner(path, body, db, cur)
+        finally:
+            try: cur.close()
+            except Exception: pass
+            try: db.rollback()
+            except Exception: pass
+
+    def _api_PUT_inner(self, path, body, db, cur):
         try:
             data = json.loads(body) if body else {}
         except json.JSONDecodeError:
@@ -1402,6 +1429,15 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
     def api_DELETE(self, path):
         db = get_db()
         cur = db.cursor()
+        try:
+            return self._api_DELETE_inner(path, db, cur)
+        finally:
+            try: cur.close()
+            except Exception: pass
+            try: db.rollback()
+            except Exception: pass
+
+    def _api_DELETE_inner(self, path, db, cur):
 
         if path.startswith('/api/collections/'):
             cid = path.split('/')[-1]
