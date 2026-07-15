@@ -10,14 +10,10 @@
     fetch('/api/public/settings').then(function(r){return r.json()}).then(function(s){
         if (s.primary_color) document.documentElement.style.setProperty('--primary', s.primary_color);
         if (s.primary_dark) document.documentElement.style.setProperty('--primary-dark', s.primary_dark);
-        if (s.secondary_color) {
-            document.documentElement.style.setProperty('--secondary', s.secondary_color);
-            
-            
-        }
+        if (s.secondary_color) document.documentElement.style.setProperty('--secondary', s.secondary_color);
         if (s.background_color) document.documentElement.style.setProperty('--content-bg', s.background_color);
         if (s.text_color) document.documentElement.style.setProperty('--text-dark', s.text_color);
-        var brandEl = document.querySelector('.topbar-brand-name');
+        var brandEl = document.querySelector('.sidebar-brand-name');
         if (brandEl && s.store_name) {
             var parts = s.store_name.trim().split(/\s+/);
             if (parts.length > 1) { brandEl.innerHTML = parts.slice(0, -1).join(' ') + ' <span>' + parts[parts.length - 1] + '</span>'; }
@@ -26,7 +22,7 @@
         var loginBrand = document.querySelector('.brand h2');
         if (loginBrand && s.store_name) loginBrand.textContent = s.store_name;
         if (s.logo_header) {
-            document.querySelectorAll('.topbar-brand img').forEach(function(img) { img.src = s.logo_header; });
+            document.querySelectorAll('.sidebar-brand img').forEach(function(img) { img.src = s.logo_header; });
         }
         var titleEl = document.querySelector('title');
         if (titleEl && s.site_title) {
@@ -39,13 +35,13 @@
 </head>
 <body>
 
-<nav class="topbar" id="topbar">
-    <a href="dashboard.html" class="topbar-brand">
+<aside class="sidebar" id="sidebar">
+    <a href="dashboard.html" class="sidebar-brand">
         <img src="../images/logo.svg" alt="ADALINA">
-        <span class="topbar-brand-name">ADAL<span>INA</span></span>
+        <span class="sidebar-brand-name">ADAL<span>INA</span></span>
     </a>
-    
-    <div class="topbar-nav" id="topbar-nav">
+    <nav class="sidebar-nav" id="sidebar-nav">
+        <div class="sidebar-section-label">Menu</div>
         <a href="dashboard.html">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
             Dashboard
@@ -70,16 +66,32 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             Clients
         </a>
+        <div class="sidebar-section-label">System</div>
         <a href="settings.html">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             Paramètres
         </a>
-        <a href="/admin/logout" class="logout">
+        <a href="/admin/logout" class="logout" style="margin-top:auto;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             Déconnexion
         </a>
+    </nav>
+    <div class="sidebar-profile">
+        <img src="https://ui-avatars.com/api/?name=Admin&background=c9a96e&color=fff&size=32" alt="">
+        <div class="info">
+            <div class="name">Admin</div>
+            <div class="role">Administrator</div>
+        </div>
     </div>
-    
+</aside>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<nav class="topbar" id="topbar">
+    <div class="topbar-left">
+        <button class="mobile-toggle" id="mobile-toggle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+    </div>
     <div class="topbar-right">
         <div class="notif-wrapper">
             <button class="topbar-btn" id="notif-btn">
@@ -95,14 +107,8 @@
                 <div class="role">Administrator</div>
             </div>
         </div>
-        <button class="topbar-mobile-toggle" id="mobile-toggle">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        </button>
     </div>
 </nav>
-<div class="mobile-menu" id="mobile-menu">
-    <!-- Same links as topbar-nav but for mobile -->
-</div>
 
 <main class="main-content">
     <div class="page-header">

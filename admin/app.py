@@ -685,6 +685,15 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             send_json(self, rows_to_list(rows))
             return True
 
+        if path.startswith('/api/orders/') and path.endswith('/history'):
+            parts = path.split('/')
+            oid = parts[2]
+            cur.execute("SELECT status, note, created_at FROM status_history WHERE order_id=%s ORDER BY created_at ASC", (oid,))
+            rows = cur.fetchall()
+            result = [{'status': r['status'], 'note': r['note'], 'created_at': r['created_at'].isoformat() if r['created_at'] else None} for r in rows]
+            send_json(self, result)
+            return True
+
         if path.startswith('/api/orders/'):
             oid = path.split('/')[-1]
             cur.execute("""
@@ -699,15 +708,6 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             if data.get('items'):
                 data['items'] = json.loads(data['items'])
             send_json(self, data)
-            return True
-
-        if path.startswith('/api/orders/') and path.endswith('/history'):
-            parts = path.split('/')
-            oid = parts[2]
-            cur.execute("SELECT status, note, created_at FROM status_history WHERE order_id=%s ORDER BY created_at ASC", (oid,))
-            rows = cur.fetchall()
-            result = [{'status': r['status'], 'note': r['note'], 'created_at': r['created_at'].isoformat() if r['created_at'] else None} for r in rows]
-            send_json(self, result)
             return True
 
         # GET /api/settings
@@ -820,6 +820,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             return True
 
         # GET /api/inventory
+        if path == '/api/inventory':
             status_filter = query.get('status', ['all'])[0].strip().lower()
             base_sql = """SELECT i.*, p.name AS product_name, p.image AS product_image,
                                 c.name AS category_name
@@ -1218,6 +1219,9 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         if path.startswith('/api/categories/'):
             cid = path.split('/')[-1]
             data = _filter_columns(data, ALLOWED_CATEGORY_COLUMNS)
+            if not data:
+                send_json(self, {'message': 'Category updated'})
+                return True
             sets = ', '.join(f"{k}=%s" for k in data)
             vals = list(data.values()) + [cid]
             cur.execute(f"UPDATE categories SET {sets} WHERE id=%s", vals)
@@ -1238,6 +1242,9 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         if path.startswith('/api/collections/'):
             cid = path.split('/')[-1]
             data = _filter_columns(data, ALLOWED_COLLECTION_COLUMNS)
+            if not data:
+                send_json(self, {'message': 'Collection updated'})
+                return True
             sets = ', '.join(f"{k}=%s" for k in data)
             vals = list(data.values()) + [cid]
             cur.execute(f"UPDATE collections SET {sets} WHERE id=%s", vals)
@@ -1367,6 +1374,9 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             if 'name' in data:
                 data['name'] = data['name'].strip()
             data = _filter_columns(data, ALLOWED_CUSTOMER_COLUMNS)
+            if not data:
+                send_json(self, {'message': 'Customer updated'})
+                return True
             sets = ', '.join(f"{k}=%s" for k in data)
             vals = list(data.values()) + [cid]
             cur.execute(f"UPDATE customers SET {sets} WHERE id=%s", vals)
