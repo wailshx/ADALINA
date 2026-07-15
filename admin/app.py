@@ -553,44 +553,63 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                      LEFT JOIN categories c ON p.category_id = c.id
                      WHERE """ + where_clause + " ORDER BY p.id", params)
             rows = cur.fetchall()
+
+            product_ids = [dict(r)['id'] for r in rows]
+            cur.execute("SELECT id, product_id, color_name, color_hex, sku FROM product_variants WHERE product_id=ANY(%s) ORDER BY sort_order, id", (product_ids,))
+            all_variants = cur.fetchall()
+
+            if all_variants:
+                variant_ids = [v['id'] for v in all_variants]
+                cur.execute("SELECT variant_id, image_path FROM variant_images WHERE variant_id=ANY(%s) ORDER BY sort_order", (variant_ids,))
+                vi_map = {}
+                for vi in cur.fetchall():
+                    vi_map.setdefault(vi['variant_id'], []).append(vi['image_path'])
+                cur.execute("SELECT variant_id, size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=ANY(%s) ORDER BY id", (variant_ids,))
+                vs_map = {}
+                for vs in cur.fetchall():
+                    vs_map.setdefault(vs['variant_id'], []).append({'size': vs['size_name'], 'stock': vs['stock'], 'sku': vs.get('sku', '')})
+                pv_map = {}
+                for v in all_variants:
+                    pv_map.setdefault(v['product_id'], []).append(v)
+            else:
+                cur.execute("SELECT product_id, size, stock FROM product_sizes WHERE product_id=ANY(%s) ORDER BY id", (product_ids,))
+                ps_map = {}
+                for ps in cur.fetchall():
+                    ps_map.setdefault(ps['product_id'], []).append(ps['size'])
+                cur.execute("SELECT product_id, color_name FROM product_colors WHERE product_id=ANY(%s) ORDER BY id", (product_ids,))
+                pc_map = {}
+                for pc in cur.fetchall():
+                    pc_map.setdefault(pc['product_id'], []).append(pc['color_name'])
+
             result = []
             for r in rows:
                 d = dict(r)
                 pid = d['id']
                 if d.get('images') and isinstance(d['images'], str):
                     d['images'] = json.loads(d['images'])
-                # Read variants with images, sizes, sku
-                cur.execute("SELECT id, color_name, color_hex, sku FROM product_variants WHERE product_id=%s ORDER BY sort_order, id", (pid,))
-                variant_rows = cur.fetchall()
-                variants = []
-                all_sizes = set()
-                all_colors = []
-                for v in variant_rows:
-                    vid = v['id']
-                    cur.execute("SELECT image_path FROM variant_images WHERE variant_id=%s ORDER BY sort_order", (vid,))
-                    images = [row['image_path'] for row in cur.fetchall()]
-                    cur.execute("SELECT size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=%s ORDER BY id", (vid,))
-                    sizes = [{'size': row['size_name'], 'stock': row['stock'], 'sku': row.get('sku', '')} for row in cur.fetchall()]
-                    variants.append({
-                        'color_name': v['color_name'],
-                        'color_hex': v['color_hex'],
-                        'sku': v['sku'],
-                        'images': images,
-                        'sizes': sizes,
-                    })
-                    all_colors.append({'name': v['color_name'], 'hex': v['color_hex']})
-                    for s in sizes:
-                        all_sizes.add(s['size'])
-                # Fallback to old tables if no advanced variants exist
-                if not variant_rows:
-                    cur.execute("SELECT size FROM product_sizes WHERE product_id=%s ORDER BY id", (pid,))
-                    d['sizes'] = [s['size'] for s in cur.fetchall()]
-                    cur.execute("SELECT color_name FROM product_colors WHERE product_id=%s ORDER BY id", (pid,))
-                    d['colors'] = [c['color_name'] for c in cur.fetchall()]
-                else:
+                if all_variants:
+                    variant_rows = pv_map.get(pid, [])
+                    variants = []
+                    all_sizes = set()
+                    all_colors = []
+                    for v in variant_rows:
+                        vid = v['id']
+                        variants.append({
+                            'color_name': v['color_name'],
+                            'color_hex': v['color_hex'],
+                            'sku': v['sku'],
+                            'images': vi_map.get(vid, []),
+                            'sizes': vs_map.get(vid, []),
+                        })
+                        all_colors.append({'name': v['color_name'], 'hex': v['color_hex']})
+                        for s in vs_map.get(vid, []):
+                            all_sizes.add(s['size'])
                     d['sizes'] = list(all_sizes)
                     d['colors'] = all_colors
                     d['variants'] = variants
+                else:
+                    d['sizes'] = ps_map.get(pid, [])
+                    d['colors'] = [{'name': c, 'hex': ''} for c in pc_map.get(pid, [])]
                 result.append(d)
             send_json(self, result)
             return True
@@ -606,36 +625,39 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             data = dict(row)
             if data.get('images') and isinstance(data['images'], str):
                 data['images'] = json.loads(data['images'])
-            # Read variants with images, sizes, sku
             cur.execute("SELECT id, color_name, color_hex, sku FROM product_variants WHERE product_id=%s ORDER BY sort_order, id", (pid,))
             variant_rows = cur.fetchall()
-            variants = []
-            all_colors = []
-            for v in variant_rows:
-                vid = v['id']
-                cur.execute("SELECT image_path FROM variant_images WHERE variant_id=%s ORDER BY sort_order", (vid,))
-                images = [row['image_path'] for row in cur.fetchall()]
-                cur.execute("SELECT size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=%s ORDER BY id", (vid,))
-                sizes = [{'size': row['size_name'], 'stock': row['stock'], 'sku': row.get('sku', '')} for row in cur.fetchall()]
-                variants.append({
-                    'color_name': v['color_name'],
-                    'color_hex': v['color_hex'],
-                    'sku': v['sku'],
-                    'images': images,
-                    'sizes': sizes,
-                })
-                all_colors.append({'name': v['color_name'], 'hex': v['color_hex']})
-            # Fallback to old tables if no advanced variants exist
-            if not variant_rows:
+            if variant_rows:
+                variant_ids = [v['id'] for v in variant_rows]
+                cur.execute("SELECT variant_id, image_path FROM variant_images WHERE variant_id=ANY(%s) ORDER BY sort_order", (variant_ids,))
+                vi_map = {}
+                for vi in cur.fetchall():
+                    vi_map.setdefault(vi['variant_id'], []).append(vi['image_path'])
+                cur.execute("SELECT variant_id, size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=ANY(%s) ORDER BY id", (variant_ids,))
+                vs_map = {}
+                for vs in cur.fetchall():
+                    vs_map.setdefault(vs['variant_id'], []).append({'size': vs['size_name'], 'stock': vs['stock'], 'sku': vs.get('sku', '')})
+                variants = []
+                all_colors = []
+                for v in variant_rows:
+                    vid = v['id']
+                    variants.append({
+                        'color_name': v['color_name'],
+                        'color_hex': v['color_hex'],
+                        'sku': v['sku'],
+                        'images': vi_map.get(vid, []),
+                        'sizes': vs_map.get(vid, []),
+                    })
+                    all_colors.append({'name': v['color_name'], 'hex': v['color_hex']})
+                data['colors'] = all_colors
+                data['variants'] = variants
+            else:
                 cur.execute("SELECT size, stock FROM product_sizes WHERE product_id=%s ORDER BY id", (pid,))
                 data['sizes'] = [{'size': r['size'], 'stock': r['stock']} for r in cur.fetchall()]
                 cur.execute("SELECT color_name, color_hex, stock FROM product_colors WHERE product_id=%s ORDER BY id", (pid,))
                 data['colors'] = [{'name': r['color_name'], 'hex': r['color_hex'], 'stock': r['stock']} for r in cur.fetchall()]
                 cur.execute("SELECT color_name, size_name, stock FROM product_variants WHERE product_id=%s ORDER BY id", (pid,))
                 data['variants'] = [{'color_name': r['color_name'], 'size_name': r['size_name'], 'stock': r['stock']} for r in cur.fetchall()]
-            else:
-                data['colors'] = all_colors
-                data['variants'] = variants
             send_json(self, data)
             return True
 

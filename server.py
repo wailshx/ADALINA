@@ -6,6 +6,9 @@ import subprocess
 import urllib.parse
 import time
 import logging
+import threading
+import datetime
+import random
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -221,6 +224,78 @@ def batch_format_products(rows, cur):
     return result
 
 MAX_REQUEST_SIZE = 1 * 1024 * 1024  # 1 MB for JSON requests
+
+def _process_order_background(order_number, items, customer_name, customer_phone, wilaya, data):
+    db = None
+    try:
+        db = get_public_db()
+        cur = db.cursor()
+
+        commune = (data.get('commune') or '').strip()
+        shipping = data.get('shipping', '')
+        shipping_address = f"Name: {customer_name}, Phone: {customer_phone}, Address: {shipping}"
+        payment = data.get('payment_method', 'Cash on Delivery')
+
+        server_total = 0
+        for item in items:
+            pid = item.get('product_id')
+            qty = item.get('quantity') or 1
+            color = item.get('color') or item.get('selectedColor') or ''
+            size = item.get('size') or item.get('selectedSize') or ''
+
+            cur.execute("SELECT price, sale_price FROM products WHERE id=%s", (pid,))
+            prod = cur.fetchone()
+            if not prod:
+                db.rollback()
+                logger.error(f'Order {order_number}: product {pid} not found')
+                return
+            unit_price = prod['sale_price'] if prod['sale_price'] else prod['price']
+            server_total += (unit_price or 0) * qty
+
+            ok, err = deduct_order_stock(cur, pid, color, size, qty)
+            if not ok:
+                db.rollback()
+                logger.error(f'Order {order_number}: stock deduction failed for {pid}: {err}')
+                return
+
+        delivery_fee = 0
+        wid = data.get('wilaya_id')
+        if wid is not None:
+            try:
+                wid = int(wid)
+                cur.execute("SELECT price FROM delivery_prices WHERE wilaya_id=%s", (wid,))
+                dp = cur.fetchone()
+                if dp:
+                    delivery_fee = dp['price']
+            except (ValueError, TypeError):
+                pass
+
+        cur.execute("""
+            INSERT INTO orders (order_number, customer_id, customer_name, customer_phone, wilaya, commune, status, total, items, shipping_address, payment_method, delivery_fee)
+            VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (order_number, customer_name, customer_phone, wilaya, commune, 'new', server_total, json.dumps(items), shipping_address, payment, delivery_fee))
+
+        oid = cur.fetchone()['id']
+        cur.execute("INSERT INTO status_history (order_id, status, note) VALUES (%s, %s, %s)",
+                    (oid, 'new', 'Commande créée'))
+        db.commit()
+        _cache.invalidate('products')
+        _cache.invalidate('featured')
+        logger.info(f'Order {order_number} created (id={oid})')
+    except Exception as e:
+        logger.exception(f'Background order {order_number} failed')
+        if db:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+    finally:
+        if db:
+            try:
+                db.close()
+            except Exception:
+                pass
 
 class AdalinaServer(SimpleHTTPRequestHandler):
     STATIC_EXTS = ('.css', '.js', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.woff', '.woff2', '.ttf')
@@ -747,7 +822,6 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, {'error': f'Trop de requêtes. Réessayez dans {retry}s.'}, 429)
                 self.send_header('Retry-After', str(retry))
                 return
-            db = None
             try:
                 length = int(self.headers.get('Content-Length', 0))
                 if length > MAX_REQUEST_SIZE:
@@ -756,7 +830,6 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 body = self.rfile.read(length).decode('utf-8')
                 data = json.loads(body) if body else {}
 
-                # Input validation
                 items = data.get('items', [])
                 if not items or not isinstance(items, list):
                     send_json(self, {'error': 'Panier vide'}, 400)
@@ -771,81 +844,19 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     send_json(self, {'error': 'Numéro de téléphone invalide'}, 400)
                     return
 
-                db = get_public_db()
-                cur = db.cursor()
+                order_number = 'ADL-' + datetime.datetime.now().strftime('%Y%m%d-') + str(random.randint(1000, 9999))
 
-                order_number = 'ADL-' + __import__('datetime').datetime.now().strftime('%Y%m%d-') + str(__import__('random').randint(1000, 9999))
-                commune = (data.get('commune') or '').strip()
-                shipping = data.get('shipping', '')
-                shipping_address = f"Name: {customer_name}, Phone: {customer_phone}, Address: {shipping}"
-                payment = data.get('payment_method', 'Cash on Delivery')
+                t = threading.Thread(
+                    target=_process_order_background,
+                    args=(order_number, items, customer_name, customer_phone, wilaya, data),
+                    daemon=True
+                )
+                t.start()
 
-                # Calculate order total server-side from product prices (prevents price manipulation)
-                server_total = 0
-                for item in items:
-                    pid = item.get('product_id')
-                    qty = item.get('quantity') or 1
-                    color = item.get('color') or item.get('selectedColor') or ''
-                    size = item.get('size') or item.get('selectedSize') or ''
-
-                    # Look up actual price from database
-                    cur.execute("SELECT price, sale_price FROM products WHERE id=%s", (pid,))
-                    prod = cur.fetchone()
-                    if not prod:
-                        db.rollback()
-                        send_json(self, {'error': f'Produit {pid} introuvable'}, 400)
-                        return
-                    unit_price = prod['sale_price'] if prod['sale_price'] else prod['price']
-                    server_total += (unit_price or 0) * qty
-
-                    ok, err = deduct_order_stock(cur, pid, color, size, qty)
-                    if not ok:
-                        product_name = item.get('name', '')
-                        msg = err or "Stock insuffisant"
-                        if product_name:
-                            msg = f"{msg} pour {product_name}"
-                        db.rollback()
-                        send_json(self, {'error': msg}, 409)
-                        return
-
-                # Look up delivery price from database
-                delivery_fee = 0
-                wid = data.get('wilaya_id')
-                if wid is not None:
-                    try:
-                        wid = int(wid)
-                        cur.execute("SELECT price FROM delivery_prices WHERE wilaya_id=%s", (wid,))
-                        dp = cur.fetchone()
-                        if dp:
-                            delivery_fee = dp['price']
-                    except (ValueError, TypeError):
-                        pass
-
-                cur.execute("""
-                    INSERT INTO orders (order_number, customer_id, customer_name, customer_phone, wilaya, commune, status, total, items, shipping_address, payment_method, delivery_fee)
-                    VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    RETURNING id
-                """, (order_number, customer_name, customer_phone, wilaya, commune, 'new', server_total, json.dumps(items), shipping_address, payment, delivery_fee))
-
-                oid = cur.fetchone()['id']
-                cur.execute("INSERT INTO status_history (order_id, status, note) VALUES (%s, %s, %s)",
-                            (oid, 'new', 'Commande créée'))
-                db.commit()
-                _cache.invalidate('products')
-                _cache.invalidate('featured')
-                send_json(self, {'id': oid, 'order_number': order_number, 'message': 'Order created'}, 201)
+                send_json(self, {'order_number': order_number, 'message': 'Commande en cours de traitement'}, 201)
             except Exception as e:
-                logger.exception("Error creating order")
-                if db:
-                    try:
-                        db.rollback()
-                    except Exception:
-                        pass
-                send_json(self, {'error': 'Failed to create order'}, 500)
-            finally:
-                if db:
-                    try: db.close()
-                    except Exception: pass
+                logger.exception("Error processing order request")
+                send_json(self, {'error': 'Failed to process order'}, 500)
             return
 
         if path == '/api/public/log-event':
