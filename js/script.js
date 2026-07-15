@@ -14,7 +14,8 @@ async function loadProducts() {
     try {
         const res = await fetch('/api/public/products');
         if (!res.ok) throw new Error('Failed to load products');
-        products = await res.json();
+        const data = await res.json();
+        products = data.products || data;
         productsLoaded = true;
         console.log('Loaded ' + products.length + ' products from database');
     } catch (e) {
