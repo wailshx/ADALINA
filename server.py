@@ -726,7 +726,6 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
                 db = get_public_db()
                 cur = db.cursor()
-                cur.execute("BEGIN")
 
                 order_number = 'ADL-' + __import__('datetime').datetime.now().strftime('%Y%m%d-') + str(__import__('random').randint(1000, 9999))
                 commune = (data.get('commune') or '').strip()
@@ -746,8 +745,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     cur.execute("SELECT price, sale_price FROM products WHERE id=%s", (pid,))
                     prod = cur.fetchone()
                     if not prod:
-                        cur.execute("ROLLBACK")
-                        db.commit()
+                        db.rollback()
                         send_json(self, {'error': f'Produit {pid} introuvable'}, 400)
                         db.close()
                         return
@@ -760,8 +758,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         msg = err or "Stock insuffisant"
                         if product_name:
                             msg = f"{msg} pour {product_name}"
-                        cur.execute("ROLLBACK")
-                        db.commit()
+                        db.rollback()
                         send_json(self, {'error': msg}, 409)
                         db.close()
                         return
@@ -788,7 +785,6 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 oid = cur.fetchone()['id']
                 cur.execute("INSERT INTO status_history (order_id, status, note) VALUES (%s, %s, %s)",
                             (oid, 'new', 'Commande créée'))
-                cur.execute("COMMIT")
                 db.commit()
                 _cache.invalidate('products')
                 _cache.invalidate('featured')
@@ -797,7 +793,11 @@ class AdalinaServer(SimpleHTTPRequestHandler):
             except Exception as e:
                 logger.exception("Error creating order")
                 try:
-                    cur.execute("ROLLBACK")
+                    db.rollback()
+                except Exception:
+                    pass
+                try:
+                    db.close()
                 except Exception:
                     pass
                 send_json(self, {'error': 'Erreur lors de la création de la commande'}, 500)
