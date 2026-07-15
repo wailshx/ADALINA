@@ -145,13 +145,15 @@ class AuditLog:
         try:
             from config.database import get_db
             db = get_db()
-            cur = db.cursor()
-            cur.execute(
-                "INSERT INTO audit_logs (admin_user, action, ip, details) VALUES (%s, %s, %s, %s)",
-                (user, action, ip, details[:500] if details else '')
-            )
-            db.commit()
-            db.close()
+            try:
+                cur = db.cursor()
+                cur.execute(
+                    "INSERT INTO audit_logs (admin_user, action, ip, details) VALUES (%s, %s, %s, %s)",
+                    (user, action, ip, details[:500] if details else '')
+                )
+                db.commit()
+            finally:
+                db.close()
         except Exception:
             pass
 
@@ -159,11 +161,13 @@ class AuditLog:
         try:
             from config.database import get_db
             db = get_db()
-            cur = db.cursor()
-            cur.execute("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT %s", (limit,))
-            rows = cur.fetchall()
-            db.close()
-            return [dict(r) for r in rows]
+            try:
+                cur = db.cursor()
+                cur.execute("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT %s", (limit,))
+                rows = cur.fetchall()
+                return [dict(r) for r in rows]
+            finally:
+                db.close()
         except Exception:
             return []
 

@@ -261,6 +261,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
         # GET /api/public/products — list all products (with optional pagination + sort)
         if path == '/api/public/products':
+            db = None
             try:
                 db = get_public_db()
                 cur = db.cursor()
@@ -370,11 +371,13 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     rows = cur.fetchall()
                     result = batch_format_products(rows, cur)
                     send_json(self, result)
-
-                db.close()
             except Exception as e:
                 print(f'[Server] Error loading products: {e}', flush=True)
                 send_json(self, {'error': 'Erreur lors du chargement des produits'}, 500)
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
             return
 
         # GET /api/public/products/featured — featured products
@@ -383,6 +386,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
             if cached is not None:
                 send_json(self, cached)
                 return
+            db = None
             try:
                 db = get_public_db()
                 cur = db.cursor()
@@ -397,10 +401,13 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 result = batch_format_products(rows, cur)
                 _cache.set('featured', result)
                 send_json(self, result)
-                db.close()
             except Exception as e:
                 print(f'[Server] Error loading featured: {e}', flush=True)
                 send_json(self, {'error': str(e)}, 500)
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
             return
 
         # GET /api/public/products/filters — available filter options
@@ -409,6 +416,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
             if cached is not None:
                 send_json(self, cached)
                 return
+            db = None
             try:
                 db = get_public_db()
                 cur = db.cursor()
@@ -443,10 +451,13 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 result = {'colors': colors, 'sizes': sizes, 'price_min': price_min, 'price_max': price_max}
                 _cache.set('product_filters', result)
                 send_json(self, result)
-                db.close()
             except Exception as e:
                 print(f'[Server] Error loading filters: {e}', flush=True)
                 send_json(self, {'error': str(e)}, 500)
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
             return
 
         # GET /api/public/products/{id}/recommendations — related products
@@ -458,6 +469,10 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 if cached is not None:
                     send_json(self, cached)
                     return
+            except Exception:
+                pass
+            db = None
+            try:
                 db = get_public_db()
                 cur = db.cursor()
                 cur.execute("SELECT category_id FROM products WHERE id=%s AND status='active'", (pid,))
@@ -486,15 +501,19 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         result.extend(batch_format_products(extra_rows, cur))
                 _cache.set(cache_key, result)
                 send_json(self, result)
-                db.close()
             except Exception as e:
                 print(f'[Server] Error loading recommendations: {e}', flush=True)
                 send_json(self, [], 200)
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
             return
 
         # GET /api/public/products/{id} — single product
         if path.startswith('/api/public/products/') and path != '/api/public/products' and path != '/api/public/products/featured':
             pid = path.split('/')[-1]
+            db = None
             try:
                 db = get_public_db()
                 cur = db.cursor()
@@ -507,13 +526,15 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 row = cur.fetchone()
                 if not row:
                     send_json(self, {'error': 'Not found'}, 404)
-                    db.close()
                     return
                 send_json(self, format_product(row, cur))
-                db.close()
             except Exception as e:
                 logger.exception("Error loading product %s", pid)
                 send_json(self, {'error': 'Erreur serveur'}, 500)
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
             return
 
         # GET /api/public/categories
@@ -522,6 +543,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
             if cached is not None:
                 send_json(self, cached)
                 return
+            db = None
             try:
                 db = get_public_db()
                 cur = db.cursor()
@@ -533,10 +555,13 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 result = rows_to_list(rows)
                 _cache.set('categories', result)
                 send_json(self, result)
-                db.close()
             except Exception as e:
                 print(f'[Server] Error loading categories: {e}', flush=True)
                 send_json(self, {'error': str(e)}, 500)
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
             return
 
         # GET /api/public/settings — public settings
@@ -545,6 +570,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
             if cached is not None:
                 send_json(self, cached)
                 return
+            db = None
             try:
                 db = get_public_db()
                 cur = db.cursor()
@@ -563,10 +589,13 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     result[key] = val
                 _cache.set('settings', result)
                 send_json(self, result)
-                db.close()
             except Exception as e:
                 print(f'[Server] Error loading settings: {e}', flush=True)
                 send_json(self, {'error': str(e)}, 500)
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
             return
 
         # GET /api/public/delivery-prices
@@ -575,6 +604,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
             if cached is not None:
                 send_json(self, cached)
                 return
+            db = None
             try:
                 db = get_public_db()
                 cur = db.cursor()
@@ -585,14 +615,18 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     result[str(r['wilaya_id'])] = r['price']
                 _cache.set('delivery', result)
                 send_json(self, result)
-                db.close()
             except Exception as e:
                 print(f'[Server] Error loading delivery: {e}', flush=True)
                 send_json(self, {'error': str(e)}, 500)
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
             return
 
         # GET /api/public/collections
         if path == '/api/public/collections':
+            db = None
             try:
                 db = get_public_db()
                 cur = db.cursor()
@@ -614,10 +648,13 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     result.append(c)
                 _cache.set('collections', result)
                 send_json(self, result)
-                db.close()
             except Exception as e:
                 print(f'[Server] Error loading collections: {e}', flush=True)
                 send_json(self, {'error': str(e)}, 500)
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
             return
 
         # Products.json endpoint — served from DB
@@ -630,6 +667,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps(cached, default=str, ensure_ascii=False).encode('utf-8'))
                 return
+            db = None
             try:
                 db = get_public_db()
                 cur = db.cursor()
@@ -647,12 +685,15 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 self.send_header('Access-Control-Allow-Origin', CORS_ORIGIN)
                 self.end_headers()
                 self.wfile.write(json.dumps(products, default=str, ensure_ascii=False).encode('utf-8'))
-                db.close()
             except Exception as e:
                 print(f'[Server] Error loading products.json: {e}', flush=True)
                 self.send_response(500)
                 self.end_headers()
                 self.wfile.write(str(e).encode())
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
             return
 
         elif path == '/website/' or path == '/website':
@@ -701,8 +742,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, {'error': f'Trop de requêtes. Réessayez dans {retry}s.'}, 429)
                 self.send_header('Retry-After', str(retry))
                 return
+            db = None
             try:
-                db = None
                 length = int(self.headers.get('Content-Length', 0))
                 if length > MAX_REQUEST_SIZE:
                     send_json(self, {'error': 'Requête trop volumineuse'}, 413)
@@ -748,7 +789,6 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     if not prod:
                         db.rollback()
                         send_json(self, {'error': f'Produit {pid} introuvable'}, 400)
-                        db.close()
                         return
                     unit_price = prod['sale_price'] if prod['sale_price'] else prod['price']
                     server_total += (unit_price or 0) * qty
@@ -761,7 +801,6 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                             msg = f"{msg} pour {product_name}"
                         db.rollback()
                         send_json(self, {'error': msg}, 409)
-                        db.close()
                         return
 
                 # Look up delivery price from database
@@ -790,7 +829,6 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 _cache.invalidate('products')
                 _cache.invalidate('featured')
                 send_json(self, {'id': oid, 'order_number': order_number, 'message': 'Order created'}, 201)
-                db.close()
             except Exception as e:
                 logger.exception("Error creating order")
                 if db:
@@ -798,11 +836,11 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         db.rollback()
                     except Exception:
                         pass
-                    try:
-                        db.close()
-                    except Exception:
-                        pass
                 send_json(self, {'error': 'Failed to create order'}, 500)
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
             return
 
         if path == '/api/public/log-event':
@@ -815,6 +853,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 event_type = str(data.get('type', ''))[:50]
                 payload = data.get('payload', {})
                 if event_type and payload:
+                    db = None
                     try:
                         db = get_public_db()
                         cur = db.cursor()
@@ -823,6 +862,10 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         db.commit()
                     except Exception:
                         pass
+                    finally:
+                        if db:
+                            try: db.close()
+                            except Exception: pass
                 send_json(self, {'ok': True})
             except Exception:
                 send_json(self, {'ok': True})
