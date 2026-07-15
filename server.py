@@ -802,7 +802,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         db.close()
                     except Exception:
                         pass
-                send_json(self, {'error': str(e)}, 500)
+                send_json(self, {'error': 'Failed to create order'}, 500)
             return
 
         if path == '/api/public/log-event':

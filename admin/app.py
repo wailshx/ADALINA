@@ -1714,7 +1714,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
         if path == '/admin/login':
             ip = get_client_ip(self)
-            if not _login_limiter.is_allowed(f'login:{ip}', max_requests=30, window=900):  # TEMPORARY: raised from 5 to 30 for testing. REVERT TO 5 WHEN TESTING COMPLETE
+            if not _login_limiter.is_allowed(f'login:{ip}', max_requests=5, window=900):
                 retry = _login_limiter.retry_after(f'login:{ip}', window=900)
                 send_json(self, {'error': f'Trop de tentatives. Réessayez dans {retry}s.'}, 429)
                 return
