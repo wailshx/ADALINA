@@ -148,6 +148,12 @@ def _run_migrations(conn):
                 cur.execute(f"ALTER TABLE {tbl} DISABLE ROW LEVEL SECURITY")
             except Exception:
                 pass
+        for tbl in rls_tables:
+            try:
+                cur.execute(f"GRANT ALL PRIVILEGES ON TABLE {tbl} TO postgres")
+                cur.execute(f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO postgres")
+            except Exception:
+                pass
         try:
             cur.execute("SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname='public'")
             rls_status = cur.fetchall()
