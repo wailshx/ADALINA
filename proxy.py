@@ -6,9 +6,11 @@ Routes /api/public/* and POST /api/orders to main server (PORT_MAIN).
 All other /api/* routes go to admin server (PORT_ADMIN).
 Everything else goes to main server (PORT_MAIN).
 Listens on PORT (Render's public-facing port).
+Features: gzip compression for text payloads, threaded request handling.
 """
 import os
 import sys
+import gzip
 import http.server
 import http.client
 import urllib.request
@@ -19,6 +21,12 @@ import socketserver
 MAIN_PORT = int(os.environ.get('PORT_MAIN', '3000'))
 ADMIN_PORT = int(os.environ.get('PORT_ADMIN', '5000'))
 PROXY_PORT = int(os.environ.get('PORT', '8080'))
+
+COMPRESSIBLE_TYPES = (
+    'text/html', 'text/css', 'text/javascript', 'text/plain', 'text/xml',
+    'application/javascript', 'application/json', 'application/xml',
+    'image/svg+xml',
+)
 
 # Paths that only the main server handles (admin server doesn't have these routes)
 MAIN_ONLY_PREFIXES = (
@@ -36,17 +44,24 @@ def route_to_backend(path, method='GET'):
     if path.startswith('/admin/'):
         return ('127.0.0.1', ADMIN_PORT)
     if path.startswith('/api/'):
-        # POST to customer-facing endpoints goes to the main server
         if method == 'POST':
             for mp in MAIN_POST_PATHS:
                 if path == mp:
                     return ('127.0.0.1', MAIN_PORT)
-        # These specific public routes are only on the main server
         for prefix in MAIN_ONLY_PREFIXES:
             if path.startswith(prefix):
                 return ('127.0.0.1', MAIN_PORT)
         return ('127.0.0.1', ADMIN_PORT)
     return ('127.0.0.1', MAIN_PORT)
+
+
+def _should_compress(content_type, client_accepts_gzip):
+    if not client_accepts_gzip:
+        return False
+    if not content_type:
+        return False
+    ct = content_type.split(';')[0].strip().lower()
+    return any(ct.startswith(t) for t in COMPRESSIBLE_TYPES)
 
 
 class ProxyHandler(http.server.BaseHTTPRequestHandler):
@@ -60,7 +75,6 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
 
             conn = http.client.HTTPConnection(backend_host, backend_port, timeout=30)
 
-            # Forward headers (skip hop-by-hop)
             skip = {'host', 'connection', 'keep-alive', 'transfer-encoding'}
             fwd_headers = {}
             for k, v in self.headers.items():
@@ -70,23 +84,39 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             conn.request(self.command, self.path, body=body, headers=fwd_headers)
             resp = conn.getresponse()
 
+            resp_body = resp.read()
+            conn.close()
+
+            client_gzip = 'gzip' in self.headers.get('Accept-Encoding', '')
+            resp_ct = ''
+            already_gzipped = False
+            for k, v in resp.getheaders():
+                if k.lower() == 'content-type':
+                    resp_ct = v
+                if k.lower() == 'content-encoding' and 'gzip' in v.lower():
+                    already_gzipped = True
+
+            do_compress = _should_compress(resp_ct, client_gzip) and not already_gzipped
+
+            if do_compress:
+                resp_body = gzip.compress(resp_body, compresslevel=6)
+
             self.send_response(resp.status)
+            hop_skip = {'transfer-encoding', 'connection', 'content-encoding', 'content-length'}
             for key, val in resp.getheaders():
-                k_lower = key.lower()
-                if k_lower in ('transfer-encoding', 'connection'):
+                if key.lower() in hop_skip:
                     continue
                 self.send_header(key, val)
+
+            if do_compress:
+                self.send_header('Content-Encoding', 'gzip')
+                self.send_header('Content-Length', str(len(resp_body)))
+                self.send_header('Vary', 'Accept-Encoding')
+
             self.end_headers()
+            self.wfile.write(resp_body)
+            self.wfile.flush()
 
-            # Stream response body
-            while True:
-                chunk = resp.read(65536)
-                if not chunk:
-                    break
-                self.wfile.write(chunk)
-                self.wfile.flush()
-
-            conn.close()
         except Exception as e:
             self.send_response(502)
             self.send_header('Content-Type', 'text/plain')
@@ -113,7 +143,6 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         self._proxy()
 
     def log_message(self, format, *args):
-        # Quiet logging — only errors
         if args and str(args[0]).startswith('5'):
             sys.stderr.write(f"[proxy] {args[0]}\n")
 
@@ -127,6 +156,7 @@ if __name__ == '__main__':
     print(f'[proxy] Routing /admin/* and most /api/* → localhost:{ADMIN_PORT}')
     print(f'[proxy] Routing /api/public/* and POST /api/orders → localhost:{MAIN_PORT}')
     print(f'[proxy] Routing everything else → localhost:{MAIN_PORT}')
+    print(f'[proxy] Gzip compression enabled for text/json payloads')
     print(f'[proxy] Listening on port {PROXY_PORT}')
     server = ThreadedHTTPServer(('0.0.0.0', PROXY_PORT), ProxyHandler)
     try:

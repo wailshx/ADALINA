@@ -1,4 +1,5 @@
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+from socketserver import ThreadingMixIn
 import json
 import os
 import subprocess
@@ -230,9 +231,9 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
     def send_response(self, code, message=None):
         super().send_response(code, message)
-        path = getattr(self, 'path', '').lower()
+        path = getattr(self, 'path', '').split('?')[0].lower()
         if any(path.endswith(ext) for ext in self.STATIC_EXTS):
-            self.send_header('Cache-Control', f'public, max-age=604800, immutable')
+            self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
         elif any(path.endswith(ext) for ext in self.HTML_EXTS) or path in ('/', ''):
             self.send_header('Cache-Control', 'no-cache, must-revalidate')
 
@@ -384,7 +385,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         if path == '/api/public/products/featured':
             cached = _cache.get('featured', ttl=300)
             if cached is not None:
-                send_json(self, cached)
+                send_json_cached(self, cached, max_age=300)
                 return
             db = None
             try:
@@ -400,7 +401,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 rows = cur.fetchall()
                 result = batch_format_products(rows, cur)
                 _cache.set('featured', result)
-                send_json(self, result)
+                send_json_cached(self, result, max_age=300)
             except Exception as e:
                 print(f'[Server] Error loading featured: {e}', flush=True)
                 send_json(self, {'error': str(e)}, 500)
@@ -414,7 +415,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         if path == '/api/public/products/filters':
             cached = _cache.get('product_filters', ttl=300)
             if cached is not None:
-                send_json(self, cached)
+                send_json_cached(self, cached, max_age=300)
                 return
             db = None
             try:
@@ -450,7 +451,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
                 result = {'colors': colors, 'sizes': sizes, 'price_min': price_min, 'price_max': price_max}
                 _cache.set('product_filters', result)
-                send_json(self, result)
+                send_json_cached(self, result, max_age=300)
             except Exception as e:
                 print(f'[Server] Error loading filters: {e}', flush=True)
                 send_json(self, {'error': str(e)}, 500)
@@ -467,7 +468,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 cache_key = f'recommendations:{pid}'
                 cached = _cache.get(cache_key, ttl=120)
                 if cached is not None:
-                    send_json(self, cached)
+                    send_json_cached(self, cached, max_age=300)
                     return
             except Exception:
                 pass
@@ -541,7 +542,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         if path == '/api/public/categories':
             cached = _cache.get('categories', ttl=300)
             if cached is not None:
-                send_json(self, cached)
+                send_json_cached(self, cached, max_age=300)
                 return
             db = None
             try:
@@ -554,7 +555,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 rows = cur.fetchall()
                 result = rows_to_list(rows)
                 _cache.set('categories', result)
-                send_json(self, result)
+                send_json_cached(self, result, max_age=300)
             except Exception as e:
                 print(f'[Server] Error loading categories: {e}', flush=True)
                 send_json(self, {'error': str(e)}, 500)
@@ -568,7 +569,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         if path == '/api/public/settings':
             cached = _cache.get('settings', ttl=300)
             if cached is not None:
-                send_json(self, cached)
+                send_json_cached(self, cached, max_age=300)
                 return
             db = None
             try:
@@ -588,7 +589,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         except: pass
                     result[key] = val
                 _cache.set('settings', result)
-                send_json(self, result)
+                send_json_cached(self, result, max_age=300)
             except Exception as e:
                 print(f'[Server] Error loading settings: {e}', flush=True)
                 send_json(self, {'error': str(e)}, 500)
@@ -602,7 +603,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         if path == '/api/public/delivery-prices':
             cached = _cache.get('delivery', ttl=600)
             if cached is not None:
-                send_json(self, cached)
+                send_json_cached(self, cached, max_age=300)
                 return
             db = None
             try:
@@ -614,7 +615,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 for r in rows:
                     result[str(r['wilaya_id'])] = r['price']
                 _cache.set('delivery', result)
-                send_json(self, result)
+                send_json_cached(self, result, max_age=300)
             except Exception as e:
                 print(f'[Server] Error loading delivery: {e}', flush=True)
                 send_json(self, {'error': str(e)}, 500)
@@ -626,6 +627,10 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
         # GET /api/public/collections
         if path == '/api/public/collections':
+            cached = _cache.get('collections', ttl=300)
+            if cached is not None:
+                send_json_cached(self, cached, max_age=300)
+                return
             db = None
             try:
                 db = get_public_db()
@@ -647,7 +652,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     c['product_count'] = len(prods)
                     result.append(c)
                 _cache.set('collections', result)
-                send_json(self, result)
+                send_json_cached(self, result, max_age=300)
             except Exception as e:
                 print(f'[Server] Error loading collections: {e}', flush=True)
                 send_json(self, {'error': str(e)}, 500)
@@ -886,7 +891,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
         print(f'[Server] {format % args}')
 
-class AdalinaHTTPServer(HTTPServer):
+class AdalinaHTTPServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
     allow_reuse_address = True
 
 def main():
