@@ -131,6 +131,16 @@ def _run_migrations(conn):
             "CREATE INDEX IF NOT EXISTS idx_products_category_status ON products(category_id, status)",
             "CREATE INDEX IF NOT EXISTS idx_variant_sizes_variant_stock ON variant_sizes(variant_id, size_name, stock)",
             "CREATE INDEX IF NOT EXISTS idx_orders_is_read ON orders(is_read)",
+            "CREATE INDEX IF NOT EXISTS idx_product_variants_product ON product_variants(product_id)",
+            "CREATE INDEX IF NOT EXISTS idx_variant_images_variant ON variant_images(variant_id)",
+            "CREATE INDEX IF NOT EXISTS idx_variant_sizes_variant ON variant_sizes(variant_id)",
+            "CREATE INDEX IF NOT EXISTS idx_product_sizes_product ON product_sizes(product_id)",
+            "CREATE INDEX IF NOT EXISTS idx_product_colors_product ON product_colors(product_id)",
+            "CREATE INDEX IF NOT EXISTS idx_stock_history_product ON stock_history(product_id)",
+            "CREATE INDEX IF NOT EXISTS idx_inventory_product ON inventory(product_id)",
+            "CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(setting_key)",
+            "CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name)",
+            "CREATE INDEX IF NOT EXISTS idx_status_history_order ON status_history(order_id)",
         ]
         for idx_sql in idx_migrations:
             try:
