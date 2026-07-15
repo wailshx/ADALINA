@@ -137,6 +137,17 @@ def _run_migrations(conn):
                 cur.execute(idx_sql)
             except Exception:
                 pass
+        rls_tables = [
+            'users', 'categories', 'products', 'product_sizes', 'product_colors',
+            'product_variants', 'collections', 'collection_products', 'customers',
+            'orders', 'inventory', 'stock_history', 'variant_images', 'variant_sizes',
+            'delivery_prices', 'settings', 'audit_logs', 'status_history', 'search_events',
+        ]
+        for tbl in rls_tables:
+            try:
+                cur.execute(f"ALTER TABLE {tbl} DISABLE ROW LEVEL SECURITY")
+            except Exception:
+                pass
         conn.commit()
     finally:
         cur.close()
@@ -368,6 +379,18 @@ def init_db():
             FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
         )
     """)
+
+    rls_tables = [
+        'users', 'categories', 'products', 'product_sizes', 'product_colors',
+        'product_variants', 'collections', 'collection_products', 'customers',
+        'orders', 'inventory', 'stock_history', 'variant_images', 'variant_sizes',
+        'delivery_prices', 'settings', 'audit_logs', 'status_history', 'search_events',
+    ]
+    for tbl in rls_tables:
+        try:
+            cur.execute(f"ALTER TABLE {tbl} DISABLE ROW LEVEL SECURITY")
+        except Exception:
+            pass
 
     conn.commit()
     conn.close()
