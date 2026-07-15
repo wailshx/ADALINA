@@ -1,4 +1,5 @@
 import os
+import time
 import psycopg2
 import psycopg2.extras
 import atexit
@@ -14,12 +15,25 @@ DATABASE_PUBLIC_URL = os.environ.get('DATABASE_PUBLIC_URL', DATABASE_URL)
 _admin_conn = None
 _public_conn = None
 
-def _connect(url):
+def _connect(url, retries=3):
     if url.startswith('postgres://'):
         url = url.replace('postgres://', 'postgresql://', 1)
-    conn = psycopg2.connect(url, connect_timeout=10)
-    conn.autocommit = False
-    return conn
+    last_err = None
+    for attempt in range(retries):
+        try:
+            conn = psycopg2.connect(url, connect_timeout=10)
+            conn.autocommit = False
+            return conn
+        except psycopg2.OperationalError as e:
+            last_err = e
+            msg = str(e)
+            if 'ECIRCUITBREAKER' in msg or 'too many' in msg:
+                wait = 2 ** attempt * 5
+                print(f"[DB] Circuit breaker active, waiting {wait}s (attempt {attempt+1}/{retries})")
+                time.sleep(wait)
+            else:
+                raise
+    raise last_err
 
 def _is_alive(conn):
     try:
@@ -55,7 +69,11 @@ def _get_persistent(ref, url):
         conn = _public_conn
     if conn is not None and _is_alive(conn):
         return _ConnectionWrapper(conn)
-    conn = _connect(url)
+    try:
+        conn = _connect(url)
+    except Exception as e:
+        print(f"[DB] Failed to connect ({ref}): {e}")
+        raise
     if ref == 'admin':
         _admin_conn = conn
     else:
