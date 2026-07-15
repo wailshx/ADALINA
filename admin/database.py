@@ -150,10 +150,19 @@ def _run_migrations(conn):
                 pass
         for tbl in rls_tables:
             try:
-                cur.execute(f"GRANT ALL PRIVILEGES ON TABLE {tbl} TO postgres")
-                cur.execute(f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO postgres")
+                cur.execute(f"GRANT ALL PRIVILEGES ON TABLE {tbl} TO PUBLIC")
             except Exception:
                 pass
+        try:
+            cur.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO PUBLIC")
+        except Exception:
+            pass
+        try:
+            cur.execute("SELECT current_user, session_user")
+            roles = cur.fetchone()
+            print(f"[DB] Current user: {roles['current_user']}, Session user: {roles['session_user']}")
+        except Exception as e:
+            print(f"[DB] Role check failed: {e}")
         try:
             cur.execute("SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname='public'")
             rls_status = cur.fetchall()
