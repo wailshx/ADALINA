@@ -2569,9 +2569,31 @@ function pulseIcon(btn) {
     });
 }
 
+function applyThemeFromStorage() {
+    var saved = localStorage.getItem('adalina-theme');
+    if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+}
+
+function toggleTheme() {
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('adalina-theme', 'light');
+    } else {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        localStorage.setItem('adalina-theme', 'dark');
+    }
+}
+
 async function init() {
     if (_initialized) return;
     _initialized = true;
+
+    applyThemeFromStorage();
 
     await loadProducts();
 
@@ -2716,6 +2738,8 @@ window.changeProductQty = changeProductQty;
 window.setProductQty = setProductQty;
 window.addCurrentToCart = addCurrentToCart;
 window.addCurrentToWishlist = addCurrentToWishlist;
+window.applyThemeFromStorage = applyThemeFromStorage;
+window.toggleTheme = toggleTheme;
 window.decreaseQty = decreaseQty;
 window.increaseQty = increaseQty;
 window.updateCartItem = updateCartItem;
