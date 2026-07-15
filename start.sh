@@ -44,13 +44,22 @@ ADMIN_PID=$!
 
 # Wait for backends to be ready (up to 30 seconds)
 echo "[start.sh] Waiting for backends to bind..."
+MAIN_READY=false
+ADMIN_READY=false
 for i in $(seq 1 30); do
-    if python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:$MAIN_PORT/')" 2>/dev/null; then
+    if ! $MAIN_READY && python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:$MAIN_PORT/')" 2>/dev/null; then
         echo "[start.sh] Main server ready"
+        MAIN_READY=true
+    fi
+    if ! $ADMIN_READY && python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:$ADMIN_PORT/')" 2>/dev/null; then
+        echo "[start.sh] Admin server ready"
+        ADMIN_READY=true
+    fi
+    if $MAIN_READY && $ADMIN_READY; then
         break
     fi
     if [ "$i" -eq 30 ]; then
-        echo "[start.sh] Main server not ready after 30s, starting proxy anyway"
+        echo "[start.sh] Timeout: main=$MAIN_READY admin=$ADMIN_READY — starting proxy anyway"
     fi
     sleep 1
 done

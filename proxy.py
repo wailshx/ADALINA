@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
 proxy.py — Lightweight reverse proxy using only Python stdlib.
-Routes /admin/* and /api/* to the admin server (PORT_ADMIN).
-Routes everything else to the main server (PORT_MAIN).
+Routes /admin/* to admin server (PORT_ADMIN).
+Routes /api/public/* and POST /api/orders to main server (PORT_MAIN).
+All other /api/* routes go to admin server (PORT_ADMIN).
+Everything else goes to main server (PORT_MAIN).
 Listens on PORT (Render's public-facing port).
 """
 import os
@@ -21,7 +23,6 @@ PROXY_PORT = int(os.environ.get('PORT', '8080'))
 # Paths that only the main server handles (admin server doesn't have these routes)
 MAIN_ONLY_PREFIXES = (
     '/api/public/',
-    '/api/orders',
 )
 
 # POST routes that must go to the main server (customer-facing, no auth)
@@ -123,7 +124,8 @@ class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
 
 
 if __name__ == '__main__':
-    print(f'[proxy] Routing /admin/* and /api/* → localhost:{ADMIN_PORT}')
+    print(f'[proxy] Routing /admin/* and most /api/* → localhost:{ADMIN_PORT}')
+    print(f'[proxy] Routing /api/public/* and POST /api/orders → localhost:{MAIN_PORT}')
     print(f'[proxy] Routing everything else → localhost:{MAIN_PORT}')
     print(f'[proxy] Listening on port {PROXY_PORT}')
     server = ThreadedHTTPServer(('0.0.0.0', PROXY_PORT), ProxyHandler)
