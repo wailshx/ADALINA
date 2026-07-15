@@ -88,51 +88,58 @@ def restore_order_stock(cur, product_id, color_name, size_name, quantity):
 
 def _tables_exist(conn):
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='products'")
-    return cur.fetchone()[0] > 0
+    try:
+        cur.execute("SELECT COUNT(*) AS cnt FROM information_schema.tables WHERE table_schema='public' AND table_name='products'")
+        row = cur.fetchone()
+        return (row['cnt'] if row else 0) > 0
+    finally:
+        cur.close()
 
 def _run_migrations(conn):
     cur = conn.cursor()
-    migrations = [
-        """CREATE TABLE IF NOT EXISTS status_history (
-            id SERIAL PRIMARY KEY,
-            order_id INTEGER NOT NULL,
-            status TEXT NOT NULL,
-            note TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT NOW(),
-            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-        )""",
-        """CREATE TABLE IF NOT EXISTS audit_logs (
-            id SERIAL PRIMARY KEY,
-            event_type TEXT NOT NULL,
-            details TEXT DEFAULT '',
-            ip TEXT DEFAULT '',
-            username TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT NOW()
-        )""",
-        """CREATE TABLE IF NOT EXISTS search_events (
-            id SERIAL PRIMARY KEY,
-            event_type VARCHAR(50),
-            payload JSONB,
-            created_at TIMESTAMP DEFAULT NOW()
-        )""",
-    ]
-    for sql in migrations:
-        try:
-            cur.execute(sql)
-        except Exception:
-            pass
-    idx_migrations = [
-        "CREATE INDEX IF NOT EXISTS idx_products_category_status ON products(category_id, status)",
-        "CREATE INDEX IF NOT EXISTS idx_variant_sizes_variant_stock ON variant_sizes(variant_id, size_name, stock)",
-        "CREATE INDEX IF NOT EXISTS idx_orders_is_read ON orders(is_read)",
-    ]
-    for idx_sql in idx_migrations:
-        try:
-            cur.execute(idx_sql)
-        except Exception:
-            pass
-    conn.commit()
+    try:
+        migrations = [
+            """CREATE TABLE IF NOT EXISTS status_history (
+                id SERIAL PRIMARY KEY,
+                order_id INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                note TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT NOW(),
+                FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+            )""",
+            """CREATE TABLE IF NOT EXISTS audit_logs (
+                id SERIAL PRIMARY KEY,
+                event_type TEXT NOT NULL,
+                details TEXT DEFAULT '',
+                ip TEXT DEFAULT '',
+                username TEXT DEFAULT '',
+                created_at TIMESTAMP DEFAULT NOW()
+            )""",
+            """CREATE TABLE IF NOT EXISTS search_events (
+                id SERIAL PRIMARY KEY,
+                event_type VARCHAR(50),
+                payload JSONB,
+                created_at TIMESTAMP DEFAULT NOW()
+            )""",
+        ]
+        for sql in migrations:
+            try:
+                cur.execute(sql)
+            except Exception:
+                pass
+        idx_migrations = [
+            "CREATE INDEX IF NOT EXISTS idx_products_category_status ON products(category_id, status)",
+            "CREATE INDEX IF NOT EXISTS idx_variant_sizes_variant_stock ON variant_sizes(variant_id, size_name, stock)",
+            "CREATE INDEX IF NOT EXISTS idx_orders_is_read ON orders(is_read)",
+        ]
+        for idx_sql in idx_migrations:
+            try:
+                cur.execute(idx_sql)
+            except Exception:
+                pass
+        conn.commit()
+    finally:
+        cur.close()
 
 def init_db():
     conn = get_db()

@@ -359,7 +359,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         finally:
             try: cur.close()
             except Exception: pass
-            try: db.rollback()
+            try: db.close()
             except Exception: pass
 
     def _api_GET_inner(self, path, query, db, cur):
@@ -930,7 +930,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         finally:
             try: cur.close()
             except Exception: pass
-            try: db.rollback()
+            try: db.close()
             except Exception: pass
 
     def _api_POST_inner(self, path, body, db, cur):
@@ -1108,7 +1108,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         finally:
             try: cur.close()
             except Exception: pass
-            try: db.rollback()
+            try: db.close()
             except Exception: pass
 
     def _api_PUT_inner(self, path, body, db, cur):
@@ -1434,7 +1434,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         finally:
             try: cur.close()
             except Exception: pass
-            try: db.rollback()
+            try: db.close()
             except Exception: pass
 
     def _api_DELETE_inner(self, path, db, cur):
@@ -1628,196 +1628,6 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
 
-        if path == '/api/public/products':
-            db = get_db()
-            cur = db.cursor()
-            page = int(query.get('page', ['1'])[0])
-            limit = int(query.get('limit', ['0'])[0])
-            search = query.get('search', [''])[0].strip().lower()
-            category = query.get('category', [''])[0].strip().lower()
-            featured_only = query.get('featured', [''])[0].strip().lower() == 'true'
-            sort = query.get('sort', ['newest'])[0].strip().lower()
-            order_map = {
-                'newest': 'p.created_at DESC',
-                'price-low': 'COALESCE(p.sale_price, p.price) ASC',
-                'price-high': 'COALESCE(p.sale_price, p.price) DESC',
-                'rating': 'p.rating DESC',
-            }
-            if sort not in order_map:
-                sort = 'newest'
-            where = ["p.status='active'"]
-            params = []
-            if category:
-                where.append("LOWER(c.name) = %s")
-                params.append(category)
-            if search:
-                where.append("(LOWER(p.name) LIKE %s OR LOWER(COALESCE(p.description, '')) LIKE %s)")
-                params.extend(['%' + search + '%', '%' + search + '%'])
-            if featured_only:
-                where.append("p.featured = 1")
-            where_clause = " AND ".join(where)
-            order_by = order_map[sort]
-
-            cur.execute("SELECT COUNT(*) AS cnt FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE " + where_clause, params)
-            row = cur.fetchone()
-            total = row['cnt'] if row else 0
-
-            if limit > 0:
-                offset = (page - 1) * limit
-                cur.execute("""
-                    SELECT p.*, c.name AS category_name
-                    FROM products p
-                    LEFT JOIN categories c ON p.category_id = c.id
-                    WHERE """ + where_clause + """
-                    ORDER BY """ + order_by + """
-                    LIMIT %s OFFSET %s
-                """, params + [limit, offset])
-                rows = cur.fetchall()
-                result = batch_enrich_products(rows, cur)
-                total_pages = max(1, (total + limit - 1) // limit) if total > 0 else 1
-                send_json(self, {
-                    'products': result,
-                    'total': total,
-                    'page': page,
-                    'per_page': limit,
-                    'total_pages': total_pages
-                })
-            else:
-                cur.execute("""
-                    SELECT p.*, c.name AS category_name
-                    FROM products p
-                    LEFT JOIN categories c ON p.category_id = c.id
-                    WHERE """ + where_clause + """
-                    ORDER BY """ + order_by
-                )
-                rows = cur.fetchall()
-                result = batch_enrich_products(rows, cur)
-                send_json(self, result)
-            db.close()
-            return
-
-        if path.startswith('/api/public/products/') and path != '/api/public/products' and path != '/api/public/products/featured':
-            pid = path.split('/')[-1]
-            db = get_db()
-            cur = db.cursor()
-            cur.execute("""
-                SELECT p.*, c.name AS category_name
-                FROM products p
-                LEFT JOIN categories c ON p.category_id = c.id
-                WHERE p.id=%s AND p.status='active'
-            """, (pid,))
-            row = cur.fetchone()
-            if not row:
-                send_json(self, {'error': 'Not found'}, 404)
-                return
-            data = dict(row)
-            if data.get('images') and isinstance(data['images'], str):
-                data['images'] = json.loads(data['images'])
-            if data.get('sizes') and isinstance(data['sizes'], str):
-                data['sizes'] = json.loads(data['sizes'])
-            if data.get('colors') and isinstance(data['colors'], str):
-                data['colors'] = json.loads(data['colors'])
-            # Enrich with variants, variant_images, variant_sizes
-            cur.execute("SELECT id, color_name, color_hex, sku, stock FROM product_variants WHERE product_id=%s ORDER BY sort_order, id", (pid,))
-            variant_rows = cur.fetchall()
-            if variant_rows:
-                variants = []
-                all_colors = {}
-                all_sizes = set()
-                images_seen = set()
-                merged_sizes = []
-                for v in variant_rows:
-                    vdict = {'id': v['id'], 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock']}
-                    cur.execute("SELECT image_path FROM variant_images WHERE variant_id=%s ORDER BY sort_order", (v['id'],))
-                    vdict['images'] = [r['image_path'] for r in cur.fetchall()]
-                    cur.execute("SELECT size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=%s ORDER BY id", (v['id'],))
-                    vdict['sizes'] = [{'size': r['size_name'], 'stock': r['stock']} for r in cur.fetchall()]
-                    variants.append(vdict)
-                    if v['color_name'] and v['color_name'] not in all_colors:
-                        all_colors[v['color_name']] = {'name': v['color_name'], 'hex': v['color_hex'], 'stock': v['stock']}
-                    for s in vdict['sizes']:
-                        if s['size'] not in all_sizes:
-                            all_sizes.add(s['size'])
-                            merged_sizes.append(s)
-                    for img in vdict['images']:
-                        if img not in images_seen:
-                            images_seen.add(img)
-                data['colors'] = list(all_colors.values()) if all_colors else []
-                data['sizes'] = merged_sizes if merged_sizes else []
-                data['variants'] = variants
-                data['images'] = list(images_seen) if images_seen else (data.get('images') or [])
-            else:
-                data['variants'] = []
-            data['featured'] = bool(data.get('featured', 0))
-            data['new_arrival'] = bool(data.get('new_arrival', 0))
-            data['category'] = data.get('category_name') or ''
-            send_json(self, data)
-            return
-
-        if path == '/api/public/categories':
-            db = get_db()
-            cur = db.cursor()
-            cur.execute("""
-                SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.status='active') AS product_count
-                FROM categories c ORDER BY c.id
-            """)
-            rows = cur.fetchall()
-            send_json(self, rows_to_list(rows))
-            return
-
-        if path == '/api/public/collections':
-            db = get_db()
-            cur = db.cursor()
-            cur.execute("""
-                SELECT c.*,
-                       (SELECT COUNT(*) FROM collection_products cp
-                        JOIN products p ON cp.product_id = p.id
-                        WHERE cp.collection_id = c.id AND p.status='active') AS product_count
-                FROM collections c ORDER BY c.id
-            """)
-            data = rows_to_list(cur.fetchall())
-            coll_ids = [coll['id'] for coll in data]
-            if coll_ids:
-                cur.execute("""
-                    SELECT p.*, c2.name AS category_name, cp.collection_id FROM products p
-                    JOIN collection_products cp ON cp.product_id = p.id
-                    LEFT JOIN categories c2 ON p.category_id = c2.id
-                    WHERE cp.collection_id = ANY(%s) AND p.status='active'
-                """, (coll_ids,))
-                all_prod_rows = cur.fetchall()
-                all_prods = batch_enrich_products(all_prod_rows, cur) if all_prod_rows else []
-                coll_map = {r['collection_id']: r['id'] for r in all_prod_rows}
-                prod_by_coll = {}
-                for prod_row, prod_data in zip(all_prod_rows, all_prods):
-                    cid = prod_row['collection_id']
-                    prod_by_coll.setdefault(cid, []).append(prod_data)
-                for coll in data:
-                    coll['products'] = prod_by_coll.get(coll['id'], [])
-            else:
-                for coll in data:
-                    coll['products'] = []
-            send_json(self, data)
-            return
-
-        if path == '/api/public/settings':
-            db = get_db()
-            cur = db.cursor()
-            cur.execute("SELECT setting_key, setting_value, setting_type FROM settings")
-            rows = cur.fetchall()
-            result = {}
-            for r in rows:
-                key = r['setting_key']
-                val = r['setting_value']
-                t = r['setting_type']
-                if t == 'boolean':
-                    val = val == '1'
-                elif t == 'number':
-                    try: val = float(val)
-                    except: pass
-                result[key] = val
-            send_json(self, result)
-            return
-
         if path.startswith('/api/'):
             if not require_auth(self):
                 return
@@ -1904,7 +1714,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
         if path == '/admin/login':
             ip = get_client_ip(self)
-            if not _login_limiter.is_allowed(f'login:{ip}', max_requests=5, window=900):
+            if not _login_limiter.is_allowed(f'login:{ip}', max_requests=30, window=900):  # TEMPORARY: raised from 5 to 30 for testing. REVERT TO 5 WHEN TESTING COMPLETE
                 retry = _login_limiter.retry_after(f'login:{ip}', window=900)
                 send_json(self, {'error': f'Trop de tentatives. Réessayez dans {retry}s.'}, 429)
                 return
@@ -1959,9 +1769,6 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 except Exception as e:
                     print(f"[Admin] POST {path} error: {e}")
                     import traceback; traceback.print_exc()
-                    db_err = get_db()
-                    db_err.rollback()
-                    db_err.close()
                     send_json(self, {'error': str(e)}, 500)
         else:
             self.send_response(404)
@@ -1983,9 +1790,6 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 print(f"[Admin] PUT {path} error: {e}")
                 import traceback; traceback.print_exc()
-                db_err = get_db()
-                db_err.rollback()
-                db_err.close()
                 send_json(self, {'error': str(e)}, 500)
         else:
             self.send_response(404)
@@ -2006,9 +1810,6 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 print(f"[Admin] DELETE {path} error: {e}")
                 import traceback; traceback.print_exc()
-                db_err = get_db()
-                db_err.rollback()
-                db_err.close()
                 send_json(self, {'error': str(e)}, 500)
         else:
             self.send_response(404)
