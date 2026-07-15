@@ -290,10 +290,10 @@ function searchProducts(query) {
     container.innerHTML = results.slice(0, 8).map(p => {
         var thumb = (p.images && p.images.length > 0) ? p.images[0] : PLACEHOLDER_IMG;
         return `<div class="search-suggestion" onclick="closeSearchModal(); window.location.href='product.html?id=${p.id}'">
-            <img src="${thumb}" alt="${p.name}" class="search-suggestion-img" loading="lazy" onerror="onImgError(this)">
+            <img src="${thumb}" alt="${esc(p.name)}" class="search-suggestion-img" loading="lazy" onerror="onImgError(this)">
             <div class="search-suggestion-info">
                 <div class="search-suggestion-name">${esc(p.name)}</div>
-                <div class="search-suggestion-meta">${p.category}${p.brand ? ' &middot; ' + p.brand : ''} &middot; ${formatPriceDA(p.price)}</div>
+                <div class="search-suggestion-meta">${esc(p.category)}${p.brand ? ' &middot; ' + esc(p.brand) : ''} &middot; ${formatPriceDA(p.price)}</div>
             </div>
         </div>`;
     }).join('');
@@ -359,11 +359,11 @@ function updateWishlistDisplay() {
             container.innerHTML += `
                 <div class="wishlist-item">
                     <a href="product.html?id=${p.id}">
-                        <img src="${wImg}" alt="${p.name}" class="cart-item-image" onerror="onImgError(this)">
+                        <img src="${wImg}" alt="${esc(p.name)}" class="cart-item-image" onerror="onImgError(this)">
                     </a>
                     <div class="cart-item-details">
                         <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit">
-                            <h3 class="cart-item-title">${p.name}</h3>
+                            <h3 class="cart-item-title">${esc(p.name)}</h3>
                         </a>
                         <p class="cart-item-price">${formatPriceDA(p.price)}</p>
                         <button class="btn btn-outline" onclick="addToCartFromWishlist(${p.id})" style="font-size:0.75rem;padding:4px 8px;margin-bottom:4px;">Ajouter au panier</button>
@@ -516,9 +516,9 @@ function updateCartDisplay() {
         var cartKey = item.id + '-' + (item.selectedSize || '') + '-' + (item.selectedColor || '');
         container.innerHTML += `
             <div class="cart-item">
-                <img src="${getCartItemImage(item)}" alt="${item.name}" class="cart-item-image" loading="lazy" onerror="onImgError(this)">
+                <img src="${getCartItemImage(item)}" alt="${esc(item.name)}" class="cart-item-image" loading="lazy" onerror="onImgError(this)">
                 <div class="cart-item-details">
-                    <h3 class="cart-item-title">${item.name}</h3>
+                    <h3 class="cart-item-title">${esc(item.name)}</h3>
                     ${variantInfo}
                     <p class="cart-item-price">${formatPriceDA(item.price)}</p>
                     <div class="cart-item-subtotal">Sous-total : ${formatPriceDA(subtotal)}</div>
@@ -696,7 +696,7 @@ function renderCartPage() {
             variantInfo += '</div>';
         }
         return '<div class="cart-item">' +
-            '<div class="cart-item-image"><img src="' + getCartItemImage(item) + '" alt="' + esc(item.name) + '" loading="lazy"></div>' +
+            '<div class="cart-item-image"><img src="' + getCartItemImage(item) + '" alt="' + esc(item.name) + '" loading="lazy" onerror="onImgError(this)"></div>' +
             '<div class="cart-item-details">' +
                 '<h3 class="cart-item-title">' + esc(item.name) + '</h3>' +
                 variantInfo +
@@ -796,7 +796,7 @@ function quickViewForCart(cartKey) {
     var thumbs = document.getElementById('quick-view-thumbs');
     if (thumbs) {
         thumbs.innerHTML = images.map(function(img, i) {
-            return '<div class="qv-thumb' + (i === 0 ? ' active' : '') + '" onclick="qvGoToImage(' + i + ')"><img src="' + cloudinaryThumb(img, 120) + '" alt=""></div>';
+            return '<div class="qv-thumb' + (i === 0 ? ' active' : '') + '" onclick="qvGoToImage(' + i + ')"><img src="' + cloudinaryThumb(img, 120) + '" alt="" onerror="onImgError(this)"></div>';
         }).join('');
     }
     qvUpdateStockDisplay();
@@ -962,7 +962,7 @@ function updateQVGallery(images) {
     if (thumbs) {
         if (images.length > 1) {
             thumbs.innerHTML = images.map(function(img, i) {
-                return '<div class="qv-thumb' + (i === 0 ? ' active' : '') + '" onclick="qvGoToImage(' + i + ')"><img src="' + img + '" alt=""></div>';
+                return '<div class="qv-thumb' + (i === 0 ? ' active' : '') + '" onclick="qvGoToImage(' + i + ')"><img src="' + img + '" alt="" onerror="onImgError(this)"></div>';
             }).join('');
             thumbs.style.display = '';
         } else {
@@ -1746,7 +1746,7 @@ function displayProduct(product) {
     container.innerHTML = `
         <div class="pp-layout">
             <div class="pp-info">
-                <h1 class="pp-name">${product.name}</h1>
+                <h1 class="pp-name">${esc(product.name)}</h1>
 
                 <div class="pp-price">
                     ${product.sale_price
@@ -1754,7 +1754,7 @@ function displayProduct(product) {
                         : formatPriceDA(product.price)}
                 </div>
 
-                <p class="pp-desc">${product.description || ''}</p>
+                <p class="pp-desc">${esc(product.description || '')}</p>
 
                 ${availColors.length > 0 ? '<div class="pp-section"><label>Couleur</label><div class="pp-colors">' + availColors.map(function (c) {
                     var cname = typeof c === 'object' ? c.name : c;
@@ -1791,7 +1791,7 @@ function displayProduct(product) {
                 <button class="pp-btn pp-btn-primary" onclick="addCurrentToCart()" id="pp-add-to-cart-btn">Ajouter au panier</button>
                 <button class="pp-btn pp-btn-dark" onclick="ppBuyNow()">Acheter maintenant</button>
 
-                <button class="pp-btn pp-btn-outline" onclick="addCurrentToWishlist()"><svg width="18" height="18" viewBox="0 0 24 24" fill="' + (isInWishlist ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg><span id="pp-wishlist-text">' + (isInWishlist ? 'Dans mes favoris' : 'Ajouter aux favoris') + '</span></button>
+                <button class="pp-btn pp-btn-outline" onclick="addCurrentToWishlist()"><svg width="18" height="18" viewBox="0 0 24 24" fill="${isInWishlist ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg><span id="pp-wishlist-text">${isInWishlist ? 'Dans mes favoris' : 'Ajouter aux favoris'}</span></button>
 
                 <a href="shop.html" class="pp-continue">Continuer les achats</a>
             </div>
@@ -1799,7 +1799,7 @@ function displayProduct(product) {
             <div class="pp-gallery">
                 <div class="pp-main-wrap">
                     ${productRibbonHtml(product)}
-                    <img id="main-product-image" src="${cloudinaryThumb(images[0], 800)}" alt="${product.name}" onerror="onImgError(this)">
+                    <img id="main-product-image" src="${cloudinaryThumb(images[0], 800)}" alt="${esc(product.name)}" onerror="onImgError(this)">
                     ${images.length > 1 ? '<button class="pp-nav pp-nav-prev" onclick="ppPrevImage()">&#10094;</button><button class="pp-nav pp-nav-next" onclick="ppNextImage()">&#10095;</button>' : ''}
                 </div>
                 ${images.length > 1 ? '<div class="pp-thumbs" id="pp-thumbs">' + images.map(function (img, i) {
@@ -2736,6 +2736,11 @@ function decreaseQty(productId) { changeQty(productId, -1); }
 function increaseQty(productId) { changeQty(productId, 1); }
 function updateCartItem(productId) { setQty(productId); }
 window.updateCartCounter = updateCartCounter;
+window.changeQtyByKey = changeQtyByKey;
+window.setQtyByKey = setQtyByKey;
+window.removeFromCartByKey = removeFromCartByKey;
+window.updateCheckoutSummary = updateCheckoutSummary;
+window.renderCartPage = renderCartPage;
 window.switchProductImage = switchProductImage;
 window.selectProductColor = selectProductColor;
 window.selectProductSize = selectProductSize;

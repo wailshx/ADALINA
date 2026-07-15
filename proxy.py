@@ -13,7 +13,6 @@ import sys
 import gzip
 import http.server
 import http.client
-import urllib.request
 import urllib.parse
 import threading
 import socketserver
