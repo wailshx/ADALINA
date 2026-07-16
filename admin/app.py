@@ -8,23 +8,29 @@ import socketserver
 import urllib.parse
 import re
 import time
-import shutil
 import fcntl
-from functools import wraps
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(BASE_DIR)
 SESSIONS_FILE = os.path.join(BASE_DIR, '.sessions.json')
 
-from database import get_db, init_db, seed_db, log_stock_change, deduct_order_stock, restore_order_stock, get_variant_stock
+from database import get_db, init_db, seed_db, log_stock_change, deduct_order_stock, restore_order_stock
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(BASE_DIR)))
 from config.security import (
     RateLimiter, add_security_headers, get_client_ip,
     generate_csrf_token, validate_csrf, escape_html,
-    sanitize_dict, sanitize_list, audit_log
+    audit_log
 )
 from config import storage
+
+def _signal_cache_invalidate():
+    try:
+        signal_path = os.path.join(PARENT_DIR, '.cache_invalidate')
+        with open(signal_path, 'w') as f:
+            f.write(str(time.time()))
+    except Exception:
+        pass
 
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '')
@@ -172,7 +178,10 @@ def require_auth(self):
     return True
 
 def require_csrf(self):
-    return True
+    token = get_token_from_cookies(self.headers.get('Cookie'))
+    if not token or not get_session(token):
+        return True
+    return validate_csrf(self)
 
 def send_file(self, path, status=200):
     if not os.path.isfile(path):
@@ -366,14 +375,21 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
     def _api_GET_inner(self, path, query, db, cur):
 
         if path == '/api/dashboard/stats':
-            cur.execute("SELECT COALESCE(SUM(total),0) AS val FROM orders WHERE status='delivered'")
-            revenue = cur.fetchone()['val']
-            cur.execute("SELECT COUNT(*) AS cnt FROM orders")
-            orders_count = cur.fetchone()['cnt']
+            cur.execute("""
+                SELECT
+                    COALESCE(SUM(CASE WHEN status='delivered' THEN total ELSE 0 END), 0) AS revenue,
+                    COUNT(*) AS orders_count
+                FROM orders
+            """)
+            stats_row = cur.fetchone()
+            revenue = stats_row['revenue']
+            orders_count = stats_row['orders_count']
+
             cur.execute("SELECT COUNT(*) AS cnt FROM customers")
             customers_count = cur.fetchone()['cnt']
             cur.execute("SELECT COUNT(*) AS cnt FROM products")
             products_count = cur.fetchone()['cnt']
+
             cur.execute("""
                 SELECT o.id, o.order_number, COALESCE(c.name, o.customer_name) AS customer_name,
                        o.status, o.total, o.created_at
@@ -403,10 +419,15 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             """)
             top_products_data = [dict(r) for r in cur.fetchall()]
 
-            cur.execute("SELECT COUNT(*) AS cnt FROM inventory WHERE quantity > 0 AND quantity <= low_stock_threshold")
-            low_stock = cur.fetchone()['cnt']
-            cur.execute("SELECT COUNT(*) AS cnt FROM inventory WHERE quantity = 0")
-            out_of_stock = cur.fetchone()['cnt']
+            cur.execute("""
+                SELECT
+                    COUNT(*) FILTER (WHERE quantity > 0 AND quantity <= low_stock_threshold) AS low_stock,
+                    COUNT(*) FILTER (WHERE quantity = 0) AS out_of_stock
+                FROM inventory
+            """)
+            stock_row = cur.fetchone()
+            low_stock = stock_row['low_stock']
+            out_of_stock = stock_row['out_of_stock']
 
             # Monthly stats for current year
             cur.execute("""
@@ -445,10 +466,17 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             return True
 
         if path == '/api/analytics':
-            cur.execute("SELECT COALESCE(SUM(total),0) AS val FROM orders WHERE status='delivered'")
-            total_revenue = cur.fetchone()['val']
-            cur.execute("SELECT COUNT(*) AS cnt FROM orders")
-            total_orders = cur.fetchone()['cnt']
+            cur.execute("""
+                SELECT
+                    COALESCE(SUM(CASE WHEN status='delivered' THEN total ELSE 0 END), 0) AS total_revenue,
+                    COUNT(*) AS total_orders,
+                    COALESCE(AVG(total), 0) AS avg_order
+                FROM orders
+            """)
+            agg = cur.fetchone()
+            total_revenue = agg['total_revenue']
+            total_orders = agg['total_orders']
+            avg_order = agg['avg_order']
             cur.execute("SELECT COUNT(*) AS cnt FROM customers")
             total_customers = cur.fetchone()['cnt']
             cur.execute("SELECT COUNT(*) AS cnt FROM products")
@@ -517,8 +545,6 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             """)
             daily_sales = cur.fetchall()
 
-            cur.execute("SELECT COALESCE(AVG(total),0) AS val FROM orders")
-            avg_order = cur.fetchone()['val']
             conversion = (total_orders / max(total_customers, 1)) * 100
 
             send_json(self, {
@@ -553,64 +579,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                      LEFT JOIN categories c ON p.category_id = c.id
                      WHERE """ + where_clause + " ORDER BY p.id", params)
             rows = cur.fetchall()
-
-            product_ids = [dict(r)['id'] for r in rows]
-            cur.execute("SELECT id, product_id, color_name, color_hex, sku FROM product_variants WHERE product_id=ANY(%s) ORDER BY sort_order, id", (product_ids,))
-            all_variants = cur.fetchall()
-
-            if all_variants:
-                variant_ids = [v['id'] for v in all_variants]
-                cur.execute("SELECT variant_id, image_path FROM variant_images WHERE variant_id=ANY(%s) ORDER BY sort_order", (variant_ids,))
-                vi_map = {}
-                for vi in cur.fetchall():
-                    vi_map.setdefault(vi['variant_id'], []).append(vi['image_path'])
-                cur.execute("SELECT variant_id, size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=ANY(%s) ORDER BY id", (variant_ids,))
-                vs_map = {}
-                for vs in cur.fetchall():
-                    vs_map.setdefault(vs['variant_id'], []).append({'size': vs['size_name'], 'stock': vs['stock'], 'sku': vs.get('sku', '')})
-                pv_map = {}
-                for v in all_variants:
-                    pv_map.setdefault(v['product_id'], []).append(v)
-            else:
-                cur.execute("SELECT product_id, size, stock FROM product_sizes WHERE product_id=ANY(%s) ORDER BY id", (product_ids,))
-                ps_map = {}
-                for ps in cur.fetchall():
-                    ps_map.setdefault(ps['product_id'], []).append(ps['size'])
-                cur.execute("SELECT product_id, color_name FROM product_colors WHERE product_id=ANY(%s) ORDER BY id", (product_ids,))
-                pc_map = {}
-                for pc in cur.fetchall():
-                    pc_map.setdefault(pc['product_id'], []).append(pc['color_name'])
-
-            result = []
-            for r in rows:
-                d = dict(r)
-                pid = d['id']
-                if d.get('images') and isinstance(d['images'], str):
-                    d['images'] = json.loads(d['images'])
-                if all_variants:
-                    variant_rows = pv_map.get(pid, [])
-                    variants = []
-                    all_sizes = set()
-                    all_colors = []
-                    for v in variant_rows:
-                        vid = v['id']
-                        variants.append({
-                            'color_name': v['color_name'],
-                            'color_hex': v['color_hex'],
-                            'sku': v['sku'],
-                            'images': vi_map.get(vid, []),
-                            'sizes': vs_map.get(vid, []),
-                        })
-                        all_colors.append({'name': v['color_name'], 'hex': v['color_hex']})
-                        for s in vs_map.get(vid, []):
-                            all_sizes.add(s['size'])
-                    d['sizes'] = list(all_sizes)
-                    d['colors'] = all_colors
-                    d['variants'] = variants
-                else:
-                    d['sizes'] = ps_map.get(pid, [])
-                    d['colors'] = [{'name': c, 'hex': ''} for c in pc_map.get(pid, [])]
-                result.append(d)
+            result = batch_enrich_products(rows, cur)
             send_json(self, result)
             return True
 
@@ -663,8 +632,11 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
         if path == '/api/categories':
             cur.execute("""
-                SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count
-                FROM categories c ORDER BY c.id
+                SELECT c.*, COUNT(p.id) AS product_count
+                FROM categories c
+                LEFT JOIN products p ON p.category_id = c.id
+                GROUP BY c.id
+                ORDER BY c.id
             """)
             rows = cur.fetchall()
             send_json(self, rows_to_list(rows))
@@ -673,8 +645,11 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         if path.startswith('/api/categories/'):
             cid = path.split('/')[-1]
             cur.execute("""
-                SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS product_count
-                FROM categories c WHERE c.id=%s
+                SELECT c.*, COUNT(p.id) AS product_count
+                FROM categories c
+                LEFT JOIN products p ON p.category_id = c.id
+                WHERE c.id=%s
+                GROUP BY c.id
             """, (cid,))
             row = cur.fetchone()
             send_json(self, row_to_dict(row) if row else {'error': 'Not found'}, 404 if not row else 200)
@@ -682,8 +657,11 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
         if path == '/api/collections':
             cur.execute("""
-                SELECT c.*, (SELECT COUNT(*) FROM collection_products cp WHERE cp.collection_id = c.id) AS product_count
-                FROM collections c ORDER BY c.id
+                SELECT c.*, COUNT(cp.product_id) AS product_count
+                FROM collections c
+                LEFT JOIN collection_products cp ON cp.collection_id = c.id
+                GROUP BY c.id
+                ORDER BY c.id
             """)
             rows = cur.fetchall()
             send_json(self, rows_to_list(rows))
@@ -882,17 +860,23 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     r['stock_status'] = 'low_stock'
                 else:
                     r['stock_status'] = 'in_stock'
-            cur.execute("SELECT COUNT(*) AS cnt FROM inventory WHERE quantity > 0 AND quantity <= low_stock_threshold")
-            low_count = cur.fetchone()['cnt']
-            cur.execute("SELECT COUNT(*) AS cnt FROM inventory WHERE quantity = 0")
-            out_count = cur.fetchone()['cnt']
-            cur.execute("SELECT COUNT(*) AS cnt FROM inventory WHERE quantity > low_stock_threshold")
-            in_count = cur.fetchone()['cnt']
-            cur.execute("SELECT COUNT(*) AS cnt FROM inventory")
-            total_count = cur.fetchone()['cnt']
+            cur.execute("""
+                SELECT
+                    COUNT(*) AS total_count,
+                    COUNT(*) FILTER (WHERE quantity > low_stock_threshold) AS in_count,
+                    COUNT(*) FILTER (WHERE quantity > 0 AND quantity <= low_stock_threshold) AS low_count,
+                    COUNT(*) FILTER (WHERE quantity = 0) AS out_count
+                FROM inventory
+            """)
+            counts_row = cur.fetchone()
             send_json(self, {
                 'items': result,
-                'counts': {'total': total_count, 'in_stock': in_count, 'low_stock': low_count, 'out_of_stock': out_count}
+                'counts': {
+                    'total': counts_row['total_count'],
+                    'in_stock': counts_row['in_count'],
+                    'low_stock': counts_row['low_count'],
+                    'out_of_stock': counts_row['out_count']
+                }
             })
             return True
 
@@ -949,7 +933,10 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         db = get_db()
         cur = db.cursor()
         try:
-            return self._api_POST_inner(path, body, db, cur)
+            result = self._api_POST_inner(path, body, db, cur)
+            if result and path.startswith('/api/'):
+                _signal_cache_invalidate()
+            return result
         finally:
             try: cur.close()
             except Exception: pass
@@ -1016,12 +1003,14 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                                     (vid, s.get('size', s) if isinstance(s, dict) else s,
                                      s.get('stock', 0) if isinstance(s, dict) else 0,
                                      s.get('sku', '') if isinstance(s, dict) else ''))
-                # Calculate total stock from variant sizes
-                total_stock = 0
-                cur.execute("SELECT id FROM product_variants WHERE product_id=%s", (pid,))
-                for vrow in cur.fetchall():
-                    cur.execute("SELECT COALESCE(SUM(stock), 0) AS total FROM variant_sizes WHERE variant_id=%s", (vrow['id'],))
-                    total_stock += cur.fetchone()['total']
+                # Calculate total stock from variant sizes (single query)
+                cur.execute("""
+                    SELECT COALESCE(SUM(vs.stock), 0) AS total
+                    FROM product_variants pv
+                    JOIN variant_sizes vs ON vs.variant_id = pv.id
+                    WHERE pv.product_id = %s
+                """, (pid,))
+                total_stock = cur.fetchone()['total']
                 cur.execute("UPDATE products SET stock=%s WHERE id=%s", (total_stock, pid))
             cur.execute("INSERT INTO inventory (product_id, quantity) VALUES (%s, %s) ON CONFLICT (product_id) DO NOTHING", (pid, total_stock))
             db.commit()
@@ -1127,7 +1116,10 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         db = get_db()
         cur = db.cursor()
         try:
-            return self._api_PUT_inner(path, body, db, cur)
+            result = self._api_PUT_inner(path, body, db, cur)
+            if result and path.startswith('/api/'):
+                _signal_cache_invalidate()
+            return result
         finally:
             try: cur.close()
             except Exception: pass
@@ -1245,12 +1237,14 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                                         (vid, s.get('size', s) if isinstance(s, dict) else s,
                                          s.get('stock', 0) if isinstance(s, dict) else 0,
                                          s.get('sku', '') if isinstance(s, dict) else ''))
-                    # Compute total stock from variant sizes
-                    total_stock = 0
-                    cur.execute("SELECT id FROM product_variants WHERE product_id=%s", (pid,))
-                    for vrow in cur.fetchall():
-                        cur.execute("SELECT COALESCE(SUM(stock), 0) AS total FROM variant_sizes WHERE variant_id=%s", (vrow['id'],))
-                        total_stock += cur.fetchone()['total']
+                    # Compute total stock from variant sizes (single query)
+                    cur.execute("""
+                        SELECT COALESCE(SUM(vs.stock), 0) AS total
+                        FROM product_variants pv
+                        JOIN variant_sizes vs ON vs.variant_id = pv.id
+                        WHERE pv.product_id = %s
+                    """, (pid,))
+                    total_stock = cur.fetchone()['total']
                     cur.execute("UPDATE products SET stock=%s WHERE id=%s", (total_stock, pid))
                 else:
                     # Legacy format: simple color_name, size_name, stock
@@ -1453,7 +1447,10 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         db = get_db()
         cur = db.cursor()
         try:
-            return self._api_DELETE_inner(path, db, cur)
+            result = self._api_DELETE_inner(path, db, cur)
+            if result and path.startswith('/api/'):
+                _signal_cache_invalidate()
+            return result
         finally:
             try: cur.close()
             except Exception: pass
@@ -1669,7 +1666,8 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             if token:
                 delete_session(token)
             self.send_response(302)
-            self.send_header('Set-Cookie', 'admin_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax')
+            secure = 'Secure' if os.environ.get('HTTPS', '') else ''
+            self.send_header('Set-Cookie', f'admin_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; {secure}'.strip())
             self.send_header('Location', '/admin/login')
             self.end_headers()
         elif path == '/website/' or path == '/website':
@@ -1756,7 +1754,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 if max_age: cookie += f'; Max-Age={max_age}'
                 self.send_response(302)
                 self.send_header('Set-Cookie', cookie)
-                self.send_header('Set-Cookie', f'csrf_token={csrf}; Path=/; SameSite=Lax; {secure}'.strip())
+                self.send_header('Set-Cookie', f'csrf_token={csrf}; Path=/admin; SameSite=Lax; {secure}'.strip())
                 self.send_header('Location', '/admin/dashboard.html')
                 self.end_headers()
                 audit_log.log('LOGIN_SUCCESS', username, ip=ip)
@@ -1790,9 +1788,9 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 try:
                     self.api_POST(path, body)
                 except Exception as e:
-                    print(f"[Admin] POST {path} error: {e}")
+                    print(f"[Admin] POST {path} error")
                     import traceback; traceback.print_exc()
-                    send_json(self, {'error': str(e)}, 500)
+                    send_json(self, {'error': 'Erreur serveur'}, 500)
         else:
             self.send_response(404)
             self.end_headers()
@@ -1811,9 +1809,9 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 self.api_PUT(path, body)
                 audit_log.log('API_PUT', details=path, ip=get_client_ip(self))
             except Exception as e:
-                print(f"[Admin] PUT {path} error: {e}")
+                print(f"[Admin] PUT {path} error")
                 import traceback; traceback.print_exc()
-                send_json(self, {'error': str(e)}, 500)
+                send_json(self, {'error': 'Erreur serveur'}, 500)
         else:
             self.send_response(404)
             self.end_headers()
@@ -1831,9 +1829,9 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 self.api_DELETE(path)
                 audit_log.log('API_DELETE', details=path, ip=get_client_ip(self))
             except Exception as e:
-                print(f"[Admin] DELETE {path} error: {e}")
+                print(f"[Admin] DELETE {path} error")
                 import traceback; traceback.print_exc()
-                send_json(self, {'error': str(e)}, 500)
+                send_json(self, {'error': 'Erreur serveur'}, 500)
         else:
             self.send_response(404)
             self.end_headers()

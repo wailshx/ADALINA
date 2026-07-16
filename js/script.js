@@ -243,8 +243,8 @@ function renderProductCard(product) {
         : '<span class="current-price">' + formatPriceDA(product.price) + '</span>';
     return '<div class="product-card">' +
         '<div class="product-image">' +
-            '<img src="' + cloudinaryThumb(imgs[0], 400) + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy" onerror="onImgError(this)">' +
-            (second ? '<img src="' + cloudinaryThumb(second, 400) + '" alt="' + esc(product.name) + '" class="img-secondary" loading="lazy" onerror="onImgError(this)">' : '') +
+            '<img src="' + cloudinaryThumb(imgs[0], 400) + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy" decoding="async" width="400" height="533" onerror="onImgError(this)">' +
+            (second ? '<img src="' + cloudinaryThumb(second, 400) + '" alt="' + esc(product.name) + '" class="img-secondary" loading="lazy" decoding="async" width="400" height="533" onerror="onImgError(this)">' : '') +
             ribbon +
             '<button class="product-wishlist' + (inW ? ' active' : '') + '" onclick="toggleWishlistItem(this,' + pid + ')" aria-label="Wishlist">' +
                 '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
@@ -352,11 +352,12 @@ function updateWishlistDisplay() {
         return;
     }
     container.innerHTML = '';
+    var fragments = [];
     wishlist.forEach(id => {
         const p = products.find(pr => pr.id === id);
         if (p) {
             var wImg = (p.images && p.images.length > 0) ? p.images[0] : PLACEHOLDER_IMG;
-            container.innerHTML += `
+            fragments.push(`
                 <div class="wishlist-item">
                     <a href="product.html?id=${p.id}">
                         <img src="${wImg}" alt="${esc(p.name)}" class="cart-item-image" onerror="onImgError(this)">
@@ -370,9 +371,10 @@ function updateWishlistDisplay() {
                         <button class="remove-item" onclick="removeFromWishlist(${p.id})">Supprimer</button>
                     </div>
                 </div>
-            `;
+            `);
         }
     });
+    container.innerHTML = fragments.join('');
 }
 
 function removeFromWishlist(productId) {
@@ -501,6 +503,7 @@ function updateCartDisplay() {
     container.innerHTML = '';
     let total = 0;
     let itemCount = 0;
+    var cartFragments = [];
     cart.forEach(item => {
         const subtotal = (Number(item.price) || 0) * (item.quantity || 1);
         total += subtotal;
@@ -514,7 +517,7 @@ function updateCartDisplay() {
             variantInfo += '</div>';
         }
         var cartKey = item.id + '-' + (item.selectedSize || '') + '-' + (item.selectedColor || '');
-        container.innerHTML += `
+        cartFragments.push(`
             <div class="cart-item">
                 <img src="${getCartItemImage(item)}" alt="${esc(item.name)}" class="cart-item-image" loading="lazy" onerror="onImgError(this)">
                 <div class="cart-item-details">
@@ -531,8 +534,9 @@ function updateCartDisplay() {
                     </div>
                 </div>
             </div>
-        `;
+        `);
     });
+    container.innerHTML = cartFragments.join('');
     if (header) header.textContent = `Mon Panier (${itemCount} article${itemCount !== 1 ? 's' : ''})`;
     if (totalEl) totalEl.textContent = formatPriceDA(total);
     let emptyBtn = document.querySelector('.empty-cart-btn');
@@ -1799,11 +1803,11 @@ function displayProduct(product) {
             <div class="pp-gallery">
                 <div class="pp-main-wrap">
                     ${productRibbonHtml(product)}
-                    <img id="main-product-image" src="${cloudinaryThumb(images[0], 800)}" alt="${esc(product.name)}" onerror="onImgError(this)">
+                    <img id="main-product-image" src="${cloudinaryThumb(images[0], 800)}" alt="${esc(product.name)}" decoding="async" width="800" height="1066" onerror="onImgError(this)">
                     ${images.length > 1 ? '<button class="pp-nav pp-nav-prev" onclick="ppPrevImage()">&#10094;</button><button class="pp-nav pp-nav-next" onclick="ppNextImage()">&#10095;</button>' : ''}
                 </div>
                 ${images.length > 1 ? '<div class="pp-thumbs" id="pp-thumbs">' + images.map(function (img, i) {
-                    return '<div class="pp-thumb' + (i === 0 ? ' active' : '') + '" onclick="switchProductImage(\'' + img + '\', this)"><img src="' + cloudinaryThumb(img, 120) + '" data-raw="' + img + '" alt="" onerror="onImgError(this)"></div>';
+                    return '<div class="pp-thumb' + (i === 0 ? ' active' : '') + '" onclick="switchProductImage(\'' + img + '\', this)"><img src="' + cloudinaryThumb(img, 120) + '" data-raw="' + img + '" alt="" loading="lazy" decoding="async" width="120" height="160" onerror="onImgError(this)"></div>';
                 }).join('') + '</div>' : ''}
             </div>
         </div>
@@ -2213,8 +2217,7 @@ function initFilterDelegates() {
             }
             currentSizeGroups = [];
             _cachedAllProducts = [];
-            _categoriesCache = [];
-            await buildCategoryFilterUI();
+            buildCategoryFilterUI();
             buildSizeFilterUI();
             loadShopPage(1);
         } else if (filterType === 'collection') {
@@ -2600,7 +2603,14 @@ async function init() {
 
     applyThemeFromStorage();
 
-    await loadProducts();
+    var needsProducts = document.getElementById('products-grid') ||
+                        document.getElementById('product-container') ||
+                        document.querySelector('.wishlist-page') ||
+                        document.getElementById('cart-page-items') ||
+                        document.querySelector('.checkout-form');
+    if (needsProducts) {
+        await loadProducts();
+    }
 
     updateCartDisplay();
     setTimeout(initScrollTracks, 100);
@@ -2631,9 +2641,11 @@ async function init() {
         initShopSearch();
         await _ensureCategoriesCache();
         buildSizeFilterUI();
-        await buildCategoryFilterUI();
-        await buildCollectionFilterUI();
-        await buildColorFilterUI();
+        await Promise.all([
+            buildCategoryFilterUI(),
+            buildCollectionFilterUI(),
+            buildColorFilterUI()
+        ]);
         await loadShopPage(1);
         var savedScroll = sessionStorage.getItem('shopScrollPos');
         if (savedScroll) {
@@ -2654,7 +2666,8 @@ async function init() {
     }
 
     if (document.querySelector('.hero-slider, .slides, .slider-dot')) {
-        setInterval(() => changeSlide(1), 5000);
+        var _sliderInterval = setInterval(() => changeSlide(1), 5000);
+        window.addEventListener('beforeunload', () => clearInterval(_sliderInterval));
     }
 
     if (document.querySelector('.header')) {

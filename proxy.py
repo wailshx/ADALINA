@@ -37,6 +37,8 @@ MAIN_POST_PATHS = (
     '/api/orders',
 )
 
+MAX_PROXY_BODY = 50 * 1024 * 1024  # 50 MB max request body through proxy
+
 
 def route_to_backend(path, method='GET'):
     """Return (host, port) for the given request path and HTTP method."""
@@ -70,12 +72,20 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         backend_host, backend_port = route_to_backend(self.path, self.command)
         try:
             content_length = int(self.headers.get('Content-Length', 0))
+            if content_length > MAX_PROXY_BODY:
+                self.send_response(413)
+                self.send_header('Content-Type', 'text/plain')
+                self.end_headers()
+                self.wfile.write(b'Request too large')
+                return
             body = self.rfile.read(content_length) if content_length > 0 else None
 
             conn = http.client.HTTPConnection(backend_host, backend_port, timeout=30)
 
             skip = {'host', 'connection', 'keep-alive', 'transfer-encoding'}
             fwd_headers = {}
+            client_ip = self.client_address[0]
+            fwd_headers['X-Real-For'] = client_ip
             for k, v in self.headers.items():
                 if k.lower() not in skip:
                     fwd_headers[k] = v

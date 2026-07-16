@@ -48,9 +48,7 @@ function cloudinaryThumb(url, w) {
 }
 
 function esc(str) {
-    const d = document.createElement('div');
-    d.textContent = str;
-    return d.innerHTML;
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function colorVar(name, fallback) {
@@ -931,16 +929,6 @@ function _handleInlineAddColor(container) {
     _showPmToast('Couleur "' + name + '" ajout\u00e9e', 'success');
 }
 
-/* ── Legacy addVariant (kept for backward compat, but now unused) ── */
-function addVariant() {
-    /* The inline form in renderVariants() handles this now */
-    var container = document.getElementById('variants-container');
-    if (container) {
-        var form = container.querySelector('.pm-add-color-name');
-        if (form) form.focus();
-    }
-}
-
 /* ── PM Toast notification ── */
 function _showPmToast(msg, type) {
     var existing = document.querySelector('.pm-toast');
@@ -998,7 +986,6 @@ function _handleTailleGroup(varIdx, groupLabel, checked) {
             if (v.sizes[j].size === groupLabel) v.sizes.splice(j, 1);
         }
     }
-    renderVariants();
 }
 
 function _handleTailleSize(varIdx, sizeName, checked) {
@@ -1020,15 +1007,13 @@ function _handleStandardSize(varIdx, sizeName, checked) {
             if (String(v.sizes[i].size) === sn) v.sizes.splice(i, 1);
         }
     }
-    renderVariants();
 }
 
 /* Backward compat: keep window.* references for any code that still calls them directly */
 window.removeVariant = function(index) { productVariants.splice(index, 1); renderVariants(); };
 window.updateVariantName = function(index, val) { if (productVariants[index]) productVariants[index].color_name = val; };
-window.updateVariantHex = function(index, val) { if (productVariants[index]) { productVariants[index].color_hex = val; renderVariants(); } };
+window.updateVariantHex = function(index, val) { if (productVariants[index]) productVariants[index].color_hex = val; };
 window.updateVariantSku = function(index, val) { if (productVariants[index]) productVariants[index].sku = val; };
-window.addVariantSize = function(varIdx) { _handleAddSize(varIdx); };
 window.removeVariantSize = function(varIdx, sizeIdx) { var v = productVariants[varIdx]; if (v) { v.sizes.splice(sizeIdx, 1); renderVariants(); } };
 window.updateVariantSizeStock = function(varIdx, sizeIdx, val) { var v = productVariants[varIdx]; if (v && v.sizes[sizeIdx]) v.sizes[sizeIdx].stock = parseInt(val) || 0; };
 window.updateVariantSizeSku = function(varIdx, sizeIdx, val) { var v = productVariants[varIdx]; if (v && v.sizes[sizeIdx]) v.sizes[sizeIdx].sku = val || ''; };

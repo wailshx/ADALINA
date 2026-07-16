@@ -20,12 +20,6 @@ class RateLimiter:
         self._store[key] = entries
         return True
 
-    def remaining(self, key, max_requests=10, window=60):
-        now = time.time()
-        entries = self._store.get(key, [])
-        entries = [t for t in entries if now - t < window]
-        return max(0, max_requests - len(entries))
-
     def retry_after(self, key, window=60):
         entries = self._store.get(key, [])
         if not entries:
@@ -48,7 +42,7 @@ class RateLimiter:
 SECURITY_HEADERS = {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
-    'X-XSS-Protection': '1; mode=block',
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 }
@@ -81,6 +75,9 @@ def add_security_headers(handler, admin=False):
 
 
 def get_client_ip(handler):
+    real_ip = handler.headers.get('X-Real-For', '')
+    if real_ip:
+        return real_ip.split(',')[0].strip()
     forwarded = handler.headers.get('X-Forwarded-For', '')
     if forwarded:
         return forwarded.split(',')[0].strip()
@@ -113,19 +110,6 @@ def generate_csrf_token():
     return secrets.token_hex(32)
 
 
-def get_csrf_token(handler):
-    token = handler.headers.get(CSRF_HEADER, '')
-    if token:
-        return token
-    cookie_header = handler.headers.get('Cookie', '')
-    if cookie_header:
-        cookies = http.cookies.SimpleCookie(cookie_header)
-        c = cookies.get(CSRF_COOKIE)
-        if c:
-            return c.value
-    return None
-
-
 def validate_csrf(handler):
     cookie_header = handler.headers.get('Cookie', '')
     if not cookie_header:
@@ -156,20 +140,6 @@ class AuditLog:
                 db.close()
         except Exception:
             pass
-
-    def get_entries(self, limit=100):
-        try:
-            from config.database import get_db
-            db = get_db()
-            try:
-                cur = db.cursor()
-                cur.execute("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT %s", (limit,))
-                rows = cur.fetchall()
-                return [dict(r) for r in rows]
-            finally:
-                db.close()
-        except Exception:
-            return []
 
 
 audit_log = AuditLog()

@@ -32,7 +32,7 @@ BUILD_VERSION = get_build_version()
 import sys
 sys.path.insert(0, str(BASE_DIR))
 from config.database import get_db, get_public_db
-from config.security import RateLimiter, add_security_headers, get_client_ip, escape_html, sanitize_dict, sanitize_list
+from config.security import RateLimiter, add_security_headers, get_client_ip, escape_html
 try:
     from admin.database import deduct_order_stock
 except ImportError:
@@ -46,7 +46,10 @@ _cleanup_counter = 0
 class _Cache:
     def __init__(self):
         self._store = {}
+        self._signal_file = BASE_DIR / '.cache_invalidate'
+        self._last_signal_check = 0
     def get(self, key, ttl=60):
+        self._check_signal()
         entry = self._store.get(key)
         if entry and time.time() - entry[1] < ttl:
             return entry[0]
@@ -58,6 +61,19 @@ class _Cache:
             self._store.clear()
         else:
             self._store = {k: v for k, v in self._store.items() if not k.startswith(prefix)}
+    def _check_signal(self):
+        now = time.time()
+        if now - self._last_signal_check < 5:
+            return
+        self._last_signal_check = now
+        try:
+            if self._signal_file.exists():
+                mtime = self._signal_file.stat().st_mtime
+                if mtime > self._store.get('__signal_time', (0, 0))[1]:
+                    self._store.clear()
+                    self._store['__signal_time'] = (True, mtime)
+        except Exception:
+            pass
 
 _cache = _Cache()
 
@@ -237,14 +253,16 @@ def _process_order_background(order_number, items, customer_name, customer_phone
         payment = data.get('payment_method', 'Cash on Delivery')
 
         server_total = 0
+        product_ids = [item.get('product_id') for item in items]
+        if product_ids:
+            placeholders = ','.join(['%s'] * len(product_ids))
+            cur.execute(f"SELECT id, price, sale_price FROM products WHERE id IN ({placeholders})", product_ids)
+            price_map = {r['id']: r for r in cur.fetchall()}
         for item in items:
             pid = item.get('product_id')
             qty = item.get('quantity') or 1
-            color = item.get('color') or item.get('selectedColor') or ''
-            size = item.get('size') or item.get('selectedSize') or ''
 
-            cur.execute("SELECT price, sale_price FROM products WHERE id=%s", (pid,))
-            prod = cur.fetchone()
+            prod = price_map.get(pid)
             if not prod:
                 db.rollback()
                 logger.error(f'Order {order_number}: product {pid} not found')
@@ -414,7 +432,11 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 if limit > 0:
                     offset = (page - 1) * limit
                     cur.execute("""
-                        SELECT DISTINCT p.*, c.name AS category_name, c.size_system AS category_size_system
+                        SELECT DISTINCT p.id, p.name, p.description, p.price, p.sale_price,
+                               p.category_id, p.image, p.images, p.badge, p.sizes, p.colors,
+                               p.stock, p.brand, p.rating, p.status, p.featured, p.new_arrival,
+                               p.created_at,
+                               c.name AS category_name, c.size_system AS category_size_system
                         FROM products p
                         """ + join_clause + """
                         WHERE """ + where_clause + """
@@ -438,7 +460,11 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                         send_json(self, response)
                 else:
                     cur.execute("""
-                        SELECT DISTINCT p.*, c.name AS category_name, c.size_system AS category_size_system
+                        SELECT DISTINCT p.id, p.name, p.description, p.price, p.sale_price,
+                               p.category_id, p.image, p.images, p.badge, p.sizes, p.colors,
+                               p.stock, p.brand, p.rating, p.status, p.featured, p.new_arrival,
+                               p.created_at,
+                               c.name AS category_name, c.size_system AS category_size_system
                         FROM products p
                         """ + join_clause + """
                         WHERE """ + where_clause + """
@@ -448,7 +474,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     result = batch_format_products(rows, cur)
                     send_json(self, result)
             except Exception as e:
-                print(f'[Server] Error loading products: {e}', flush=True)
+                logger.exception(f'[Server] Error loading products')
                 send_json(self, {'error': 'Erreur lors du chargement des produits'}, 500)
             finally:
                 if db:
@@ -467,7 +493,10 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 db = get_public_db()
                 cur = db.cursor()
                 cur.execute("""
-                    SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
+                    SELECT p.id, p.name, p.description, p.price, p.sale_price, p.category_id,
+                           p.image, p.images, p.badge, p.sizes, p.colors, p.stock, p.brand,
+                           p.rating, p.status, p.featured, p.new_arrival, p.created_at,
+                           c.name AS category_name, c.size_system AS category_size_system
                     FROM products p
                     LEFT JOIN categories c ON p.category_id = c.id
                     WHERE p.status='active' AND p.featured=1
@@ -478,8 +507,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 _cache.set('featured', result)
                 send_json_cached(self, result, max_age=300)
             except Exception as e:
-                print(f'[Server] Error loading featured: {e}', flush=True)
-                send_json(self, {'error': str(e)}, 500)
+                logger.exception('[Server] Error loading featured')
+                send_json(self, {'error': 'Erreur serveur'}, 500)
             finally:
                 if db:
                     try: db.close()
@@ -529,7 +558,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json_cached(self, result, max_age=300)
             except Exception as e:
                 print(f'[Server] Error loading filters: {e}', flush=True)
-                send_json(self, {'error': str(e)}, 500)
+                send_json(self, {'error': 'Erreur serveur'}, 500)
             finally:
                 if db:
                     try: db.close()
@@ -556,7 +585,10 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 result = []
                 if prow and prow['category_id']:
                     cur.execute("""
-                        SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
+                        SELECT p.id, p.name, p.description, p.price, p.sale_price, p.category_id,
+                               p.image, p.images, p.badge, p.sizes, p.colors, p.stock, p.brand,
+                               p.rating, p.status, p.featured, p.new_arrival, p.created_at,
+                               c.name AS category_name, c.size_system AS category_size_system
                         FROM products p
                         LEFT JOIN categories c ON p.category_id = c.id
                         WHERE p.id != %s AND p.status='active' AND p.category_id = %s
@@ -565,7 +597,10 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     result = batch_format_products(cur.fetchall(), cur)
                 if len(result) < 6:
                     cur.execute("""
-                        SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
+                        SELECT p.id, p.name, p.description, p.price, p.sale_price, p.category_id,
+                               p.image, p.images, p.badge, p.sizes, p.colors, p.stock, p.brand,
+                               p.rating, p.status, p.featured, p.new_arrival, p.created_at,
+                               c.name AS category_name, c.size_system AS category_size_system
                         FROM products p
                         LEFT JOIN categories c ON p.category_id = c.id
                         WHERE p.id != %s AND p.status='active'
@@ -578,7 +613,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 _cache.set(cache_key, result)
                 send_json(self, result)
             except Exception as e:
-                print(f'[Server] Error loading recommendations: {e}', flush=True)
+                logger.exception(f'[Server] Error loading recommendations for {pid}')
                 send_json(self, [], 200)
             finally:
                 if db:
@@ -594,7 +629,10 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 db = get_public_db()
                 cur = db.cursor()
                 cur.execute("""
-                    SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
+                    SELECT p.id, p.name, p.description, p.price, p.sale_price, p.category_id,
+                           p.image, p.images, p.badge, p.sizes, p.colors, p.stock, p.brand,
+                           p.rating, p.status, p.featured, p.new_arrival, p.created_at,
+                           c.name AS category_name, c.size_system AS category_size_system
                     FROM products p
                     LEFT JOIN categories c ON p.category_id = c.id
                     WHERE p.id=%s AND p.status='active'
@@ -603,7 +641,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 if not row:
                     send_json(self, {'error': 'Not found'}, 404)
                     return
-                send_json(self, format_product(row, cur))
+                send_json_cached(self, format_product(row, cur), max_age=60)
             except Exception as e:
                 logger.exception("Error loading product %s", pid)
                 send_json(self, {'error': 'Erreur serveur'}, 500)
@@ -624,16 +662,19 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 db = get_public_db()
                 cur = db.cursor()
                 cur.execute("""
-                    SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id AND p.status='active') AS product_count
-                    FROM categories c ORDER BY c.id
+                    SELECT c.*, COUNT(p.id) FILTER (WHERE p.status='active') AS product_count
+                    FROM categories c
+                    LEFT JOIN products p ON p.category_id = c.id
+                    GROUP BY c.id
+                    ORDER BY c.id
                 """)
                 rows = cur.fetchall()
                 result = rows_to_list(rows)
                 _cache.set('categories', result)
                 send_json_cached(self, result, max_age=300)
             except Exception as e:
-                print(f'[Server] Error loading categories: {e}', flush=True)
-                send_json(self, {'error': str(e)}, 500)
+                logger.exception('[Server] Error loading categories')
+                send_json(self, {'error': 'Erreur serveur'}, 500)
             finally:
                 if db:
                     try: db.close()
@@ -666,8 +707,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 _cache.set('settings', result)
                 send_json_cached(self, result, max_age=300)
             except Exception as e:
-                print(f'[Server] Error loading settings: {e}', flush=True)
-                send_json(self, {'error': str(e)}, 500)
+                logger.exception('[Server] Error loading settings')
+                send_json(self, {'error': 'Erreur serveur'}, 500)
             finally:
                 if db:
                     try: db.close()
@@ -692,8 +733,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 _cache.set('delivery', result)
                 send_json_cached(self, result, max_age=300)
             except Exception as e:
-                print(f'[Server] Error loading delivery: {e}', flush=True)
-                send_json(self, {'error': str(e)}, 500)
+                logger.exception('[Server] Error loading delivery')
+                send_json(self, {'error': 'Erreur serveur'}, 500)
             finally:
                 if db:
                     try: db.close()
@@ -712,25 +753,38 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 cur = db.cursor()
                 cur.execute("SELECT * FROM collections WHERE status='active' ORDER BY id")
                 collections = cur.fetchall()
+                if not collections:
+                    _cache.set('collections', [])
+                    send_json_cached(self, [], max_age=300)
+                    return
+                coll_ids = [dict(c)['id'] for c in collections]
+                placeholders = ','.join(['%s'] * len(coll_ids))
+                cur.execute(f"""
+                    SELECT cp.collection_id, p.*, c2.name AS category_name, c2.size_system AS category_size_system
+                    FROM collection_products cp
+                    JOIN products p ON cp.product_id = p.id
+                    LEFT JOIN categories c2 ON p.category_id = c2.id
+                    WHERE cp.collection_id IN ({placeholders}) AND p.status='active'
+                    ORDER BY cp.collection_id, p.created_at DESC
+                """, coll_ids)
+                all_prods = cur.fetchall()
+                prods_by_coll = {}
+                for pr in all_prods:
+                    pr_dict = dict(pr)
+                    cid = pr_dict['collection_id']
+                    prods_by_coll.setdefault(cid, []).append(pr_dict)
                 result = []
                 for coll in collections:
                     c = dict(coll)
-                    cur.execute("""
-                        SELECT p.*, c2.name AS category_name
-                        FROM collection_products cp
-                        JOIN products p ON cp.product_id = p.id
-                        LEFT JOIN categories c2 ON p.category_id = c2.id
-                        WHERE cp.collection_id=%s AND p.status='active'
-                    """, (c['id'],))
-                    prods = cur.fetchall()
-                    c['products'] = batch_format_products(prods, cur)
-                    c['product_count'] = len(prods)
+                    c_prods = prods_by_coll.get(c['id'], [])
+                    c['products'] = batch_format_products(c_prods, cur)
+                    c['product_count'] = len(c_prods)
                     result.append(c)
                 _cache.set('collections', result)
                 send_json_cached(self, result, max_age=300)
             except Exception as e:
-                print(f'[Server] Error loading collections: {e}', flush=True)
-                send_json(self, {'error': str(e)}, 500)
+                logger.exception('[Server] Error loading collections')
+                send_json(self, {'error': 'Erreur serveur'}, 500)
             finally:
                 if db:
                     try: db.close()
@@ -752,7 +806,10 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 db = get_public_db()
                 cur = db.cursor()
                 cur.execute("""
-                    SELECT p.*, c.name AS category_name, c.size_system AS category_size_system
+                    SELECT p.id, p.name, p.description, p.price, p.sale_price, p.category_id,
+                           p.image, p.images, p.badge, p.sizes, p.colors, p.stock, p.brand,
+                           p.rating, p.status, p.featured, p.new_arrival, p.created_at,
+                           c.name AS category_name, c.size_system AS category_size_system
                     FROM products p LEFT JOIN categories c ON p.category_id = c.id
                     WHERE p.status='active'
                     ORDER BY p.created_at DESC
@@ -766,10 +823,11 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps(products, default=str, ensure_ascii=False).encode('utf-8'))
             except Exception as e:
-                print(f'[Server] Error loading products.json: {e}', flush=True)
+                logger.exception('[Server] Error loading products.json')
                 self.send_response(500)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
                 self.end_headers()
-                self.wfile.write(str(e).encode())
+                self.wfile.write(b'{"error":"Erreur serveur"}')
             finally:
                 if db:
                     try: db.close()
@@ -784,7 +842,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
             clean_path = path[9:]
             if not clean_path:
                 clean_path = 'index.html'
-            if clean_path.startswith('.') or '..' in clean_path:
+            real = os.path.realpath(BASE_DIR / clean_path)
+            if not real.startswith(str(BASE_DIR)):
                 self.send_error(403, 'Forbidden')
                 return
             if any(clean_path.endswith(ext) for ext in self.HTML_EXTS):
@@ -794,7 +853,8 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
         elif path.startswith('/images/'):
             clean_path = path.lstrip('/')
-            if '..' in clean_path or clean_path.startswith('.'):
+            real = os.path.realpath(BASE_DIR / clean_path)
+            if not real.startswith(str(BASE_DIR)):
                 self.send_error(403, 'Forbidden')
                 return
             self.path = '/' + clean_path

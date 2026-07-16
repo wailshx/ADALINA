@@ -129,9 +129,16 @@ def _run_migrations(conn):
                 pass
         idx_migrations = [
             "CREATE INDEX IF NOT EXISTS idx_products_category_status ON products(category_id, status)",
+            "CREATE INDEX IF NOT EXISTS idx_products_status_created ON products(status, created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_products_featured ON products(featured) WHERE featured = 1",
+            "CREATE INDEX IF NOT EXISTS idx_products_status_featured ON products(status, featured, created_at DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_products_name_search ON products USING gin(name gin_trgm_ops)",
             "CREATE INDEX IF NOT EXISTS idx_variant_sizes_variant_stock ON variant_sizes(variant_id, size_name, stock)",
+            "CREATE INDEX IF NOT EXISTS idx_variant_sizes_variant_name ON variant_sizes(variant_id, size_name)",
             "CREATE INDEX IF NOT EXISTS idx_orders_is_read ON orders(is_read)",
+            "CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders(status, created_at DESC)",
             "CREATE INDEX IF NOT EXISTS idx_product_variants_product ON product_variants(product_id)",
+            "CREATE INDEX IF NOT EXISTS idx_product_variants_product_color ON product_variants(product_id, color_name)",
             "CREATE INDEX IF NOT EXISTS idx_variant_images_variant ON variant_images(variant_id)",
             "CREATE INDEX IF NOT EXISTS idx_variant_sizes_variant ON variant_sizes(variant_id)",
             "CREATE INDEX IF NOT EXISTS idx_product_sizes_product ON product_sizes(product_id)",
@@ -141,6 +148,11 @@ def _run_migrations(conn):
             "CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(setting_key)",
             "CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name)",
             "CREATE INDEX IF NOT EXISTS idx_status_history_order ON status_history(order_id)",
+            "CREATE INDEX IF NOT EXISTS idx_collection_products_product ON collection_products(product_id)",
+            "CREATE INDEX IF NOT EXISTS idx_collection_products_collection ON collection_products(collection_id)",
+            "CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)",
+            "CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email)",
+            "CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC)",
         ]
         for idx_sql in idx_migrations:
             try:
@@ -369,14 +381,20 @@ def init_db():
         'CREATE INDEX IF NOT EXISTS idx_products_status ON products(status)',
         'CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id)',
         'CREATE INDEX IF NOT EXISTS idx_products_created ON products(created_at DESC)',
+        'CREATE INDEX IF NOT EXISTS idx_products_status_created ON products(status, created_at DESC)',
+        'CREATE INDEX IF NOT EXISTS idx_products_featured ON products(featured) WHERE featured = 1',
+        'CREATE INDEX IF NOT EXISTS idx_products_status_featured ON products(status, featured, created_at DESC)',
         'CREATE INDEX IF NOT EXISTS idx_product_variants_product ON product_variants(product_id)',
+        'CREATE INDEX IF NOT EXISTS idx_product_variants_product_color ON product_variants(product_id, color_name)',
         'CREATE INDEX IF NOT EXISTS idx_variant_images_variant ON variant_images(variant_id)',
         'CREATE INDEX IF NOT EXISTS idx_variant_sizes_variant ON variant_sizes(variant_id)',
+        'CREATE INDEX IF NOT EXISTS idx_variant_sizes_variant_name ON variant_sizes(variant_id, size_name)',
         'CREATE INDEX IF NOT EXISTS idx_product_sizes_product ON product_sizes(product_id)',
         'CREATE INDEX IF NOT EXISTS idx_product_colors_product ON product_colors(product_id)',
         'CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)',
         'CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC)',
         'CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id)',
+        'CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders(status, created_at DESC)',
         'CREATE INDEX IF NOT EXISTS idx_stock_history_product ON stock_history(product_id)',
         'CREATE INDEX IF NOT EXISTS idx_inventory_product ON inventory(product_id)',
         'CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(setting_key)',
@@ -385,6 +403,10 @@ def init_db():
         "CREATE INDEX IF NOT EXISTS idx_products_category_status ON products(category_id, status)",
         "CREATE INDEX IF NOT EXISTS idx_variant_sizes_variant_stock ON variant_sizes(variant_id, size_name, stock)",
         "CREATE INDEX IF NOT EXISTS idx_orders_is_read ON orders(is_read)",
+        "CREATE INDEX IF NOT EXISTS idx_collection_products_product ON collection_products(product_id)",
+        "CREATE INDEX IF NOT EXISTS idx_collection_products_collection ON collection_products(collection_id)",
+        "CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)",
+        "CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email)",
     ]:
         cur.execute(idx_sql)
 
