@@ -188,23 +188,22 @@ def batch_format_products(rows, cur):
     """, (product_ids,))
     all_rows = cur.fetchall()
 
-    pv_map = {}
-    vi_map = {}
+    pv_data = {}
+    vi_set = {}
     vs_map = {}
     for r in all_rows:
         d = dict(r)
-        pid = d['product_id']
         vid = d['id']
-        if vid not in pv_map:
-            pv_map[vid] = d
+        if vid not in pv_data:
+            pv_data[vid] = d
         if d['image_path']:
-            vi_map.setdefault(vid, []).append(d['image_path'])
+            vi_set.setdefault(vid, set()).add(d['image_path'])
         if d['size_name']:
-            vs_map.setdefault(vid, []).append({'size_name': d['size_name'], 'stock': d['vs_stock'], 'sku': d['vs_sku']})
+            vs_map.setdefault(vid, {})[d['size_name']] = {'size_name': d['size_name'], 'stock': d['vs_stock'], 'sku': d['vs_sku']}
 
     product_variants = {}
-    for vid, v in pv_map.items():
-        product_variants.setdefault(v['product_id'], []).append((vid, v))
+    for vid, d in pv_data.items():
+        product_variants.setdefault(d['product_id'], []).append((vid, d))
 
     result = []
     for r in rows:
@@ -222,8 +221,8 @@ def batch_format_products(rows, cur):
             images_seen = set()
             merged_sizes = []
             for vid, v in variant_entries:
-                v_images = vi_map.get(vid, [])
-                v_sizes = [{'size': s['size_name'], 'stock': s['stock'], 'sku': s['sku']} for s in vs_map.get(vid, [])]
+                v_images = list(vi_set.get(vid, []))
+                v_sizes = list(vs_map.get(vid, {}).values())
                 vdict = {'id': vid, 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock'], 'images': v_images, 'sizes': v_sizes}
                 variants.append(vdict)
                 if v['color_name'] and v['color_name'] not in all_colors:
