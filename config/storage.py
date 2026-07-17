@@ -7,7 +7,7 @@ import urllib.parse
 SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
 SUPABASE_ANON_KEY = os.environ.get('SUPABASE_ANON_KEY', '')
 SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY', '')
-SUPABASE_BUCKET = 'adalina'
+SUPABASE_BUCKET = os.environ.get('SUPABASE_BUCKET', 'ADALINA')
 
 _write_key = SUPABASE_SERVICE_KEY or SUPABASE_ANON_KEY
 _enabled = bool(SUPABASE_URL and _write_key)

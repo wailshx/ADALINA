@@ -11,6 +11,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Load .env file if present (local dev only — not committed to git)
+if [ -f "$SCRIPT_DIR/.env" ]; then
+    set -a
+    . "$SCRIPT_DIR/.env"
+    set +a
+fi
+
 mkdir -p "$SCRIPT_DIR/uploads/products" "$SCRIPT_DIR/uploads/settings"
 
 # Render sets PORT for the public-facing port. Internally the three processes

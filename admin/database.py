@@ -372,6 +372,24 @@ def init_db():
 
     cur.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC)")
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS status_history (
+            id SERIAL PRIMARY KEY,
+            order_id INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            note TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT NOW(),
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+        )
+    """)
+
+    cur.execute("""CREATE TABLE IF NOT EXISTS search_events (
+        id SERIAL PRIMARY KEY,
+        event_type VARCHAR(50),
+        payload JSONB,
+        created_at TIMESTAMP DEFAULT NOW()
+    )""")
+
     # Seed delivery_prices for all 58 wilayas if not present
     for wid in range(1, 59):
         cur.execute("INSERT INTO delivery_prices (wilaya_id, price) VALUES (%s, 0) ON CONFLICT (wilaya_id) DO NOTHING", (wid,))
@@ -410,17 +428,6 @@ def init_db():
     ]:
         cur.execute(idx_sql)
 
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS status_history (
-            id SERIAL PRIMARY KEY,
-            order_id INTEGER NOT NULL,
-            status TEXT NOT NULL,
-            note TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT NOW(),
-            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-        )
-    """)
-
     rls_tables = [
         'users', 'categories', 'products', 'product_sizes', 'product_colors',
         'product_variants', 'collections', 'collection_products', 'customers',
@@ -429,9 +436,14 @@ def init_db():
     ]
     for tbl in rls_tables:
         try:
+            cur.execute(f"SAVEPOINT rls_{tbl}")
             cur.execute(f"ALTER TABLE {tbl} DISABLE ROW LEVEL SECURITY")
+            cur.execute(f"RELEASE SAVEPOINT rls_{tbl}")
         except Exception:
-            pass
+            try:
+                cur.execute(f"ROLLBACK TO SAVEPOINT rls_{tbl}")
+            except Exception:
+                pass
 
     conn.commit()
     conn.close()
