@@ -423,13 +423,11 @@
 
     /* Initialize collection when products are loaded */
     document.addEventListener('DOMContentLoaded', function () {
-        var checkProducts = setInterval(function () {
+        function renderWhenReady() {
             if (productsLoaded && products.length > 0) {
-                clearInterval(checkProducts);
                 renderCollection();
                 setTimeout(function () {
                     if (window.initScrollTracks) initScrollTracks();
-                    /* Auto-scroll the collection track — 30s interval, pause on hover */
                     var track = document.getElementById('collection-products');
                     var autoScrollInterval;
                     function startAutoScroll() {
@@ -452,10 +450,16 @@
                         track.addEventListener('mouseleave', startAutoScroll);
                         startAutoScroll();
                     }
-                }, 200);
+                }, 100);
+                return true;
             }
-        }, 100);
-
+            return false;
+        }
+        if (!renderWhenReady()) {
+            var checkProducts = setInterval(function () {
+                if (renderWhenReady()) clearInterval(checkProducts);
+            }, 50);
+        }
     });
 
     /* Announcement bar — update text from settings */

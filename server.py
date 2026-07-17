@@ -177,24 +177,35 @@ def batch_format_products(rows, cur):
     if not rows:
         return []
     product_ids = [dict(r)['id'] for r in rows]
-    cur.execute("SELECT id, product_id, color_name, color_hex, sku, stock FROM product_variants WHERE product_id=ANY(%s) ORDER BY sort_order, id", (product_ids,))
-    all_variants = cur.fetchall()
-    if not all_variants:
-        return [format_product(r) for r in rows]
-    variant_ids = [v['id'] for v in all_variants]
-    cur.execute("SELECT variant_id, image_path FROM variant_images WHERE variant_id=ANY(%s) ORDER BY sort_order", (variant_ids,))
-    all_vi = cur.fetchall()
-    vi_map = {}
-    for vi in all_vi:
-        vi_map.setdefault(vi['variant_id'], []).append(vi['image_path'])
-    cur.execute("SELECT variant_id, size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=ANY(%s) ORDER BY id", (variant_ids,))
-    all_vs = cur.fetchall()
-    vs_map = {}
-    for vs in all_vs:
-        vs_map.setdefault(vs['variant_id'], []).append(vs)
+    cur.execute("""
+        SELECT pv.id, pv.product_id, pv.color_name, pv.color_hex, pv.sku, pv.stock,
+               vi.image_path, vs.size_name, vs.stock AS vs_stock, COALESCE(vs.sku, '') AS vs_sku
+        FROM product_variants pv
+        LEFT JOIN variant_images vi ON pv.id = vi.variant_id
+        LEFT JOIN variant_sizes vs ON pv.id = vs.variant_id
+        WHERE pv.product_id = ANY(%s)
+        ORDER BY pv.sort_order, pv.id, vi.sort_order, vs.id
+    """, (product_ids,))
+    all_rows = cur.fetchall()
+
     pv_map = {}
-    for v in all_variants:
-        pv_map.setdefault(v['product_id'], []).append(v)
+    vi_map = {}
+    vs_map = {}
+    for r in all_rows:
+        d = dict(r)
+        pid = d['product_id']
+        vid = d['id']
+        if vid not in pv_map:
+            pv_map[vid] = d
+        if d['image_path']:
+            vi_map.setdefault(vid, []).append(d['image_path'])
+        if d['size_name']:
+            vs_map.setdefault(vid, []).append({'size_name': d['size_name'], 'stock': d['vs_stock'], 'sku': d['vs_sku']})
+
+    product_variants = {}
+    for vid, v in pv_map.items():
+        product_variants.setdefault(v['product_id'], []).append((vid, v))
+
     result = []
     for r in rows:
         p = dict(r)
@@ -203,17 +214,17 @@ def batch_format_products(rows, cur):
         elif isinstance(p['images'], str):
             p['images'] = json.loads(p['images'])
         pid = p['id']
-        variant_rows = pv_map.get(pid, [])
-        if variant_rows:
+        variant_entries = product_variants.get(pid, [])
+        if variant_entries:
             variants = []
             all_colors = {}
             all_sizes = set()
             images_seen = set()
             merged_sizes = []
-            for v in variant_rows:
-                v_images = vi_map.get(v['id'], [])
-                v_sizes = [{'size': s['size_name'], 'stock': s['stock'], 'sku': s['sku']} for s in vs_map.get(v['id'], [])]
-                vdict = {'id': v['id'], 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock'], 'images': v_images, 'sizes': v_sizes}
+            for vid, v in variant_entries:
+                v_images = vi_map.get(vid, [])
+                v_sizes = [{'size': s['size_name'], 'stock': s['stock'], 'sku': s['sku']} for s in vs_map.get(vid, [])]
+                vdict = {'id': vid, 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock'], 'images': v_images, 'sizes': v_sizes}
                 variants.append(vdict)
                 if v['color_name'] and v['color_name'] not in all_colors:
                     all_colors[v['color_name']] = {'name': v['color_name'], 'hex': v['color_hex'], 'stock': v['stock']}
@@ -487,6 +498,13 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     else:
                         send_json(self, response)
                 else:
+                    use_cache = not (search or category or collection or color or size or price_min or price_max or new_arrival or in_stock or featured_only)
+                    cache_key = 'all_products'
+                    if use_cache:
+                        cached = _cache.get(cache_key, ttl=60)
+                        if cached is not None:
+                            send_json_cached(self, cached, max_age=60)
+                            return
                     cur.execute("""
                         SELECT DISTINCT p.id, p.name, p.description, p.price, p.sale_price,
                                p.category_id, p.image, p.images, p.badge, p.sizes, p.colors,
@@ -500,7 +518,9 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     )
                     rows = cur.fetchall()
                     result = batch_format_products(rows, cur)
-                    send_json(self, result)
+                    if use_cache:
+                        _cache.set(cache_key, result)
+                    send_json_cached(self, result, max_age=60)
             except Exception as e:
                 logger.exception(f'[Server] Error loading products')
                 send_json(self, {'error': 'Erreur lors du chargement des produits'}, 500)

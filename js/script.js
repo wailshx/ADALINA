@@ -2608,8 +2608,7 @@ async function init() {
 
     applyThemeFromStorage();
 
-    var needsProducts = document.getElementById('products-grid') ||
-                        document.getElementById('product-container') ||
+    var needsProducts = document.getElementById('product-container') ||
                         document.querySelector('.wishlist-page') ||
                         document.getElementById('cart-page-items') ||
                         document.querySelector('.checkout-form') ||
@@ -2646,14 +2645,17 @@ async function init() {
         readFilterUrlState();
         initFilterDelegates();
         initShopSearch();
-        await _ensureCategoriesCache();
         buildSizeFilterUI();
         await Promise.all([
-            buildCategoryFilterUI(),
-            buildCollectionFilterUI(),
-            buildColorFilterUI()
+            _ensureCategoriesCache().then(function() {
+                return Promise.all([
+                    buildCategoryFilterUI(),
+                    buildCollectionFilterUI(),
+                    buildColorFilterUI()
+                ]);
+            }),
+            loadShopPage(1)
         ]);
-        await loadShopPage(1);
         var savedScroll = sessionStorage.getItem('shopScrollPos');
         if (savedScroll) {
             sessionStorage.removeItem('shopScrollPos');
