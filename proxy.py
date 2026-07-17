@@ -38,8 +38,12 @@ MAIN_POST_PATHS = (
 MAX_PROXY_BODY = 50 * 1024 * 1024  # 50 MB max request body
 
 
-def route_to_backend(path, method='GET'):
-    if path.startswith('/admin/'):
+def route_to_backend(path, method='GET', referer=''):
+    if (path.startswith('/admin') or
+            path.startswith('/api/admin') or
+            path.startswith('/notifications') or
+            path.startswith('/logout') or
+            '/admin' in referer):
         return ('127.0.0.1', ADMIN_PORT)
     if path.startswith('/api/'):
         if method == 'POST':
@@ -66,7 +70,8 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             sys.stderr.write(f"[proxy] {args[0]}\n")
 
     def _proxy(self):
-        backend_host, backend_port = route_to_backend(self.path, self.command)
+        referer = self.headers.get('Referer', '')
+        backend_host, backend_port = route_to_backend(self.path, self.command, referer)
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             if content_length > MAX_PROXY_BODY:
