@@ -167,16 +167,22 @@ def _run_migrations(conn):
         ]
         for tbl in rls_tables:
             try:
-                cur.execute(f"ALTER TABLE {tbl} DISABLE ROW LEVEL SECURITY")
+                cur.execute(f"ALTER TABLE {tbl} ENABLE ROW LEVEL SECURITY")
             except Exception:
                 pass
         for tbl in rls_tables:
             try:
-                cur.execute(f"GRANT ALL PRIVILEGES ON TABLE {tbl} TO PUBLIC")
+                cur.execute(f"GRANT ALL ON TABLE {tbl} TO service_role")
+            except Exception:
+                pass
+        for tbl in rls_tables:
+            try:
+                cur.execute(f"""CREATE POLICY IF NOT EXISTS "service_role_all_{tbl}" ON {tbl}
+                    FOR ALL TO service_role USING (true) WITH CHECK (true)""")
             except Exception:
                 pass
         try:
-            cur.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO PUBLIC")
+            cur.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role")
         except Exception:
             pass
         conn.commit()
@@ -436,14 +442,24 @@ def init_db():
     ]
     for tbl in rls_tables:
         try:
-            cur.execute(f"SAVEPOINT rls_{tbl}")
-            cur.execute(f"ALTER TABLE {tbl} DISABLE ROW LEVEL SECURITY")
-            cur.execute(f"RELEASE SAVEPOINT rls_{tbl}")
+            cur.execute(f"ALTER TABLE {tbl} ENABLE ROW LEVEL SECURITY")
         except Exception:
-            try:
-                cur.execute(f"ROLLBACK TO SAVEPOINT rls_{tbl}")
-            except Exception:
-                pass
+            pass
+    for tbl in rls_tables:
+        try:
+            cur.execute(f"GRANT ALL ON TABLE {tbl} TO service_role")
+        except Exception:
+            pass
+    for tbl in rls_tables:
+        try:
+            cur.execute(f"""CREATE POLICY IF NOT EXISTS "service_role_all_{tbl}" ON {tbl}
+                FOR ALL TO service_role USING (true) WITH CHECK (true)""")
+        except Exception:
+            pass
+    try:
+        cur.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role")
+    except Exception:
+        pass
 
     conn.commit()
     conn.close()
