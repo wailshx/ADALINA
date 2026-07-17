@@ -360,7 +360,7 @@
         </a>
     </nav>
     <div class="sidebar-profile">
-        <img src="https://ui-avatars.com/api/?name=Admin&background=c9a96e&color=fff&size=32" alt="">
+        <img src="https://ui-avatars.com/api/?name=Admin&background=6366f1&color=fff&size=32" alt="">
         <div class="info">
             <div class="name">Admin</div>
             <div class="role">Administrator</div>
@@ -384,7 +384,7 @@
             <div class="notif-dropdown" id="notif-dropdown"></div>
         </div>
         <div class="topbar-profile">
-            <img src="https://ui-avatars.com/api/?name=Admin&background=c9a96e&color=fff&size=32" alt="">
+            <img src="https://ui-avatars.com/api/?name=Admin&background=6366f1&color=fff&size=32" alt="">
             <div class="info">
                 <div class="name">Admin</div>
                 <div class="role">Administrator</div>
@@ -769,11 +769,28 @@ document.querySelectorAll('.settings-tab').forEach(function(btn) {
 window.uploadSettingsImage = async function(evt, key) {
     var file = evt.target.files[0];
     if (!file) return;
-    var fd = new FormData();
-    fd.append('type', 'settings');
-    fd.append('file', file);
+    var ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (['.jpg', '.jpeg', '.png', '.webp'].indexOf(ext) === -1) {
+        alert('Unsupported format. Use JPG, PNG, or WEBP.');
+        evt.target.value = '';
+        return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        alert('File too large (max 10MB).');
+        evt.target.value = '';
+        return;
+    }
+    var nameEl = document.getElementById(key + '_name');
+    if (nameEl) nameEl.textContent = 'Uploading...';
     try {
-        var res = await fetch('/api/upload', { method:'POST', credentials:'same-origin', body:fd });
+        var fd = new FormData();
+        fd.append('type', 'settings');
+        fd.append('file', file);
+        var csrf = (window.__csrf || '');
+        var headers = {};
+        if (csrf) headers['X-CSRF-Token'] = csrf;
+        var res = await fetch('/api/upload', { method:'POST', credentials:'same-origin', body:fd, headers: headers });
+        if (!res.ok) { var errText = await res.text(); throw new Error(errText.substring(0, 200) || 'Upload failed (HTTP ' + res.status + ')'); }
         var data = await res.json();
         if (data.paths && data.paths.length > 0) {
             var path = data.paths[0];
@@ -782,9 +799,14 @@ window.uploadSettingsImage = async function(evt, key) {
             document.getElementById(key + '_name').textContent = path.split('/').pop();
             document.getElementById(key + '_clear').style.display = 'inline-block';
             document.getElementById(key + '_value').value = path;
+        } else {
+            if (nameEl) nameEl.textContent = 'Upload failed';
+            alert('Upload failed — ' + (data.errors ? data.errors.join(', ') : 'no path returned'));
         }
     } catch(e) {
         console.error('Upload failed', e);
+        if (nameEl) nameEl.textContent = 'Upload error';
+        alert('Upload error: ' + (e.message || e));
     }
 };
 

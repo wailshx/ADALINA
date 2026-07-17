@@ -1643,6 +1643,23 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
 
+        if path == '/api/health':
+            db = None
+            try:
+                db = get_db()
+                cur = db.cursor()
+                cur.execute('SELECT 1')
+                cur.fetchone()
+                send_json(self, {'status': 'ok', 'database': 'connected', 'server': 'admin'})
+            except Exception as e:
+                print(f"[Admin] Health check DB error: {e}")
+                send_json(self, {'status': 'error', 'database': str(e), 'server': 'admin'}, 503)
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
+            return
+
         if path.startswith('/api/'):
             if not require_auth(self):
                 return

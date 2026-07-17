@@ -353,6 +353,23 @@ class AdalinaServer(SimpleHTTPRequestHandler):
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
 
+        if path == '/api/health':
+            db = None
+            try:
+                db = get_public_db()
+                cur = db.cursor()
+                cur.execute('SELECT 1')
+                cur.fetchone()
+                send_json(self, {'status': 'ok', 'database': 'connected'})
+            except Exception as e:
+                logger.error(f'Health check DB error: {e}')
+                send_json(self, {'status': 'error', 'database': str(e)}, 503)
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
+            return
+
         # GET /api/public/products — list all products (with optional pagination + sort)
         if path == '/api/public/products':
             db = None

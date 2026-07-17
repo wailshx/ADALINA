@@ -5,6 +5,11 @@ function getCookie(name) {
     const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     return m ? m[2] : '';
 }
+async function safeJson(res) {
+    var text = await res.text();
+    try { return JSON.parse(text); }
+    catch (e) { throw new Error(text.substring(0, 200) || 'Empty response from server'); }
+}
 async function api(method, url, data) {
     const opts = { method, headers: {}, credentials: 'same-origin' };
     if (data) {
@@ -21,7 +26,7 @@ async function api(method, url, data) {
             window.location.href = '/admin/login';
             return null;
         }
-        return res.json();
+        return await safeJson(res);
     } catch (err) {
         console.error('[api]', method, url, err);
         if (typeof showAdminError === 'function') {
@@ -51,6 +56,10 @@ function esc(str) {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+function emptyState(icon, title, desc) {
+    return '<tr><td colspan="20" class="empty-state"><i class="fas ' + icon + '"></i><h3>' + esc(title) + '</h3><p>' + esc(desc) + '</p></td></tr>';
+}
+
 function colorVar(name, fallback) {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
@@ -62,7 +71,7 @@ function hexToRgba(hex, alpha) {
     var b = parseInt(hex.slice(5,7), 16);
     if (isNaN(r) || isNaN(g) || isNaN(b)) return fallbackRgba(alpha);
     return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
-    function fallbackRgba(a) { return 'rgba(201,169,110,' + a + ')'; }
+    function fallbackRgba(a) { return 'rgba(99,102,241,' + a + ')'; }
 }
 
 function formatDate(dateStr) {
@@ -72,7 +81,7 @@ function formatDate(dateStr) {
     return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-function avatarUrl(name, bg = 'c9a96e') {
+function avatarUrl(name, bg = '6366f1') {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${bg}&color=fff&size=32`;
 }
 
@@ -170,7 +179,7 @@ async function initDashboard() {
                 type: 'bar',
                 data: {
                     labels: months,
-                    datasets: [{ label: 'Orders', data: d.monthly_orders, backgroundColor: hexToRgba(colorVar('--primary', '#c9a96e'), 0.6), borderColor: colorVar('--primary', '#c9a96e'), borderWidth: 1 }]
+                    datasets: [{ label: 'Orders', data: d.monthly_orders, backgroundColor: hexToRgba(colorVar('--primary', '#6366f1'), 0.6), borderColor: colorVar('--primary', '#6366f1'), borderWidth: 1 }]
                 },
                 options: chartOpts
             });
@@ -430,6 +439,11 @@ async function initProducts() {
     if (!products) return;
     const tbody = document.querySelector('#products-table tbody');
     if (!tbody) return;
+    if (products.length === 0) {
+        tbody.innerHTML = emptyState('fa-box-open', 'No products found', 'Add your first product to get started.');
+        document.querySelector('.page-header p').textContent = 'Manage your product catalog (0 products)';
+        return;
+    }
     tbody.innerHTML = products.map(p => `
         <tr>
             <td><div class="product-cell"><img src="${cloudinaryThumb(imgSrc(esc(p.image)), 80)}" alt="" loading="lazy" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div></div></div></td>
@@ -845,11 +859,12 @@ function _handleVariantChange(action, el) {
                 fd.append('images', f);
                 try {
                     var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd, headers: { 'X-CSRF-Token': getCookie('csrf_token') } });
-                    var data = await res.json();
+                    if (!res.ok) { var errText = await res.text(); throw new Error(errText.substring(0, 200) || 'Upload failed (HTTP ' + res.status + ')'); }
+                    var data = await safeJson(res);
                     if (data.paths && data.paths[0]) {
                         v.images.push(data.paths[0]);
                     } else {
-                        alert(f.name + ': upload failed (no path returned)');
+                        alert(f.name + ': upload failed — ' + (data.errors ? data.errors.join(', ') : 'no path returned'));
                     }
                 } catch (err) {
                     alert(f.name + ': upload error — ' + (err.message || err));
@@ -1239,6 +1254,10 @@ async function initCategories() {
     if (!tbody) return;
     const countEl = document.getElementById('cat-count');
     if (countEl) countEl.textContent = cats.length + ' catégorie' + (cats.length > 1 ? 's' : '');
+    if (cats.length === 0) {
+        tbody.innerHTML = emptyState('fa-tags', 'No categories', 'Create your first category to organize products.');
+        return;
+    }
     tbody.innerHTML = cats.map(c => {
         var isProtected = c.size_system === 'grouped_taille';
         var deleteBtn = isProtected
@@ -1348,7 +1367,7 @@ async function initCollections() {
     grid.innerHTML = cols.map(function (c) {
         var banner = c.image
             ? '<img src="' + cloudinaryThumb(imgSrc(esc(c.image)), 400) + '" style="width:100%;height:140px;object-fit:cover;border-radius:8px 8px 0 0;" loading="lazy" onerror="this.style.display=\'none\'">'
-            : '<div style="height:140px;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:#c9a96e;font-size:2rem;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div>';
+            : '<div style="height:140px;background:linear-gradient(135deg,#1e293b,#0f172a);border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:2rem;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div>';
         return '<div class="card">' +
             banner +
             '<div class="card-body">' +
@@ -1481,18 +1500,23 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('Unsupported format. Use JPG, PNG, or WEBP.');
             return;
         }
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File too large (max 10MB).');
+            return;
+        }
         try {
             var fd = new FormData();
             fd.append('images', file);
             var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd, headers: { 'X-CSRF-Token': getCookie('csrf_token') } });
-            var data = await res.json();
+            if (!res.ok) { var errText = await res.text(); throw new Error(errText.substring(0, 200) || 'Upload failed (HTTP ' + res.status + ')'); }
+            var data = await safeJson(res);
             if (data.paths && data.paths[0]) {
                 imageInput.value = data.paths[0];
                 preview.src = (data.paths[0] && data.paths[0].startsWith('http')) ? data.paths[0] : '/' + data.paths[0];
                 preview.style.display = 'block';
                 removeBtn.style.display = 'inline-flex';
             } else {
-                alert('Upload failed — no path returned.');
+                alert('Upload failed — ' + (data.errors ? data.errors.join(', ') : 'no path returned'));
             }
         } catch (err) {
             console.error('[collection-upload]', err);
@@ -1767,8 +1791,13 @@ window.viewOrder = async function (id) {
 
     /* Wire up status save */
     document.getElementById('od-save-status').addEventListener('click', function () {
+        var btn = this;
         var status = document.getElementById('od-status-select').value;
+        btn.classList.add('btn-loading');
+        btn.disabled = true;
         api('PUT', '/orders/' + o.id, { status: status }).then(function (res) {
+            btn.classList.remove('btn-loading');
+            btn.disabled = false;
             if (res) {
                 document.getElementById('od-status-badge').innerHTML = badge(status);
                 o.status = status;
@@ -1776,7 +1805,6 @@ window.viewOrder = async function (id) {
                 msgEl.textContent = 'Statut mis à jour : ' + (statusLabels[status] || status);
                 msgEl.style.display = 'block';
                 setTimeout(function () { msgEl.style.display = 'none'; }, 3000);
-                /* Toggle delete card visibility */
                 var deleteCard = document.querySelector('.od-delete-card');
                 if (deleteCard) {
                     deleteCard.style.display = (status === 'arrived' || status === 'delivered') ? '' : 'none';
@@ -1939,7 +1967,7 @@ async function viewCustomer(id) {
     document.getElementById('detail-orders-count').textContent = c.orders_count || 0;
     document.getElementById('detail-spent').textContent = formatPriceDA(c.total_spent);
     document.getElementById('detail-joined').textContent = c.joined_at ? formatDate(c.joined_at) : '—';
-    document.getElementById('detail-avatar').src = avatarUrl(c.name, 'c9a96e');
+    document.getElementById('detail-avatar').src = avatarUrl(c.name, '6366f1');
 
     /* order history */
     const otbody = document.querySelector('#detail-orders-table tbody');
@@ -2003,7 +2031,7 @@ let invStatusFilter = 'all';
 
 function stockBar(qty, threshold) {
     const pct = Math.min(100, (qty / Math.max(threshold * 3, 1)) * 100);
-    const color = qty === 0 ? '#f56565' : qty <= threshold ? '#ecc94b' : '#48bb78';
+    const color = qty === 0 ? '#ef4444' : qty <= threshold ? '#eab308' : '#22c55e';
     return '<div class="stock-bar"><div class="stock-fill" style="width:' + pct + '%;background:' + color + ';"></div></div>';
 }
 
@@ -2154,7 +2182,7 @@ function renderMonthlyChart(months) {
     }
 
     const maxRev = Math.max.apply(null, months.map(function (m) { return m.revenue; })) || 1;
-    const colors = [colorVar('--primary', '#c9a96e'), '#48bb78', '#4299e1', '#9f7aea', '#ed8936', '#f56565', '#38b2ac', '#667eea', '#f6ad55', '#68d391', '#fc8181', '#a0aec0'];
+    const colors = [colorVar('--primary', '#6366f1'), '#22c55e', '#3b82f6', '#a855f7', '#f97316', '#ef4444', '#14b8a6', '#6366f1', '#fb923c', '#4ade80', '#f87171', '#94a3b8'];
 
     container.innerHTML = months.map(function (m, i) {
         var pct = (m.revenue / maxRev) * 100;
@@ -2185,7 +2213,7 @@ function renderCategoryChart(categories) {
     }
 
     const totalRevenue = categories.reduce(function (sum, c) { return sum + c.revenue; }, 0) || 1;
-    const catColors = [colorVar('--primary', '#c9a96e'), '#4299e1', '#48bb78', '#ed8936', '#9f7aea', '#f56565', '#38b2ac', '#667eea'];
+    const catColors = [colorVar('--primary', '#6366f1'), '#3b82f6', '#22c55e', '#f97316', '#a855f7', '#ef4444', '#14b8a6', '#6366f1'];
 
     container.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;">' +
         categories.map(function (c, i) {
@@ -2551,8 +2579,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         var dd = document.createElement('div');
                         dd.id = 'products-category-dropdown';
                         dd.style.cssText = 'position:absolute;top:100%;left:0;margin-top:4px;background:var(--bg-card,#fff);border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:6px 0;z-index:100;min-width:180px;box-shadow:0 4px 12px rgba(0,0,0,.12);';
-                        dd.innerHTML = '<div data-cat="" style="padding:6px 14px;cursor:pointer;font-size:0.85rem;'+(!productFilterState.category?'font-weight:600;color:var(--primary,#c9a96e);':'')+'">Toutes les catégories</div>' +
-                            cats.map(function (c) { return '<div data-cat="'+esc(c.name)+'" style="padding:6px 14px;cursor:pointer;font-size:0.85rem;'+(productFilterState.category===c.name?'font-weight:600;color:var(--primary,#c9a96e);':'')+'">'+esc(c.name)+'</div>'; }).join('');
+                        dd.innerHTML = '<div data-cat="" style="padding:6px 14px;cursor:pointer;font-size:0.85rem;'+(!productFilterState.category?'font-weight:600;color:var(--primary,#6366f1);':'')+'">Toutes les catégories</div>' +
+                            cats.map(function (c) { return '<div data-cat="'+esc(c.name)+'" style="padding:6px 14px;cursor:pointer;font-size:0.85rem;'+(productFilterState.category===c.name?'font-weight:600;color:var(--primary,#6366f1);':'')+'">'+esc(c.name)+'</div>'; }).join('');
                         dd.querySelectorAll('div[data-cat]').forEach(function (el) {
                             el.addEventListener('mouseenter', function () { this.style.background = 'var(--bg-secondary,#f7f5f0)'; });
                             el.addEventListener('mouseleave', function () { this.style.background = ''; });
@@ -2900,21 +2928,33 @@ document.addEventListener('DOMContentLoaded', function () {
         var fill = document.getElementById('progress-fill');
         var text = document.getElementById('progress-text');
         if (prog) prog.style.display = 'block';
+        var errors = [];
         for (var i = 0; i < files.length; i++) {
             var file = files[i];
             if (text) text.textContent = 'Uploading ' + (file.name || 'image') + ' (' + (i + 1) + '/' + files.length + ')...';
-            var fd = new FormData();
-            fd.append('images', file);
-            var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd, headers: { 'X-CSRF-Token': getCookie('csrf_token') } });
-            var data = await res.json();
-            if (data.paths && data.paths.length > 0) {
-                for (var j = 0; j < data.paths.length; j++) {
-                    currentImages.push(data.paths[j]);
+            try {
+                var fd = new FormData();
+                fd.append('images', file);
+                var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd, headers: { 'X-CSRF-Token': getCookie('csrf_token') } });
+                if (!res.ok) { var errText = await res.text(); throw new Error(errText.substring(0, 200) || 'HTTP ' + res.status); }
+                var data = await safeJson(res);
+                if (data.paths && data.paths.length > 0) {
+                    for (var j = 0; j < data.paths.length; j++) {
+                        currentImages.push(data.paths[j]);
+                    }
+                } else if (data.errors) {
+                    errors.push(file.name + ': ' + data.errors.join(', '));
                 }
+            } catch (err) {
+                errors.push(file.name + ': ' + (err.message || 'upload failed'));
+                console.error('[image-upload]', file.name, err);
             }
             if (fill) fill.style.width = ((i + 1) / files.length * 100) + '%';
         }
         if (prog) prog.style.display = 'none';
+        if (errors.length > 0) {
+            alert('Some uploads failed:\n' + errors.join('\n'));
+        }
         await saveImageOrder();
     }
 
