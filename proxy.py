@@ -72,6 +72,8 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
     def _proxy(self):
         referer = self.headers.get('Referer', '')
         backend_host, backend_port = route_to_backend(self.path, self.command, referer)
+        origin = 'Admin' if (self.path.startswith('/admin') or '/admin' in referer) else 'Main'
+        print(f"[proxy] {self.command} {self.path} -> port {backend_port} ({origin})")
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             if content_length > MAX_PROXY_BODY:
@@ -135,11 +137,18 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
                 self.wfile.write(resp_body)
                 self.wfile.flush()
             else:
-                hop_skip = {'transfer-encoding', 'connection', 'content-encoding'}
+                hop_skip = {'transfer-encoding', 'connection', 'content-encoding', 'content-length'}
                 self.send_response(upstream_resp.status, upstream_resp.reason)
+                has_content_length = False
                 for k, v in upstream_resp.getheaders():
-                    if k.lower() not in hop_skip:
-                        self.send_header(k, v)
+                    kl = k.lower()
+                    if kl in hop_skip:
+                        continue
+                    if kl == 'content-length':
+                        has_content_length = True
+                    self.send_header(k, v)
+                if not has_content_length:
+                    self.send_header('Connection', 'close')
                 self.end_headers()
 
                 while True:
