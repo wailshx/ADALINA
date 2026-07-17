@@ -152,7 +152,7 @@ def _run_migrations(conn):
             "CREATE INDEX IF NOT EXISTS idx_collection_products_collection ON collection_products(collection_id)",
             "CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)",
             "CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email)",
-            "CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC)",
         ]
         for idx_sql in idx_migrations:
             try:
@@ -177,8 +177,8 @@ def _run_migrations(conn):
                 pass
         for tbl in rls_tables:
             try:
-                cur.execute(f"""CREATE POLICY IF NOT EXISTS "service_role_all_{tbl}" ON {tbl}
-                    FOR ALL TO service_role USING (true) WITH CHECK (true)""")
+                cur.execute(f"""CREATE POLICY IF NOT EXISTS "allow_all_{tbl}" ON {tbl}
+                    FOR ALL USING (true) WITH CHECK (true)""")
             except Exception:
                 pass
         try:

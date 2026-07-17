@@ -132,8 +132,8 @@ class AuditLog:
             try:
                 cur = db.cursor()
                 cur.execute(
-                    "INSERT INTO audit_logs (admin_user, action, ip, details) VALUES (%s, %s, %s, %s)",
-                    (user, action, ip, details[:500] if details else '')
+                    "INSERT INTO audit_logs (event_type, username, ip, details) VALUES (%s, %s, %s, %s)",
+                    (action, user, ip, details[:500] if details else '')
                 )
                 db.commit()
             finally:

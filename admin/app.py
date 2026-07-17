@@ -1786,7 +1786,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     if max_age: cookie += f'; Max-Age={max_age}'
                     self.send_response(302)
                     self.send_header('Set-Cookie', cookie)
-                    self.send_header('Set-Cookie', f'csrf_token={csrf}; Path=/admin; SameSite=Lax; {secure}'.strip())
+                    self.send_header('Set-Cookie', f'csrf_token={csrf}; Path=/; SameSite=Lax; {secure}'.strip())
                     self.send_header('Location', '/admin/dashboard.html')
                     self.end_headers()
                     audit_log.log('LOGIN_SUCCESS', username, ip=ip)
@@ -1802,6 +1802,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     if path != '/api/upload':
                         if not require_csrf(self):
                             audit_log.log('CSRF_BLOCKED', details=f'{method} {path}', ip=ip)
+                            send_json(self, {'error': 'CSRF validation failed'}, 403)
                             return
                 if 'multipart/form-data' in content_type:
                     try:
@@ -1852,6 +1853,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     return
                 if not require_csrf(self):
                     audit_log.log('CSRF_BLOCKED', details=f'PUT {path}', ip=get_client_ip(self))
+                    send_json(self, {'error': 'CSRF validation failed'}, 403)
                     return
                 body = read_body(self)
                 try:
@@ -1881,6 +1883,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     return
                 if not require_csrf(self):
                     audit_log.log('CSRF_BLOCKED', details=f'DELETE {path}', ip=get_client_ip(self))
+                    send_json(self, {'error': 'CSRF validation failed'}, 403)
                     return
                 try:
                     self.api_DELETE(path)
