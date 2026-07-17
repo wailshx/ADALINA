@@ -1223,6 +1223,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     cur.execute("INSERT INTO product_colors (product_id, color_name, color_hex, stock) VALUES (%s, %s, %s, %s)", (pid, cname, chex, cstock))
 
             # Sync advanced variants
+            computed_stock = None
             if variants_data is not None and isinstance(variants_data, list):
                 is_advanced = len(variants_data) > 0 and ('images' in variants_data[0] or 'sku' in variants_data[0] or 'sizes' in variants_data[0])
                 # Delete old variant children
@@ -1255,15 +1256,17 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                         JOIN variant_sizes vs ON vs.variant_id = pv.id
                         WHERE pv.product_id = %s
                     """, (pid,))
-                    total_stock = cur.fetchone()['total']
-                    cur.execute("UPDATE products SET stock=%s WHERE id=%s", (total_stock, pid))
+                    computed_stock = cur.fetchone()['total']
+                    cur.execute("UPDATE products SET stock=%s WHERE id=%s", (computed_stock, pid))
                 else:
                     # Legacy format: simple color_name, size_name, stock
                     for v in variants_data:
                         cur.execute("INSERT INTO product_variants (product_id, color_name, size_name, stock) VALUES (%s, %s, %s, %s)",
                                     (pid, v.get('color_name', ''), v.get('size_name', ''), v.get('stock', 0)))
 
-            if 'stock' in data:
+            if computed_stock is not None:
+                cur.execute("UPDATE inventory SET quantity=%s, updated_at=CURRENT_TIMESTAMP WHERE product_id=%s", (computed_stock, pid))
+            elif 'stock' in data:
                 cur.execute("UPDATE inventory SET quantity=%s, updated_at=CURRENT_TIMESTAMP WHERE product_id=%s", (data['stock'], pid))
             db.commit()
             send_json(self, {'message': 'Product updated'})
@@ -1639,7 +1642,11 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             if not storage.is_enabled():
                 errors.append(f'{f["filename"]}: storage not configured (set SUPABASE_URL + key)')
                 continue
-            url = storage.upload_file(content, storage_path, detected_mime)
+            try:
+                url = storage.upload_file(content, storage_path, detected_mime)
+            except Exception as ue:
+                print(f"[Admin] Storage upload exception for {f['filename']}: {ue}")
+                url = None
             if url:
                 saved_paths.append(url)
             else:
@@ -1807,10 +1814,16 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 if 'multipart/form-data' in content_type:
                     try:
                         content_length = int(self.headers.get('Content-Length', 0))
+                        if content_length == 0:
+                            send_json(self, {'error': 'Missing Content-Length header'}, 400)
+                            return
                         if content_length > MAX_REQUEST_SIZE:
                             send_json(self, {'error': 'File too large (max 50MB)'}, 413)
                             return
                         body = self.rfile.read(content_length)
+                        if not body or len(body) < 10:
+                            send_json(self, {'error': f'Empty or too-small body ({len(body)} bytes)'}, 400)
+                            return
                         boundary = None
                         for part in content_type.split(';'):
                             part = part.strip()
@@ -1818,13 +1831,16 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                                 boundary = part[9:].strip('"').strip("'")
                         if boundary:
                             result = parse_multipart(body, boundary)
+                            file_count = len(result.get('files', []))
+                            field_count = len(result.get('fields', {}))
+                            print(f"[Admin] Multipart parsed: {file_count} files, {field_count} fields, body={len(body)} bytes, boundary={boundary[:20]}...")
                             self.api_UPLOAD(result)
                         else:
-                            send_json(self, {'error': 'Missing boundary'}, 400)
+                            send_json(self, {'error': 'Missing boundary in Content-Type'}, 400)
                     except Exception as e:
                         print(f"[Admin] Multipart upload error: {e}")
                         import traceback; traceback.print_exc()
-                        send_json(self, {'error': 'Upload failed'}, 500)
+                        send_json(self, {'error': f'Upload failed: {type(e).__name__}: {str(e)[:200]}'}, 500)
                 else:
                     body = read_body(self)
                     try:

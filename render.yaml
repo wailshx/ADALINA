@@ -18,6 +18,8 @@ services:
         value: https://adalina-v2.onrender.com
       - key: SUPABASE_SERVICE_KEY
         sync: false
+      - key: SUPABASE_BUCKET
+        value: ADALINA
       - key: HTTPS
         value: "true"
       - key: ADMIN_USERNAME
