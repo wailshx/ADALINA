@@ -11,7 +11,12 @@ const PLACEHOLDER_IMG = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/s
 function onImgError(el) { if (el && el.src !== PLACEHOLDER_IMG) el.src = PLACEHOLDER_IMG; }
 
 function cloudinaryThumb(url, w) {
-    return url || '';
+    if (!url) return '';
+    if (url.indexOf('cloudinary.com') !== -1 && w) {
+        var parts = url.split('/upload/');
+        if (parts.length === 2) return parts[0] + '/upload/w_' + w + ',f_auto,q_auto/' + parts[1];
+    }
+    return url;
 }
 
 async function loadProducts() {
@@ -2607,7 +2612,9 @@ async function init() {
                         document.getElementById('product-container') ||
                         document.querySelector('.wishlist-page') ||
                         document.getElementById('cart-page-items') ||
-                        document.querySelector('.checkout-form');
+                        document.querySelector('.checkout-form') ||
+                        document.getElementById('collection-tabs') ||
+                        document.getElementById('collection-products');
     if (needsProducts) {
         await loadProducts();
     }

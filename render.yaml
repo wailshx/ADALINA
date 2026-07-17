@@ -28,3 +28,9 @@ services:
         sync: false
       - key: ADMIN_PASSWORD_SALT
         sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        value: poshuiuu
+      - key: CLOUDINARY_API_KEY
+        value: "219957587561457"
+      - key: CLOUDINARY_API_SECRET
+        sync: false

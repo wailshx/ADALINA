@@ -1504,7 +1504,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 for img_path in all_images:
                     if not img_path:
                         continue
-                    if storage.is_enabled() and storage.is_supabase_url(img_path):
+                    if storage.is_enabled() and (storage.is_cloudinary_url(img_path) or storage.is_supabase_url(img_path)):
                         sp = storage.path_from_url(img_path)
                         if sp:
                             storage.delete_file(sp)
@@ -1533,7 +1533,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             data = json.loads(body) if body else {}
             img_path = data.get('path', '')
             if img_path:
-                if storage.is_enabled() and storage.is_supabase_url(img_path):
+                if storage.is_enabled() and (storage.is_cloudinary_url(img_path) or storage.is_supabase_url(img_path)):
                     sp = storage.path_from_url(img_path)
                     if sp:
                         storage.delete_file(sp)
@@ -1640,7 +1640,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             safe_name = f"{ts}_{safe_base}"
             storage_path = f'{subdir}/{safe_name}'
             if not storage.is_enabled():
-                errors.append(f'{f["filename"]}: storage not configured (set SUPABASE_URL + key)')
+                errors.append(f'{f["filename"]}: storage not configured (set CLOUDINARY env vars)')
                 continue
             try:
                 url = storage.upload_file(content, storage_path, detected_mime)
@@ -1650,7 +1650,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             if url:
                 saved_paths.append(url)
             else:
-                errors.append(f'{f["filename"]}: upload to Supabase failed')
+                errors.append(f'{f["filename"]}: upload failed')
         result = {'paths': saved_paths, 'count': len(saved_paths)}
         if errors:
             result['errors'] = errors
