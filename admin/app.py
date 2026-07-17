@@ -355,6 +355,17 @@ def enrich_product(row, cur):
 
 class AdminHandler(http.server.BaseHTTPRequestHandler):
 
+    def handle_one_request(self):
+        try:
+            super().handle_one_request()
+        except Exception as err:
+            print("!!! ADMIN REQUEST CRASH !!!")
+            import traceback; traceback.print_exc()
+            try:
+                send_json(self, {'success': False, 'error': f'Server Error: {str(err)}'}, 500)
+            except Exception:
+                pass
+
     def log_message(self, format, *args):
         if len(args) >= 3:
             print(f"[Admin] {args[0]} {args[1]} {args[2]}")
@@ -1639,223 +1650,255 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
         send_json(self, result)
 
     def do_GET(self):
-        parsed = urllib.parse.urlparse(self.path)
-        path = parsed.path
-        query = urllib.parse.parse_qs(parsed.query)
+        try:
+            parsed = urllib.parse.urlparse(self.path)
+            path = parsed.path
+            query = urllib.parse.parse_qs(parsed.query)
 
-        if path == '/api/health':
-            db = None
-            try:
-                db = get_db()
-                cur = db.cursor()
-                cur.execute('SELECT 1')
-                cur.fetchone()
-                send_json(self, {'status': 'ok', 'database': 'connected', 'server': 'admin'})
-            except Exception as e:
-                print(f"[Admin] Health check DB error: {e}")
-                send_json(self, {'status': 'error', 'database': str(e), 'server': 'admin'}, 503)
-            finally:
-                if db:
-                    try: db.close()
-                    except Exception: pass
-            return
+            if path == '/api/health':
+                db = None
+                try:
+                    db = get_db()
+                    cur = db.cursor()
+                    cur.execute('SELECT 1')
+                    cur.fetchone()
+                    send_json(self, {'status': 'ok', 'database': 'connected', 'server': 'admin'})
+                except Exception as e:
+                    print(f"[Admin] Health check DB error: {e}")
+                    send_json(self, {'status': 'error', 'database': str(e), 'server': 'admin'}, 503)
+                finally:
+                    if db:
+                        try: db.close()
+                        except Exception: pass
+                return
 
-        if path.startswith('/api/'):
-            if not require_auth(self):
+            if path.startswith('/api/'):
+                if not require_auth(self):
+                    return
+                if self.api_GET(path, query):
+                    return
+                send_json(self, {'error': 'Not found'}, 404)
                 return
-            if self.api_GET(path, query):
-                return
-            send_json(self, {'error': 'Not found'}, 404)
-            return
 
-        if path == '/admin/login':
-            if is_authenticated(self):
-                redirect(self, '/admin/dashboard.html')
-            else:
-                send_file(self, os.path.join(BASE_DIR, 'login.html'))
-        elif path == '/admin/logout':
-            token = get_token_from_cookies(self.headers.get('Cookie'))
-            if token:
-                delete_session(token)
-            self.send_response(302)
-            secure = 'Secure' if os.environ.get('HTTPS', '') else ''
-            self.send_header('Set-Cookie', f'admin_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; {secure}'.strip())
-            self.send_header('Location', '/admin/login')
-            self.end_headers()
-        elif path == '/website/' or path == '/website':
-            send_file(self, os.path.join(PARENT_DIR, 'index.html'))
-        elif path.startswith('/website/'):
-            clean_path = path[9:]
-            if not clean_path:
-                clean_path = 'index.html'
-            if clean_path.startswith('.') or '..' in clean_path:
-                self.send_response(403)
-                self.end_headers()
-                return
-            rp = secure_path(PARENT_DIR, clean_path)
-            if rp:
-                send_file(self, rp)
-            else:
-                self.send_response(403)
-                self.end_headers()
-        elif path.startswith('/admin/css/'):
-            rp = secure_path(os.path.join(BASE_DIR, 'css'), os.path.relpath(path, '/admin/css/'))
-            if rp: send_file(self, rp)
-            else: self.send_response(403); self.end_headers()
-        elif path.startswith('/admin/js/'):
-            rp = secure_path(os.path.join(BASE_DIR, 'js'), os.path.relpath(path, '/admin/js/'))
-            if rp: send_file(self, rp)
-            else: self.send_response(403); self.end_headers()
-        elif path.startswith('/admin/'):
-            if not require_auth(self):
-                return
-            rp = secure_path(BASE_DIR, os.path.relpath(path, '/admin/'))
-            if rp and rp.endswith('.html'):
-                session_token = get_token_from_cookies(self.headers.get('Cookie'))
-                csrf_val = get_csrf_token_for_session(session_token) if session_token else ''
-                if csrf_val:
-                    with open(rp, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                    csrf_script = f'<script>window.__csrf="{csrf_val}"</script>'
-                    content = content.replace('<head>', '<head>' + csrf_script, 1)
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'text/html; charset=utf-8')
-                    self.send_header('Cache-Control', 'no-cache, must-revalidate')
-                    self.end_headers()
-                    self.wfile.write(content.encode('utf-8'))
+            if path == '/admin/login':
+                if is_authenticated(self):
+                    redirect(self, '/admin/dashboard.html')
                 else:
+                    send_file(self, os.path.join(BASE_DIR, 'login.html'))
+            elif path == '/admin/logout':
+                token = get_token_from_cookies(self.headers.get('Cookie'))
+                if token:
+                    delete_session(token)
+                self.send_response(302)
+                secure = 'Secure' if os.environ.get('HTTPS', '') else ''
+                self.send_header('Set-Cookie', f'admin_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; {secure}'.strip())
+                self.send_header('Location', '/admin/login')
+                self.end_headers()
+            elif path == '/website/' or path == '/website':
+                send_file(self, os.path.join(PARENT_DIR, 'index.html'))
+            elif path.startswith('/website/'):
+                clean_path = path[9:]
+                if not clean_path:
+                    clean_path = 'index.html'
+                if clean_path.startswith('.') or '..' in clean_path:
+                    self.send_response(403)
+                    self.end_headers()
+                    return
+                rp = secure_path(PARENT_DIR, clean_path)
+                if rp:
                     send_file(self, rp)
-            elif rp:
-                send_file(self, rp)
+                else:
+                    self.send_response(403)
+                    self.end_headers()
+            elif path.startswith('/admin/css/'):
+                rp = secure_path(os.path.join(BASE_DIR, 'css'), os.path.relpath(path, '/admin/css/'))
+                if rp: send_file(self, rp)
+                else: self.send_response(403); self.end_headers()
+            elif path.startswith('/admin/js/'):
+                rp = secure_path(os.path.join(BASE_DIR, 'js'), os.path.relpath(path, '/admin/js/'))
+                if rp: send_file(self, rp)
+                else: self.send_response(403); self.end_headers()
+            elif path.startswith('/admin/'):
+                if not require_auth(self):
+                    return
+                rp = secure_path(BASE_DIR, os.path.relpath(path, '/admin/'))
+                if rp and rp.endswith('.html'):
+                    session_token = get_token_from_cookies(self.headers.get('Cookie'))
+                    csrf_val = get_csrf_token_for_session(session_token) if session_token else ''
+                    if csrf_val:
+                        with open(rp, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                        csrf_script = f'<script>window.__csrf="{csrf_val}"</script>'
+                        content = content.replace('<head>', '<head>' + csrf_script, 1)
+                        self.send_response(200)
+                        self.send_header('Content-Type', 'text/html; charset=utf-8')
+                        self.send_header('Cache-Control', 'no-cache, must-revalidate')
+                        self.end_headers()
+                        self.wfile.write(content.encode('utf-8'))
+                    else:
+                        send_file(self, rp)
+                elif rp:
+                    send_file(self, rp)
+                else:
+                    self.send_response(403)
+                    self.end_headers()
+            elif path == '/' or path == '':
+                send_file(self, os.path.join(PARENT_DIR, 'index.html'))
             else:
-                self.send_response(403)
-                self.end_headers()
-        elif path == '/' or path == '':
-            send_file(self, os.path.join(PARENT_DIR, 'index.html'))
-        else:
-            rp = secure_path(PARENT_DIR, path.lstrip('/'))
-            if rp:
-                send_file(self, rp)
-            else:
-                self.send_response(403)
-                self.end_headers()
+                rp = secure_path(PARENT_DIR, path.lstrip('/'))
+                if rp:
+                    send_file(self, rp)
+                else:
+                    self.send_response(403)
+                    self.end_headers()
+        except Exception as err:
+            print("!!! ADMIN do_GET CRASH !!!")
+            import traceback; traceback.print_exc()
+            try:
+                send_json(self, {'success': False, 'error': f'Server Error: {str(err)}'}, 500)
+            except Exception:
+                pass
 
     def do_POST(self):
-        parsed = urllib.parse.urlparse(self.path)
-        path = parsed.path
-        content_type = self.headers.get('Content-Type', '')
+        try:
+            parsed = urllib.parse.urlparse(self.path)
+            path = parsed.path
+            content_type = self.headers.get('Content-Type', '')
 
-        if path == '/admin/login':
-            ip = get_client_ip(self)
-            if not _login_limiter.is_allowed(f'login:{ip}', max_requests=5, window=900):
-                retry = _login_limiter.retry_after(f'login:{ip}', window=900)
-                send_json(self, {'error': f'Trop de tentatives. Réessayez dans {retry}s.'}, 429)
-                return
-            body = read_body(self)
-            params = urllib.parse.parse_qs(body)
-            username = params.get('username', [''])[0].strip()
-            password = params.get('password', [''])[0]
-            remember = params.get('remember', [None])[0]
-            if username == ADMIN_USERNAME and _verify_password(password, ADMIN_PASSWORD_HASH, ADMIN_PASSWORD_SALT):
-                token = create_session(remember=(remember == 'on'))
-                csrf = generate_csrf_token()
-                save_csrf_token(token, csrf)
-                max_age = 30 * 24 * 3600 if remember else None
-                secure = 'Secure' if os.environ.get('HTTPS', '') else ''
-                cookie = f'admin_session={token}; Path=/; HttpOnly; SameSite=Lax; {secure}'.strip()
-                if max_age: cookie += f'; Max-Age={max_age}'
-                self.send_response(302)
-                self.send_header('Set-Cookie', cookie)
-                self.send_header('Set-Cookie', f'csrf_token={csrf}; Path=/admin; SameSite=Lax; {secure}'.strip())
-                self.send_header('Location', '/admin/dashboard.html')
-                self.end_headers()
-                audit_log.log('LOGIN_SUCCESS', username, ip=ip)
-            else:
-                audit_log.log('LOGIN_FAILED', username, f'bad password from {ip}', ip=ip)
-                redirect(self, '/admin/login?error=1')
-        elif path.startswith('/api/'):
-            if not require_auth(self):
-                return
-            ip = get_client_ip(self)
-            method = self.command
-            if method in ('POST', 'PUT', 'DELETE'):
-                if path != '/api/upload':
-                    if not require_csrf(self):
-                        audit_log.log('CSRF_BLOCKED', details=f'{method} {path}', ip=ip)
-                        return
-            if 'multipart/form-data' in content_type:
-                try:
-                    content_length = int(self.headers.get('Content-Length', 0))
-                    if content_length > MAX_REQUEST_SIZE:
-                        send_json(self, {'error': 'File too large (max 50MB)'}, 413)
-                        return
-                    body = self.rfile.read(content_length)
-                    boundary = None
-                    for part in content_type.split(';'):
-                        part = part.strip()
-                        if part.startswith('boundary='):
-                            boundary = part[9:].strip('"').strip("'")
-                    if boundary:
-                        result = parse_multipart(body, boundary)
-                        self.api_UPLOAD(result)
-                    else:
-                        send_json(self, {'error': 'Missing boundary'}, 400)
-                except Exception as e:
-                    print(f"[Admin] Multipart upload error: {e}")
-                    import traceback; traceback.print_exc()
-                    send_json(self, {'error': 'Upload failed'}, 500)
-            else:
+            if path == '/admin/login':
+                ip = get_client_ip(self)
+                if not _login_limiter.is_allowed(f'login:{ip}', max_requests=5, window=900):
+                    retry = _login_limiter.retry_after(f'login:{ip}', window=900)
+                    send_json(self, {'error': f'Trop de tentatives. Réessayez dans {retry}s.'}, 429)
+                    return
                 body = read_body(self)
-                try:
-                    self.api_POST(path, body)
-                except Exception as e:
-                    print(f"[Admin] POST {path} error")
-                    import traceback; traceback.print_exc()
-                    send_json(self, {'error': 'Erreur serveur'}, 500)
-        else:
-            self.send_response(404)
-            self.end_headers()
+                params = urllib.parse.parse_qs(body)
+                username = params.get('username', [''])[0].strip()
+                password = params.get('password', [''])[0]
+                remember = params.get('remember', [None])[0]
+                if username == ADMIN_USERNAME and _verify_password(password, ADMIN_PASSWORD_HASH, ADMIN_PASSWORD_SALT):
+                    token = create_session(remember=(remember == 'on'))
+                    csrf = generate_csrf_token()
+                    save_csrf_token(token, csrf)
+                    max_age = 30 * 24 * 3600 if remember else None
+                    secure = 'Secure' if os.environ.get('HTTPS', '') else ''
+                    cookie = f'admin_session={token}; Path=/; HttpOnly; SameSite=Lax; {secure}'.strip()
+                    if max_age: cookie += f'; Max-Age={max_age}'
+                    self.send_response(302)
+                    self.send_header('Set-Cookie', cookie)
+                    self.send_header('Set-Cookie', f'csrf_token={csrf}; Path=/admin; SameSite=Lax; {secure}'.strip())
+                    self.send_header('Location', '/admin/dashboard.html')
+                    self.end_headers()
+                    audit_log.log('LOGIN_SUCCESS', username, ip=ip)
+                else:
+                    audit_log.log('LOGIN_FAILED', username, f'bad password from {ip}', ip=ip)
+                    redirect(self, '/admin/login?error=1')
+            elif path.startswith('/api/'):
+                if not require_auth(self):
+                    return
+                ip = get_client_ip(self)
+                method = self.command
+                if method in ('POST', 'PUT', 'DELETE'):
+                    if path != '/api/upload':
+                        if not require_csrf(self):
+                            audit_log.log('CSRF_BLOCKED', details=f'{method} {path}', ip=ip)
+                            return
+                if 'multipart/form-data' in content_type:
+                    try:
+                        content_length = int(self.headers.get('Content-Length', 0))
+                        if content_length > MAX_REQUEST_SIZE:
+                            send_json(self, {'error': 'File too large (max 50MB)'}, 413)
+                            return
+                        body = self.rfile.read(content_length)
+                        boundary = None
+                        for part in content_type.split(';'):
+                            part = part.strip()
+                            if part.startswith('boundary='):
+                                boundary = part[9:].strip('"').strip("'")
+                        if boundary:
+                            result = parse_multipart(body, boundary)
+                            self.api_UPLOAD(result)
+                        else:
+                            send_json(self, {'error': 'Missing boundary'}, 400)
+                    except Exception as e:
+                        print(f"[Admin] Multipart upload error: {e}")
+                        import traceback; traceback.print_exc()
+                        send_json(self, {'error': 'Upload failed'}, 500)
+                else:
+                    body = read_body(self)
+                    try:
+                        self.api_POST(path, body)
+                    except Exception as e:
+                        print(f"[Admin] POST {path} error")
+                        import traceback; traceback.print_exc()
+                        send_json(self, {'error': 'Erreur serveur'}, 500)
+            else:
+                self.send_response(404)
+                self.end_headers()
+        except Exception as err:
+            print("!!! ADMIN do_POST CRASH !!!")
+            import traceback; traceback.print_exc()
+            try:
+                send_json(self, {'success': False, 'error': f'Server Error: {str(err)}'}, 500)
+            except Exception:
+                pass
 
     def do_PUT(self):
-        parsed = urllib.parse.urlparse(self.path)
-        path = parsed.path
-        if path.startswith('/api/'):
-            if not require_auth(self):
-                return
-            if not require_csrf(self):
-                audit_log.log('CSRF_BLOCKED', details=f'PUT {path}', ip=get_client_ip(self))
-                return
-            body = read_body(self)
+        try:
+            parsed = urllib.parse.urlparse(self.path)
+            path = parsed.path
+            if path.startswith('/api/'):
+                if not require_auth(self):
+                    return
+                if not require_csrf(self):
+                    audit_log.log('CSRF_BLOCKED', details=f'PUT {path}', ip=get_client_ip(self))
+                    return
+                body = read_body(self)
+                try:
+                    self.api_PUT(path, body)
+                    audit_log.log('API_PUT', details=path, ip=get_client_ip(self))
+                except Exception as e:
+                    print(f"[Admin] PUT {path} error")
+                    import traceback; traceback.print_exc()
+                    send_json(self, {'error': 'Erreur serveur'}, 500)
+            else:
+                self.send_response(404)
+                self.end_headers()
+        except Exception as err:
+            print("!!! ADMIN do_PUT CRASH !!!")
+            import traceback; traceback.print_exc()
             try:
-                self.api_PUT(path, body)
-                audit_log.log('API_PUT', details=path, ip=get_client_ip(self))
-            except Exception as e:
-                print(f"[Admin] PUT {path} error")
-                import traceback; traceback.print_exc()
-                send_json(self, {'error': 'Erreur serveur'}, 500)
-        else:
-            self.send_response(404)
-            self.end_headers()
+                send_json(self, {'success': False, 'error': f'Server Error: {str(err)}'}, 500)
+            except Exception:
+                pass
 
     def do_DELETE(self):
-        parsed = urllib.parse.urlparse(self.path)
-        path = parsed.path
-        if path.startswith('/api/'):
-            if not require_auth(self):
-                return
-            if not require_csrf(self):
-                audit_log.log('CSRF_BLOCKED', details=f'DELETE {path}', ip=get_client_ip(self))
-                return
+        try:
+            parsed = urllib.parse.urlparse(self.path)
+            path = parsed.path
+            if path.startswith('/api/'):
+                if not require_auth(self):
+                    return
+                if not require_csrf(self):
+                    audit_log.log('CSRF_BLOCKED', details=f'DELETE {path}', ip=get_client_ip(self))
+                    return
+                try:
+                    self.api_DELETE(path)
+                    audit_log.log('API_DELETE', details=path, ip=get_client_ip(self))
+                except Exception as e:
+                    print(f"[Admin] DELETE {path} error")
+                    import traceback; traceback.print_exc()
+                    send_json(self, {'error': 'Erreur serveur'}, 500)
+            else:
+                self.send_response(404)
+                self.end_headers()
+        except Exception as err:
+            print("!!! ADMIN do_DELETE CRASH !!!")
+            import traceback; traceback.print_exc()
             try:
-                self.api_DELETE(path)
-                audit_log.log('API_DELETE', details=path, ip=get_client_ip(self))
-            except Exception as e:
-                print(f"[Admin] DELETE {path} error")
-                import traceback; traceback.print_exc()
-                send_json(self, {'error': 'Erreur serveur'}, 500)
-        else:
-            self.send_response(404)
-            self.end_headers()
+                send_json(self, {'success': False, 'error': f'Server Error: {str(err)}'}, 500)
+            except Exception:
+                pass
 
     def do_OPTIONS(self):
         self.send_response(204)

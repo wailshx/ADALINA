@@ -66,6 +66,20 @@ def _should_compress(content_type, client_accepts_gzip):
 
 
 class ProxyHandler(http.server.BaseHTTPRequestHandler):
+    def handle_one_request(self):
+        try:
+            super().handle_one_request()
+        except Exception as err:
+            print(f"!!! PROXY REQUEST CRASH !!! {err}")
+            import traceback; traceback.print_exc()
+            try:
+                self.send_response(502)
+                self.send_header('Content-Type', 'text/plain')
+                self.end_headers()
+                self.wfile.write(f'Proxy error: {err}'.encode())
+            except Exception:
+                pass
+
     def log_message(self, format, *args):
         if args and str(args[0]).startswith('5'):
             sys.stderr.write(f"[proxy] {args[0]}\n")

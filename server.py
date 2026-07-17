@@ -322,6 +322,17 @@ class AdalinaServer(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(BASE_DIR), **kwargs)
 
+    def handle_one_request(self):
+        try:
+            super().handle_one_request()
+        except Exception as err:
+            print("!!! SERVER REQUEST CRASH !!!")
+            import traceback; traceback.print_exc()
+            try:
+                send_json(self, {'success': False, 'error': f'Server Error: {str(err)}'}, 500)
+            except Exception:
+                pass
+
     def send_response(self, code, message=None):
         super().send_response(code, message)
         path = getattr(self, 'path', '').split('?')[0].lower()
