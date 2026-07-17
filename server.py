@@ -228,9 +228,9 @@ def batch_format_products(rows, cur):
                 if v['color_name'] and v['color_name'] not in all_colors:
                     all_colors[v['color_name']] = {'name': v['color_name'], 'hex': v['color_hex'], 'stock': v['stock']}
                 for s in v_sizes:
-                    if s['size'] not in all_sizes:
-                        all_sizes.add(s['size'])
-                        merged_sizes.append(s)
+                    if s['size_name'] not in all_sizes:
+                        all_sizes.add(s['size_name'])
+                        merged_sizes.append({'size': s['size_name'], 'stock': s['stock'], 'sku': s['sku']})
                 for img in v_images:
                     if img not in images_seen:
                         images_seen.add(img)
