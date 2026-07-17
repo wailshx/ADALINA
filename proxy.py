@@ -29,6 +29,7 @@ COMPRESSIBLE_TYPES = (
 
 MAIN_ONLY_PREFIXES = (
     '/api/public/',
+    '/api/health',
 )
 
 MAIN_POST_PATHS = (
