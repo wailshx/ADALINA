@@ -10,7 +10,7 @@ import gzip
 import urllib.request
 import urllib.error
 
-BASE_URL = 'https://adalina.onrender.com'
+BASE_URL = 'https://adalina-v2.onrender.com'
 
 if '--base-url' in sys.argv:
     idx = sys.argv.index('--base-url')

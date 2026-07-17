@@ -21,7 +21,7 @@
 
 ## Environment
 
-- `CORS_ORIGIN` defaults to `https://adalina.onrender.com`
+- `CORS_ORIGIN` defaults to `https://adalina-v2.onrender.com`
 - Persistent disk mount: `/opt/render/project/src/data` (only on paid instances)
 - Admin auth: cookie-based session (not JWT)
 

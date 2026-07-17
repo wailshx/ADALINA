@@ -15,7 +15,11 @@ services:
       - key: SUPABASE_ANON_KEY
         sync: false
       - key: CORS_ORIGIN
-        value: https://adalina.onrender.com
+        value: https://adalina-v2.onrender.com
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: HTTPS
+        value: "true"
       - key: ADMIN_USERNAME
         sync: false
       - key: ADMIN_PASSWORD_HASH

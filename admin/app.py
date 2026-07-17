@@ -35,7 +35,7 @@ def _signal_cache_invalidate():
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '')
 ADMIN_PASSWORD_SALT = os.environ.get('ADMIN_PASSWORD_SALT', '')
-CORS_ORIGIN = os.environ.get('CORS_ORIGIN', 'https://adalina.onrender.com')
+CORS_ORIGIN = os.environ.get('CORS_ORIGIN', 'https://adalina-v2.onrender.com')
 
 _login_limiter = RateLimiter()
 
@@ -1625,19 +1625,14 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             safe_base = re.sub(r'[^a-zA-Z0-9._-]', '_', os.path.basename(f['filename']))
             safe_name = f"{ts}_{safe_base}"
             storage_path = f'{subdir}/{safe_name}'
-            if storage.is_enabled():
-                url = storage.upload_file(content, storage_path, detected_mime)
-                if url:
-                    saved_paths.append(url)
-                else:
-                    errors.append(f'{f["filename"]}: échec de l\'upload vers le stockage')
+            if not storage.is_enabled():
+                errors.append(f'{f["filename"]}: storage not configured (set SUPABASE_URL + key)')
+                continue
+            url = storage.upload_file(content, storage_path, detected_mime)
+            if url:
+                saved_paths.append(url)
             else:
-                upload_dir = os.path.join(PARENT_DIR, 'uploads', subdir)
-                os.makedirs(upload_dir, exist_ok=True)
-                dest = os.path.join(upload_dir, safe_name)
-                with open(dest, 'wb') as out:
-                    out.write(content)
-                saved_paths.append(f'uploads/{subdir}/{safe_name}')
+                errors.append(f'{f["filename"]}: upload to Supabase failed')
         result = {'paths': saved_paths, 'count': len(saved_paths)}
         if errors:
             result['errors'] = errors
@@ -1772,17 +1767,26 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                         audit_log.log('CSRF_BLOCKED', details=f'{method} {path}', ip=ip)
                         return
             if 'multipart/form-data' in content_type:
-                body = self.rfile.read(int(self.headers.get('Content-Length', 0)))
-                boundary = None
-                for part in content_type.split(';'):
-                    part = part.strip()
-                    if part.startswith('boundary='):
-                        boundary = part[9:].strip('"').strip("'")
-                if boundary:
-                    result = parse_multipart(body, boundary)
-                    self.api_UPLOAD(result)
-                else:
-                    send_json(self, {'error': 'Missing boundary'}, 400)
+                try:
+                    content_length = int(self.headers.get('Content-Length', 0))
+                    if content_length > MAX_REQUEST_SIZE:
+                        send_json(self, {'error': 'File too large (max 50MB)'}, 413)
+                        return
+                    body = self.rfile.read(content_length)
+                    boundary = None
+                    for part in content_type.split(';'):
+                        part = part.strip()
+                        if part.startswith('boundary='):
+                            boundary = part[9:].strip('"').strip("'")
+                    if boundary:
+                        result = parse_multipart(body, boundary)
+                        self.api_UPLOAD(result)
+                    else:
+                        send_json(self, {'error': 'Missing boundary'}, 400)
+                except Exception as e:
+                    print(f"[Admin] Multipart upload error: {e}")
+                    import traceback; traceback.print_exc()
+                    send_json(self, {'error': 'Upload failed'}, 500)
             else:
                 body = read_body(self)
                 try:

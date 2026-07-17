@@ -93,7 +93,7 @@ def rows_to_list(rows):
 def row_to_dict(row):
     return dict(row) if row else None
 
-CORS_ORIGIN = os.environ.get('CORS_ORIGIN', 'https://adalina.onrender.com')
+CORS_ORIGIN = os.environ.get('CORS_ORIGIN', 'https://adalina-v2.onrender.com')
 
 def send_json(handler, data, status=200):
     handler.send_response(status)

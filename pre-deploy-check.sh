@@ -2,7 +2,7 @@
 # ─────────────────────────────────────────────────────────────
 # pre-deploy-check.sh — Full local verification before Render deploy.
 # Run from repo root:  bash pre-deploy-check.sh [--live]
-#   --live   Run client-facing checks against https://adalina.onrender.com
+#   --live   Run client-facing checks against https://adalina-v2.onrender.com
 # Without --live, starts local servers on ports 3000/5000/8080.
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -16,7 +16,7 @@ CURL_OPTS="-s -S --max-time 15"
 # ── Parse args ────────────────────────────────────────────────
 for arg in "$@"; do
   case "$arg" in
-    --live) MODE="live"; BASE_URL="https://adalina.onrender.com" ;;
+    --live) MODE="live"; BASE_URL="https://adalina-v2.onrender.com" ;;
     *) echo "Unknown arg: $arg"; exit 1 ;;
   esac
 done
