@@ -149,17 +149,6 @@
             </div>
         </section>
 
-        <section class="collection-section">
-            <div class="container">
-                <h2 class="section-title">NOUVEAUTÉS</h2>
-                <div class="scroll-wrapper">
-                    <button class="scroll-arrow scroll-left" onclick="scrollTrack(this, -1)">&#10094;</button>
-                    <div class="scroll-track" id="home-new-arrivals"></div>
-                    <button class="scroll-arrow scroll-right" onclick="scrollTrack(this, 1)">&#10095;</button>
-                </div>
-            </div>
-        </section>
-
         <footer class="footer">
             <div class="container">
                 <div class="footer-inner">
@@ -467,22 +456,7 @@
             }
         }, 100);
 
-    /* New arrivals on homepage */
-    (function() {
-        var track = document.getElementById('home-new-arrivals');
-        if (!track) return;
-        fetch('/api/public/products?sort=newest&limit=8')
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                var prods = data.products || data;
-                if (!prods || prods.length === 0) return;
-                track.innerHTML = prods.map(function(p) { return renderProductCard(p); }).join('');
-                setTimeout(function() {
-                    if (window.initScrollTracks) initScrollTracks();
-                }, 100);
-            })
-            .catch(function() {});
-    })();
+    });
 
     /* Announcement bar — update text from settings */
     fetch('/api/public/settings')
