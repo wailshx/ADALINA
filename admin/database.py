@@ -456,8 +456,18 @@ def init_db():
                 FOR ALL TO service_role USING (true) WITH CHECK (true)""")
         except Exception:
             pass
+    for tbl in rls_tables:
+        try:
+            cur.execute(f"""CREATE POLICY IF NOT EXISTS "public_all_{tbl}" ON {tbl}
+                FOR ALL TO PUBLIC USING (true) WITH CHECK (true)""")
+        except Exception:
+            pass
     try:
         cur.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role")
+    except Exception:
+        pass
+    try:
+        cur.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO PUBLIC")
     except Exception:
         pass
 
