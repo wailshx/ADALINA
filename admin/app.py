@@ -9,10 +9,21 @@ import urllib.parse
 import re
 import time
 import fcntl
+import subprocess
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(BASE_DIR)
 SESSIONS_FILE = os.path.join(BASE_DIR, '.sessions.json')
+
+def _get_build_version():
+    try:
+        r = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'],
+                           capture_output=True, text=True, cwd=str(PARENT_DIR), timeout=3)
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.strip()
+    except Exception:
+        pass
+    return 'dev'
 
 from database import get_db, init_db, seed_db, log_stock_change, deduct_order_stock, restore_order_stock
 import sys
@@ -1748,6 +1759,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                             content = f.read()
                         csrf_script = f'<script>window.__csrf="{csrf_val}"</script>'
                         content = content.replace('<head>', '<head>' + csrf_script, 1)
+                        content = content.replace('?v=__BUILD__', '?v=' + _get_build_version())
                         self.send_response(200)
                         self.send_header('Content-Type', 'text/html; charset=utf-8')
                         self.send_header('Cache-Control', 'no-cache, must-revalidate')
