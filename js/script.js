@@ -245,7 +245,7 @@ function renderProductCard(product) {
     var priceHtml = product.sale_price
         ? '<span class="original-price">' + formatPriceDA(product.price) + '</span><span class="sale-price">' + formatPriceDA(product.sale_price) + '</span>'
         : '<span class="current-price">' + formatPriceDA(product.price) + '</span>';
-    return '<div class="product-card">' +
+    return '<div class="product-card" data-product-id="' + pid + '">' +
         '<div class="product-image">' +
             '<img src="' + cloudinaryThumb(imgs[0], 400) + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy" decoding="async" width="400" height="533" onerror="onImgError(this)">' +
             (second ? '<img src="' + cloudinaryThumb(second, 400) + '" alt="' + esc(product.name) + '" class="img-secondary" loading="lazy" decoding="async" width="400" height="533" onerror="onImgError(this)">' : '') +
@@ -463,10 +463,21 @@ function addToCart(productId, qty, size, color) {
     localStorage.setItem('adalinaCart', JSON.stringify(cart));
     updateCartDisplay();
     updateCartCounter();
+    glowProductCard(product.id);
     var sidebar = document.getElementById('cart-sidebar');
     if (sidebar && !sidebar.classList.contains('active')) {
         toggleCart();
     }
+}
+
+function glowProductCard(productId) {
+    var cards = document.querySelectorAll('.product-card[data-product-id="' + productId + '"]');
+    cards.forEach(function(card) {
+        card.classList.remove('card-glow');
+        void card.offsetWidth;
+        card.classList.add('card-glow');
+        setTimeout(function() { card.classList.remove('card-glow'); }, 1800);
+    });
 }
 
 function toggleCart() {

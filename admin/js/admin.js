@@ -1043,6 +1043,7 @@ function _handleTailleGroup(varIdx, groupLabel, checked) {
             if (v.sizes[j].size === groupLabel) v.sizes.splice(j, 1);
         }
     }
+    renderVariants();
 }
 
 function _handleTailleSize(varIdx, sizeName, checked) {
@@ -1064,6 +1065,7 @@ function _handleStandardSize(varIdx, sizeName, checked) {
             if (String(v.sizes[i].size) === sn) v.sizes.splice(i, 1);
         }
     }
+    renderVariants();
 }
 
 /* Backward compat: keep window.* references for any code that still calls them directly */
