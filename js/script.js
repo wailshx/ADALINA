@@ -245,7 +245,8 @@ function renderProductCard(product) {
     var priceHtml = product.sale_price
         ? '<span class="original-price">' + formatPriceDA(product.price) + '</span><span class="sale-price">' + formatPriceDA(product.sale_price) + '</span>'
         : '<span class="current-price">' + formatPriceDA(product.price) + '</span>';
-    return '<div class="product-card" data-product-id="' + pid + '">' +
+    var inCart = pid && cart.some(function(item) { return item.id === pid; });
+    return '<div class="product-card' + (inCart ? ' in-cart' : '') + '" data-product-id="' + pid + '">' +
         '<div class="product-image">' +
             '<img src="' + cloudinaryThumb(imgs[0], 400) + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy" decoding="async" width="400" height="533" onerror="onImgError(this)">' +
             (second ? '<img src="' + cloudinaryThumb(second, 400) + '" alt="' + esc(product.name) + '" class="img-secondary" loading="lazy" decoding="async" width="400" height="533" onerror="onImgError(this)">' : '') +
@@ -475,10 +476,23 @@ function addToCart(productId, qty, size, color) {
 function glowProductCard(productId) {
     var cards = document.querySelectorAll('.product-card[data-product-id="' + productId + '"]');
     cards.forEach(function(card) {
-        card.classList.remove('card-glow');
-        void card.offsetWidth;
-        card.classList.add('card-glow');
-        setTimeout(function() { card.classList.remove('card-glow'); }, 1300);
+        if (cart.some(function(item) { return item.id === productId; })) {
+            card.classList.add('in-cart');
+        } else {
+            card.classList.remove('in-cart');
+        }
+    });
+}
+
+function refreshInCartGlow() {
+    var cards = document.querySelectorAll('.product-card[data-product-id]');
+    cards.forEach(function(card) {
+        var pid = parseInt(card.getAttribute('data-product-id'), 10);
+        if (cart.some(function(item) { return item.id === pid; })) {
+            card.classList.add('in-cart');
+        } else {
+            card.classList.remove('in-cart');
+        }
     });
 }
 
@@ -576,6 +590,7 @@ function updateCartDisplay() {
     }
     if (emptyBtn) emptyBtn.style.display = 'block';
     updateCartCounter();
+    refreshInCartGlow();
 }
 
 function findCartItemByKey(key) {
@@ -2204,6 +2219,7 @@ async function loadServerPage(page) {
             if (paginationEl) paginationEl.style.display = '';
             renderProducts(data.products, grid);
             renderPagination();
+            refreshInCartGlow();
             data.products.forEach(function(p) {
                 if (!products.find(function(ep) { return ep.id === p.id; })) {
                     products.push(p);
