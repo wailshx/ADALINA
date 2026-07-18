@@ -222,15 +222,15 @@ def batch_format_products(rows, cur):
             merged_sizes = []
             for vid, v in variant_entries:
                 v_images = list(vi_set.get(vid, []))
-                v_sizes = list(vs_map.get(vid, {}).values())
+                v_sizes = [{'size': s['size_name'], 'stock': s['stock'], 'sku': s['sku']} for s in vs_map.get(vid, {}).values()]
                 vdict = {'id': vid, 'color_name': v['color_name'], 'color_hex': v['color_hex'], 'sku': v['sku'], 'stock': v['stock'], 'images': v_images, 'sizes': v_sizes}
                 variants.append(vdict)
                 if v['color_name'] and v['color_name'] not in all_colors:
                     all_colors[v['color_name']] = {'name': v['color_name'], 'hex': v['color_hex'], 'stock': v['stock']}
                 for s in v_sizes:
-                    if s['size_name'] not in all_sizes:
-                        all_sizes.add(s['size_name'])
-                        merged_sizes.append({'size': s['size_name'], 'stock': s['stock'], 'sku': s['sku']})
+                    if s['size'] not in all_sizes:
+                        all_sizes.add(s['size'])
+                        merged_sizes.append({'size': s['size'], 'stock': s['stock'], 'sku': s['sku']})
                 for img in v_images:
                     if img not in images_seen:
                         images_seen.add(img)

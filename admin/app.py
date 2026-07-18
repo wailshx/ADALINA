@@ -296,11 +296,20 @@ def batch_enrich_products(rows, cur):
     cur.execute("SELECT id, product_id, color_name, color_hex, sku, stock FROM product_variants WHERE product_id=ANY(%s) ORDER BY sort_order, id", (product_ids,))
     all_variants = cur.fetchall()
     if not all_variants:
+        product_ids_str = ','.join(['%s'] * len(product_ids))
+        cur.execute(f"SELECT product_id, color_name, color_hex, stock FROM product_colors WHERE product_id IN ({product_ids_str}) ORDER BY id", product_ids)
+        pc_map = {}
+        for pc in cur.fetchall():
+            pc_map.setdefault(pc['product_id'], []).append(pc)
         result = []
         for r in rows:
             d = dict(r)
             _parse_product_fields(d)
             d['variants'] = []
+            pid = d['id']
+            pcs = pc_map.get(pid, [])
+            if pcs:
+                d['colors'] = [{'name': pc['color_name'], 'hex': pc['color_hex'], 'stock': pc['stock']} for pc in pcs]
             result.append(d)
         return result
     variant_ids = [v['id'] for v in all_variants]

@@ -16,6 +16,8 @@ def _find_variant(cur, product_id, color_name):
     row = cur.fetchone()
     if row:
         return (row['id'], None)
+    if color_name:
+        return (None, None)
     cur.execute("SELECT id FROM product_variants WHERE product_id=%s LIMIT 1", (product_id,))
     row = cur.fetchone()
     if row:
