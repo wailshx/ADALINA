@@ -211,7 +211,7 @@ function renderProductCard(product) {
     var ribbon = productRibbonHtml(product);
     var sizesHtml = '';
     if (product.sizes && product.sizes.length > 0) {
-        var available = product.sizes.filter(function(s) { return s.stock > 0; });
+        var available = product.sizes.filter(function(s) { return typeof s === 'object' ? s.stock > 0 : true; });
         if (available.length > 0) {
             var isGroupedTaille = product.category_size_system === 'grouped_taille';
             if (!isGroupedTaille && available.length > 0) {
@@ -239,7 +239,7 @@ function renderProductCard(product) {
                 tailleHtml += '</div></div>';
                 sizesHtml = tailleHtml;
             } else {
-                var sizeLabels = available.map(function(s) { return esc(s.size); }).join(' \u2022 ');
+                var sizeLabels = available.map(function(s) { return esc(typeof s === 'object' ? s.size : s); }).join(' \u2022 ');
                 sizesHtml = '<div class="product-sizes">Disponible : ' + sizeLabels + '</div>';
             }
         }
@@ -2185,6 +2185,11 @@ async function loadServerPage(page) {
             if (paginationEl) paginationEl.style.display = '';
             renderProducts(data.products, grid);
             renderPagination();
+            data.products.forEach(function(p) {
+                if (!products.find(function(ep) { return ep.id === p.id; })) {
+                    products.push(p);
+                }
+            });
         }
 
         updateResultsCount(data.total);
@@ -2558,7 +2563,8 @@ async function init() {
                         document.getElementById('cart-page-items') ||
                         document.querySelector('.checkout-form') ||
                         document.getElementById('collection-tabs') ||
-                        document.getElementById('collection-products');
+                        document.getElementById('collection-products') ||
+                        document.getElementById('products-grid');
     if (needsProducts) {
         await loadProducts();
     }
