@@ -100,13 +100,7 @@
             </button>
             <div class="notif-dropdown" id="notif-dropdown"></div>
         </div>
-        <div class="topbar-profile">
-            <img src="https://ui-avatars.com/api/?name=Admin&background=6366f1&color=fff&size=32" alt="">
-            <div class="info">
-                <div class="name">Admin</div>
-                <div class="role">Administrator</div>
-            </div>
-        </div>
+
     </div>
 </nav>
 
@@ -114,73 +108,52 @@
     <div class="page-header">
         <div>
             <h1>Dashboard</h1>
-            <p>Welcome back! Here's what's happening today.</p>
-        </div>
-        <div style="display:flex;gap:8px;">
-            <button class="btn btn-outline btn-sm"><i class="fas fa-download"></i> Export</button>
-            <button class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Add Product</button>
+            <p>Welcome back! Here's what's happening this week.</p>
         </div>
     </div>
 
-    <div class="stats-grid">
+    <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
         <div class="stat-card">
-            <div class="stat-icon blue"><i class="fas fa-dollar-sign"></i></div>
+            <div class="stat-icon blue"><i class="fas fa-eye"></i></div>
             <div class="stat-info">
-                <h3 id="stat-revenue">0 DA</h3>
-                <p>Total Revenue</p>
+                <h3 id="stat-visitors">0</h3>
+                <p>Visiteurs cette semaine</p>
+                <span class="stat-change up"><i class="fas fa-arrow-up"></i> vs semaine derniere</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="fas fa-chart-line"></i></div>
+            <div class="stat-info">
+                <h3 id="stat-conversion">0%</h3>
+                <p>Taux de conversion</p>
                 <span class="stat-change up"><i class="fas fa-arrow-up"></i></span>
             </div>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon purple"><i class="fas fa-shopping-bag"></i></div>
-            <div class="stat-info">
-                <h3 id="stat-orders">0</h3>
-                <p>Total Orders</p>
-                <span class="stat-change up"><i class="fas fa-arrow-up"></i></span>
-            </div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px;">
+        <div class="card-header">
+            <h2>Visites Hebdomadaires</h2>
         </div>
-        <div class="stat-card">
-            <div class="stat-icon green"><i class="fas fa-users"></i></div>
-            <div class="stat-info">
-                <h3 id="stat-customers">0</h3>
-                <p>Total Customers</p>
-                <span class="stat-change up"><i class="fas fa-arrow-up"></i></span>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon yellow"><i class="fas fa-boxes"></i></div>
-            <div class="stat-info">
-                <h3 id="stat-products">0</h3>
-                <p>Products</p>
-                <span class="stat-change down"><i class="fas fa-arrow-down"></i></span>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon red"><i class="fas fa-exclamation-triangle"></i></div>
-            <div class="stat-info">
-                <h3 id="stat-low-stock">0</h3>
-                <p>Low Stock Items</p>
-                <span class="stat-change down" id="stat-out-of-stock" style="font-size:0.7rem;">0 out of stock</span>
-            </div>
+        <div class="card-body" style="height:300px;">
+            <canvas id="weekly-visitors-chart"></canvas>
         </div>
     </div>
 
     <div class="grid-2">
         <div class="card">
             <div class="card-header">
-                <h2>Recent Orders</h2>
-                <a href="orders.html" class="btn btn-outline btn-sm">View All</a>
+                <h2>Meilleures Ventes</h2>
+                <a href="products.html" class="btn btn-outline btn-sm">Voir tout</a>
             </div>
             <div class="card-body" style="padding:0;">
                 <div class="table-container">
-                    <table id="recent-orders-table">
+                    <table id="best-sellers-table">
                         <thead>
                             <tr>
-                                <th>Order</th>
-                                <th>Customer</th>
-                                <th>Status</th>
-                                <th>Total</th>
-                                <th>Date</th>
+                                <th>Produit</th>
+                                <th>Prix</th>
+                                <th>Vendus</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -191,75 +164,22 @@
 
         <div class="card">
             <div class="card-header">
-                <h2>Top Products</h2>
-                <a href="products.html" class="btn btn-outline btn-sm">View All</a>
+                <h2>Invendus</h2>
+                <a href="products.html" class="btn btn-outline btn-sm">Voir tout</a>
             </div>
             <div class="card-body" style="padding:0;">
                 <div class="table-container">
-                    <table id="top-products-table">
+                    <table id="unsold-products-table">
                         <thead>
                             <tr>
-                                <th>Product</th>
-                                <th>Price</th>
-                                <th>Sold</th>
-                                <th>Revenue</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="grid-2">
-        <div class="card">
-            <div class="card-header">
-                <h2>Recent Products</h2>
-                <a href="products.html" class="btn btn-outline btn-sm">View All</a>
-            </div>
-            <div class="card-body" style="padding:0;">
-                <div class="table-container">
-                    <table id="recent-products-table">
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th>Price</th>
+                                <th>Produit</th>
+                                <th>Prix</th>
                                 <th>Stock</th>
-                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
                     </table>
                 </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <h2>Top Selling Products</h2>
-            </div>
-            <div class="card-body chart-container">
-                <canvas id="top-products-chart"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <div class="grid-2">
-        <div class="card">
-            <div class="card-header">
-                <h2>Monthly Orders</h2>
-            </div>
-            <div class="card-body chart-container">
-                <canvas id="monthly-orders-chart"></canvas>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-header">
-                <h2>Monthly Revenue</h2>
-            </div>
-            <div class="card-body chart-container">
-                <canvas id="monthly-revenue-chart"></canvas>
             </div>
         </div>
     </div>

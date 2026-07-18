@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <script>(function(){var s=localStorage.getItem('adalina-theme');if(s==='dark')document.documentElement.setAttribute('data-theme','dark');})();</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Découvrez la dernière collection ADALINA. Parcourez notre sélection de robes de luxe, parfums, accessoires et plus encore.">
@@ -10,6 +9,7 @@
     <link rel="stylesheet" href="css/styles.css?v=__BUILD__">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://res.cloudinary.com">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script>
@@ -65,22 +65,6 @@
                             <path d="M16 10a4 4 0 0 1-8 0"></path>
                         </svg>
                     </button>
-                    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Changer le theme">
-                        <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-                        </svg>
-                        <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="5"></circle>
-                            <line x1="12" y1="1" x2="12" y2="3"></line>
-                            <line x1="12" y1="21" x2="12" y2="23"></line>
-                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                            <line x1="1" y1="12" x2="3" y2="12"></line>
-                            <line x1="21" y1="12" x2="23" y2="12"></line>
-                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                        </svg>
-                    </button>
                     <button class="hamburger" id="hamburger-btn">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -124,14 +108,7 @@
                     <div class="shop-filter-row" id="category-filter-row"></div>
                     <div class="shop-filter-row" id="collection-filter-row"></div>
                     <div class="shop-filter-row" id="size-filter-row"></div>
-                    <div class="shop-filter-row" id="color-filter-row"></div>
-                    <div class="shop-filter-row shop-filter-row-toggle">
-                        <label class="stock-toggle" for="in-stock-toggle">
-                            <input type="checkbox" id="in-stock-toggle" onchange="handleStockToggle(this.checked)">
-                            <span class="stock-toggle-slider"></span>
-                            <span class="stock-toggle-label">En stock uniquement</span>
-                        </label>
-                    </div>
+                </div>
                     <div class="shop-filter-row shop-filter-row-price" id="price-filter-row">
                         <span class="filter-label">Prix</span>
                         <div class="price-range-wrap">
@@ -151,15 +128,6 @@
                 <div class="products-section">
                     <div class="results-bar">
                         <span id="results-count">0 produits</span>
-                        <div class="shop-sort-wrap">
-                            <label class="shop-sort-label" for="shop-sort-select">Trier par</label>
-                            <select id="shop-sort-select" class="shop-sort-select" onchange="handleSortChange(this.value)">
-                                <option value="newest">Nouveautés</option>
-                                <option value="price-low">Prix croissant</option>
-                                <option value="price-high">Prix décroissant</option>
-                                <option value="rating">Meilleures notes</option>
-                            </select>
-                        </div>
                     </div>
                     <div class="products-grid" id="products-grid"></div>
                     <div class="shop-loading" id="shop-loading" style="display:none">

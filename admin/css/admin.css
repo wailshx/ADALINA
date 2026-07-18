@@ -1,40 +1,39 @@
 /* ══════════════════════════════════════
-   ADALINA ADMIN — Luxury Fashion Theme
-   Deep Obsidian + Champagne Gold + Glassmorphism
+   ADALINA ADMIN — Oxford Blue + Maize Theme
    ══════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
 :root {
     --sidebar-w: 260px;
-    --sidebar-bg: rgba(18, 18, 24, 0.95);
-    --sidebar-hover: rgba(255, 255, 255, 0.04);
-    --content-bg: #0F0F12;
-    --card-bg: rgba(26, 26, 34, 0.7);
-    --primary: #E2C799;
-    --primary-rgb: 226, 199, 153;
-    --primary-dark: #C9A96E;
-    --secondary: #F0EDE8;
-    --text-dark: #F0EDE8;
-    --text-muted: #8A8A95;
-    --border: rgba(255, 255, 255, 0.06);
-    --border-hover: rgba(226, 199, 153, 0.2);
-    --success: #4ADE80;
-    --warning: #FBBF24;
-    --danger: #F87171;
-    --info: #60A5FA;
+    --sidebar-bg: rgba(10, 23, 78, 0.98);
+    --sidebar-hover: rgba(245, 208, 66, 0.08);
+    --content-bg: #060d24;
+    --card-bg: rgba(10, 23, 78, 0.4);
+    --primary: #f5d042;
+    --primary-rgb: 245, 208, 66;
+    --primary-dark: #d4a82e;
+    --secondary: #f0ede8;
+    --text-dark: #f0ede8;
+    --text-muted: #8892b0;
+    --border: rgba(245, 208, 66, 0.08);
+    --border-hover: rgba(245, 208, 66, 0.25);
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --info: #60a5fa;
     --radius: 12px;
     --radius-sm: 8px;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-    --shadow-glow: 0 0 20px rgba(226, 199, 153, 0.08);
+    --shadow-glow: 0 0 20px rgba(245, 208, 66, 0.1);
     --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --font-display: 'Plus Jakarta Sans', 'Inter', sans-serif;
     --transition-fast: 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     --transition-smooth: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    --glass-bg: rgba(26, 26, 34, 0.6);
-    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-bg: rgba(10, 23, 78, 0.5);
+    --glass-border: rgba(245, 208, 66, 0.1);
     --glass-blur: blur(20px);
 }
 
@@ -56,7 +55,7 @@ a { text-decoration: none; color: inherit; transition: color var(--transition-fa
 ul { list-style: none; }
 
 ::selection {
-    background: rgba(226, 199, 153, 0.25);
+    background: rgba(245, 208, 66, 0.25);
     color: #fff;
 }
 

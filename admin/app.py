@@ -420,15 +420,16 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                          jsonb_array_elements(o.items::jsonb) AS item
                     WHERE o.items IS NOT NULL AND o.items != '[]'
                 )
-                SELECT p.id, p.name, p.price, p.image, p.stock,
+                SELECT p.id, p.name, p.price, p.image, p.stock, p.status,
                        COALESCE(SUM(oi.quantity), 0) AS sold
                 FROM products p
                 LEFT JOIN order_items oi ON oi.product_id = p.id
-                GROUP BY p.id, p.name, p.price, p.image, p.stock
+                GROUP BY p.id, p.name, p.price, p.image, p.stock, p.status
                 ORDER BY sold DESC
-                LIMIT 5
             """)
-            top_products_data = [dict(r) for r in cur.fetchall()]
+            all_products_data = [dict(r) for r in cur.fetchall()]
+            top_products_data = all_products_data[:5]
+            unsold_products_data = [p for p in all_products_data if p['sold'] == 0][:10]
 
             cur.execute("""
                 SELECT
@@ -470,6 +471,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 'recent_orders': rows_to_list(recent_orders),
                 'recent_products': rows_to_list(recent_products),
                 'top_products': top_products_data,
+                'unsold_products': unsold_products_data,
                 'monthly_orders': monthly_orders,
                 'monthly_revenue': monthly_revenue,
                 'most_sold_chart': most_sold_chart,
