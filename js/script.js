@@ -48,8 +48,6 @@ const filterState = {
     collection: '',
     color: '',
     size: '',
-    priceMin: '',
-    priceMax: '',
     inStock: false
 };
 let currentSizeGroups = [];
@@ -2149,8 +2147,6 @@ function buildFilterUrl(basePage) {
     if (filterState.search) url += '&search=' + encodeURIComponent(filterState.search);
     if (filterState.collection) url += '&collection=' + encodeURIComponent(filterState.collection);
     if (filterState.size) url += '&size=' + encodeURIComponent(filterState.size);
-    if (filterState.priceMin) url += '&price_min=' + encodeURIComponent(filterState.priceMin);
-    if (filterState.priceMax) url += '&price_max=' + encodeURIComponent(filterState.priceMax);
     if (filterState.inStock) url += '&in_stock=true';
     return url;
 }
@@ -2306,13 +2302,6 @@ function clearShopSearch() {
     loadShopPage(1);
 }
 
-function applyPriceFilter() {
-    var minEl = document.getElementById('price-min-input');
-    var maxEl = document.getElementById('price-max-input');
-    filterState.priceMin = minEl ? minEl.value.trim() : '';
-    filterState.priceMax = maxEl ? maxEl.value.trim() : '';
-    loadShopPage(1);
-}
 
 async function buildCollectionFilterUI() {
     var container = document.getElementById('collection-filter-row');
@@ -2372,13 +2361,6 @@ function renderActiveFilters() {
     if (filterState.size) {
         chips.push({ label: filterState.size, type: 'size' });
     }
-    if (filterState.priceMin || filterState.priceMax) {
-        var label = '';
-        if (filterState.priceMin && filterState.priceMax) label = filterState.priceMin + ' – ' + filterState.priceMax + ' DA';
-        else if (filterState.priceMin) label = '≥ ' + filterState.priceMin + ' DA';
-        else label = '≤ ' + filterState.priceMax + ' DA';
-        chips.push({ label: label, type: 'price' });
-    }
     if (chips.length === 0) {
         container.style.display = 'none';
         return;
@@ -2407,13 +2389,6 @@ function removeFilter(type) {
     } else if (type === 'size') {
         filterState.size = '';
         buildSizeFilterChipsUI();
-    } else if (type === 'price') {
-        filterState.priceMin = '';
-        filterState.priceMax = '';
-        var minEl = document.getElementById('price-min-input');
-        var maxEl = document.getElementById('price-max-input');
-        if (minEl) minEl.value = '';
-        if (maxEl) maxEl.value = '';
     }
     loadShopPage(1);
 }
@@ -2422,19 +2397,13 @@ function clearAllFilters() {
     filterState.search = '';
     filterState.collection = '';
     filterState.size = '';
-    filterState.priceMin = '';
-    filterState.priceMax = '';
     currentCategory = '';
     currentSizeGroups = [];
     _categoriesCache = [];
     var input = document.getElementById('shop-search-input');
     var clearBtn = document.getElementById('shop-search-clear');
-    var minEl = document.getElementById('price-min-input');
-    var maxEl = document.getElementById('price-max-input');
     if (input) input.value = '';
     if (clearBtn) clearBtn.style.display = 'none';
-    if (minEl) minEl.value = '';
-    if (maxEl) maxEl.value = '';
     filterState.sortBy = 'newest';
     buildCategoryFilterUI();
     buildSizeFilterChipsUI();
@@ -2448,8 +2417,6 @@ function syncFilterUrlState() {
     if (filterState.search) params.set('search', filterState.search);
     if (filterState.collection) params.set('collection', filterState.collection);
     if (filterState.size) params.set('size', filterState.size);
-    if (filterState.priceMin) params.set('price_min', filterState.priceMin);
-    if (filterState.priceMax) params.set('price_max', filterState.priceMax);
     if (filterState.sortBy && filterState.sortBy !== 'newest') params.set('sort', filterState.sortBy);
     if (filterState.inStock) params.set('in_stock', '1');
     var qs = params.toString();
@@ -2469,16 +2436,6 @@ function readFilterUrlState() {
     }
     if (params.get('collection')) filterState.collection = params.get('collection');
     if (params.get('size')) filterState.size = params.get('size');
-    if (params.get('price_min')) {
-        filterState.priceMin = params.get('price_min');
-        var minEl = document.getElementById('price-min-input');
-        if (minEl) minEl.value = filterState.priceMin;
-    }
-    if (params.get('price_max')) {
-        filterState.priceMax = params.get('price_max');
-        var maxEl = document.getElementById('price-max-input');
-        if (maxEl) maxEl.value = filterState.priceMax;
-    }
 }
 
 function getPaginationRange(current, total) {
@@ -2680,7 +2637,6 @@ window.qvAddToCart = qvAddToCart;
 window.qvBuyNow = qvBuyNow;
 window.qvToggleWishlist = qvToggleWishlist;
 window.clearShopSearch = clearShopSearch;
-window.applyPriceFilter = applyPriceFilter;
 window.removeFilter = removeFilter;
 window.clearAllFilters = clearAllFilters;
 window.scrollTrack = scrollTrack;

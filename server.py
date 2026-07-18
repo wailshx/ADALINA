@@ -271,6 +271,8 @@ def _process_order_background(order_number, items, customer_name, customer_phone
         for item in items:
             pid = item.get('product_id')
             qty = item.get('quantity') or 1
+            color = item.get('color') or item.get('selectedColor') or ''
+            size = item.get('size') or item.get('selectedSize') or ''
 
             prod = price_map.get(pid)
             if not prod:

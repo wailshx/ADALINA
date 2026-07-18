@@ -2588,8 +2588,8 @@ button {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    gap: 0.6rem;
+    margin-bottom: 0.8rem;
 }
 
 .shop-filter-row:last-child {
@@ -2598,42 +2598,43 @@ button {
 
 .filter-label {
     font-family: var(--font-heading, 'Cormorant Garamond', serif);
-    font-size: 0.75rem;
-    font-weight: 400;
+    font-size: 0.78rem;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     color: var(--text-lighter, #888);
     margin-right: 0.25rem;
     min-width: 55px;
 }
 
 .filter-chip {
-    padding: 0.6rem 1.2rem;
-    border: 1.5px solid var(--border, #e8e6e1);
-    border-radius: var(--radius-lg);
+    padding: 0.55rem 1.3rem;
+    border: 1px solid var(--border, #e8e6e1);
+    border-radius: 100px;
     background: #fff;
     font-family: var(--font-body, 'Manrope', sans-serif);
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--text, #333);
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: var(--text, #555);
     cursor: pointer;
     transition: all var(--transition-fast);
-    letter-spacing: 0.04em;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-    min-height: 40px;
+    letter-spacing: 0.03em;
+    box-shadow: none;
+    min-height: 38px;
 }
 
 .filter-chip:hover {
     border-color: var(--primary);
     color: var(--primary);
-    box-shadow: 0 2px 8px rgba(212,175,55,0.1);
+    background: rgba(212,175,55,0.03);
 }
 
 .filter-chip.active {
     background: var(--secondary);
     border-color: var(--secondary);
     color: #fff;
-    box-shadow: 0 2px 8px rgba(26,26,26,0.15);
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.12), 0 2px 8px rgba(26,26,26,0.1);
+    font-weight: 500;
 }
 
 .results-count {
@@ -2898,6 +2899,10 @@ input[type="checkbox"] {
 }
 
 @media (max-width: 768px) {
+    .container {
+        padding: 0 20px;
+    }
+
     .header-top-row {
         padding: 12px 20px;
     }
@@ -2958,7 +2963,7 @@ input[type="checkbox"] {
         background: #fff;
         border-radius: 0 0 var(--radius-md) var(--radius-md);
         box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-        margin: 0 20px;
+        margin: 0;
         position: relative;
         z-index: 1001;
     }
@@ -3130,6 +3135,10 @@ input[type="checkbox"] {
 }
 
 @media (max-width: 480px) {
+    .container {
+        padding: 0 16px;
+    }
+
     .hero-split-image {
         height: 35vh;
         min-height: 220px;
@@ -3974,72 +3983,44 @@ input[type="checkbox"] {
 }
 
 .filter-label {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-lighter);
+    font-family: var(--font-heading, 'Cormorant Garamond', serif);
+    font-size: 0.78rem;
     font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-lighter);
     min-width: 50px;
     flex-shrink: 0;
 }
 
 .filter-chip {
-    padding: 0.6rem 1.2rem;
-    border: 1.5px solid var(--border, #e8e6e1);
-    border-radius: var(--radius-lg);
+    padding: 0.55rem 1.3rem;
+    border: 1px solid var(--border, #e8e6e1);
+    border-radius: 100px;
     background: #fff;
     font-family: var(--font-body, 'Manrope', sans-serif);
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--text, #333);
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: var(--text-light, #555);
     cursor: pointer;
     transition: all var(--transition-fast);
-    letter-spacing: 0.04em;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-    min-height: 40px;
+    letter-spacing: 0.03em;
+    box-shadow: none;
+    min-height: 38px;
 }
 
 .filter-chip:hover {
-    border-color: var(--secondary);
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(212,175,55,0.03);
 }
 
 .filter-chip.active {
     background: var(--secondary);
     color: #fff;
     border-color: var(--secondary);
-    box-shadow: 0 2px 6px rgba(26,26,26,0.15);
-}
-
-.shop-filter-row-price {
-    gap: 0.5rem;
-}
-
-.price-range-wrap {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.price-range-input {
-    width: 80px;
-    padding: 8px 10px;
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-md);
-    font-family: var(--font-body);
-    font-size: 0.82rem;
-    color: var(--text);
-    background: #fff;
-    outline: none;
-    text-align: center;
-}
-
-.price-range-input:focus {
-    border-color: var(--secondary);
-}
-
-.price-range-sep {
-    color: var(--text-lighter);
-    font-size: 0.82rem;
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.12), 0 2px 8px rgba(26,26,26,0.1);
+    font-weight: 500;
 }
 
 .shop-active-filters {
@@ -4297,9 +4278,10 @@ input[type="checkbox"] {
     }
 
     .filter-chip {
-        font-size: 0.82rem;
-        padding: 0.65rem 1.2rem;
-        min-height: 44px;
+        font-size: 0.78rem;
+        padding: 0.5rem 1.1rem;
+        min-height: 40px;
+        border-radius: 100px;
     }
 
     .shop-search-wrap {
@@ -4330,11 +4312,6 @@ input[type="checkbox"] {
 
     .shop-filter-row .filter-label {
         flex-shrink: 0;
-    }
-
-    .price-range-input {
-        width: 70px;
-        font-size: 16px;
     }
 
     .shop-active-filters {
