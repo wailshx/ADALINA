@@ -46,6 +46,7 @@
                     <span class="logo-sub">CHLEF • ALGÉRIE</span>
                 </a>
                 <div class="header-right">
+                    <button class="header-icon-btn lang-toggle" id="lang-toggle" onclick="i18n.toggleLang()" aria-label="Language">عربي</button>
                     <button class="header-icon-btn" onclick="openSearchModal()" aria-label="Rechercher">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="11" cy="11" r="8"></circle>
@@ -76,8 +77,8 @@
             <div class="header-nav-row">
                 <nav class="nav" id="nav-menu">
                     <ul class="nav-list">
-                        <li class="nav-item"><a href="index.html" class="nav-link active">HOME</a></li>
-                        <li class="nav-item"><a href="shop.html" class="nav-link">SHOP</a></li>
+                        <li class="nav-item"><a href="index.html" class="nav-link active" data-i18n="nav.home">HOME</a></li>
+                        <li class="nav-item"><a href="shop.html" class="nav-link" data-i18n="nav.shop">SHOP</a></li>
                         
                     </ul>
                 </nav>
@@ -114,12 +115,12 @@
         
         <div id="cart-sidebar" class="sidebar">
             <div class="sidebar-header">
-                <h3>Mon Panier</h3>
+                <h3 data-i18n="cart.title">Mon Panier</h3>
                 <span class="close-sidebar" onclick="toggleCart()">×</span>
             </div>
             <div class="sidebar-content" id="cart-items">
                 <div class="empty-cart" style="display: block;">
-                    <p>Votre panier est vide</p>
+                    <p data-i18n="cart.empty">Votre panier est vide</p>
                 </div>
             </div>
             <div class="sidebar-footer">
@@ -136,7 +137,7 @@
         
         <div id="wishlist" class="sidebar">
             <div class="sidebar-header">
-                <h3>Ma liste d'envies</h3>
+                <h3 data-i18n="wishlist.title">Ma liste d'envies</h3>
                 <span class="close-sidebar" onclick="toggleWishlist()">×</span>
             </div>
             <div class="sidebar-content" id="wishlist-items">
@@ -155,8 +156,8 @@
                 <div class="footer-inner">
                     <div class="footer-brand">
                         <h3 class="footer-logo">ADALINA</h3>
-                        <p class="footer-tagline">Vêtements prêt-à-porter pour femmes</p>
-                        <p class="footer-slogan">Découvrez une collection pensée pour sublimer chaque femme avec élégance.</p>
+                        <p class="footer-tagline" data-i18n="footer.tagline">Vêtements prêt-à-porter pour femmes</p>
+                        <p class="footer-slogan" data-i18n="footer.slogan">Découvrez une collection pensée pour sublimer chaque femme avec élégance.</p>
                     </div>
                     <div class="footer-social">
                         <a href="#" class="footer-social-link" data-setting-href="instagram_url" aria-label="Instagram">
@@ -190,13 +191,14 @@
                     </div>
                 </div>
                 <div class="footer-bottom">
-                    <p>&copy; 2024 ADALINA. Tous droits réservés.</p>
+                    <p data-i18n="footer.rights">&copy; 2024 ADALINA. Tous droits réservés.</p>
                 </div>
             </div>
         </footer>
     </div>
     
     <script src="js/sizes.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/script.js?v=__BUILD__"></script>
     <script>
     (function() {

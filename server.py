@@ -909,6 +909,116 @@ class AdalinaServer(SimpleHTTPRequestHandler):
             self.path = '/' + clean_path
             return super().do_GET()
 
+        elif path.startswith('/track/'):
+            order_number = path[7:].strip()
+            if not order_number:
+                self.send_response(302)
+                self.send_header('Location', '/website/track.html')
+                self.end_headers()
+                return
+            parsed_qs = urllib.parse.parse_qs(parsed.query)
+            phone_last4 = (parsed_qs.get('phone', [''])[0])[-4:]
+            if not phone_last4 or len(phone_last4) != 4:
+                self.send_response(302)
+                self.send_header('Location', '/website/track.html?order=' + urllib.parse.quote(order_number))
+                self.end_headers()
+                return
+            db = None
+            try:
+                db = get_public_db()
+                cur = db.cursor()
+                cur.execute("""
+                    SELECT o.id, o.order_number, o.customer_name, o.customer_phone, o.wilaya,
+                           o.total AS total_amount, o.status AS order_status, o.created_at,
+                           sh.status, sh.note, sh.created_at AS status_date
+                    FROM orders o
+                    LEFT JOIN status_history sh ON o.id = sh.order_id
+                    WHERE o.order_number = %s AND o.customer_phone LIKE %s
+                    ORDER BY sh.created_at DESC
+                """, (order_number, '%' + phone_last4))
+                rows = cur.fetchall()
+                if not rows:
+                    send_json(self, {'error': 'Commande non trouvée'}, 404)
+                    return
+                order = dict(rows[0])
+                history = []
+                for r in rows:
+                    if r['status']:
+                        history.append({'status': r['status'], 'note': r['note'], 'date': str(r['status_date'])})
+                order['history'] = history
+                for k in list(order.keys()):
+                    if k in ('note', 'status_date'):
+                        del order[k]
+                send_json(self, order)
+            except Exception as e:
+                logger.exception('[Server] Error tracking order')
+                send_json(self, {'error': 'Erreur serveur'}, 500)
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
+            return
+
+        elif path == '/api/public/delivery-times':
+            db = None
+            try:
+                db = get_public_db()
+                cur = db.cursor()
+                cur.execute("SELECT wilaya, min_days, max_days FROM delivery_prices ORDER BY wilaya")
+                rows = cur.fetchall()
+                result = {r['wilaya']: {'min_days': r['min_days'], 'max_days': r['max_days']} for r in rows}
+                send_json_cached(self, result, max_age=3600)
+            except Exception as e:
+                logger.exception('[Server] Error loading delivery times')
+                send_json(self, {}, 500)
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
+            return
+
+        elif path.startswith('/api/wishlist/'):
+            wl_hash = path[15:].strip()
+            db = None
+            try:
+                db = get_public_db()
+                cur = db.cursor()
+                cur.execute("SELECT product_ids FROM wishlists WHERE hash = %s AND expires_at > NOW()", (wl_hash,))
+                row = cur.fetchone()
+                if not row:
+                    send_json(self, {'error': 'Wishlist not found or expired'}, 404)
+                    return
+                product_ids = json.loads(row['product_ids'])
+                if not product_ids:
+                    send_json(self, {'products': []})
+                    return
+                placeholders = ','.join(['%s'] * len(product_ids))
+                cur.execute(f"""
+                    SELECT p.id, p.name, p.price, p.sale_price, p.image, p.images,
+                           p.stock, p.status, p.category_id,
+                           c.name AS category_name, c.size_system AS category_size_system
+                    FROM products p
+                    LEFT JOIN categories c ON p.category_id = c.id
+                    WHERE p.id IN ({placeholders}) AND p.status='active'
+                """, product_ids)
+                rows = cur.fetchall()
+                products = batch_format_products(rows, cur) if rows else []
+                send_json_cached(self, {'products': products, 'hash': wl_hash}, max_age=60)
+            except Exception as e:
+                logger.exception('[Server] Error loading wishlist')
+                send_json(self, {'error': 'Erreur serveur'}, 500)
+            finally:
+                if db:
+                    try: db.close()
+                    except Exception: pass
+            return
+
+        elif path.startswith('/wishlist/') and not path.startswith('/api/'):
+            wl_hash = path[10:].strip()
+            if wl_hash:
+                return self._serve_html('/wishlist-public.html')
+            return self._serve_html('/wishlist.html')
+
         elif path == '/' or path == '':
             self.send_response(302)
             self.send_header('Location', '/website/')
@@ -994,6 +1104,39 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 send_json(self, {'ok': True})
             except Exception:
                 send_json(self, {'ok': True})
+            return
+
+        if path == '/api/wishlist/share':
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                if length > MAX_REQUEST_SIZE:
+                    return
+                body = self.rfile.read(length).decode('utf-8')
+                data = json.loads(body) if body else {}
+                product_ids = data.get('product_ids', [])
+                if not product_ids or not isinstance(product_ids, list):
+                    send_json(self, {'error': 'No products'}, 400)
+                    return
+                import hashlib
+                wl_hash = hashlib.md5(json.dumps(sorted(product_ids)).encode()).hexdigest()[:12]
+                db = None
+                try:
+                    db = get_public_db()
+                    cur = db.cursor()
+                    cur.execute("INSERT INTO wishlists (hash, product_ids) VALUES (%s, %s) ON CONFLICT (hash) DO UPDATE SET created_at = NOW(), expires_at = NOW() + INTERVAL '30 days'",
+                                (wl_hash, json.dumps(product_ids)))
+                    db.commit()
+                    send_json(self, {'hash': wl_hash, 'url': '/wishlist/' + wl_hash}, 201)
+                except Exception as e:
+                    logger.exception('[Server] Error sharing wishlist')
+                    send_json(self, {'error': 'Erreur serveur'}, 500)
+                finally:
+                    if db:
+                        try: db.close()
+                        except Exception: pass
+                return
+            except Exception as e:
+                send_json(self, {'error': 'Failed'}, 500)
             return
 
         self.send_response(404)

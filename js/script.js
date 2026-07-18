@@ -399,6 +399,11 @@ function updateWishlistDisplay() {
             `);
         }
     });
+    var shareBtns = '<div class="wishlist-share" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border-light);display:flex;gap:8px;">' +
+        '<button class="btn-share-wl" id="share-wishlist-link" style="flex:1;padding:0.6rem;border:1px solid var(--border-light);border-radius:var(--radius-sm);background:#fff;cursor:pointer;font-size:0.78rem;font-family:var(--font-body);" onclick="shareWishlist()">📋 Lien</button>' +
+        '<button class="btn-share-wl" style="flex:1;padding:0.6rem;border:1px solid #25D366;border-radius:var(--radius-sm);background:#25D366;color:#fff;cursor:pointer;font-size:0.78rem;font-family:var(--font-body);" onclick="shareWishlistWhatsApp()">💬 WhatsApp</button>' +
+        '</div>';
+    fragments.push(shareBtns);
     container.innerHTML = fragments.join('');
 }
 
@@ -1489,6 +1494,23 @@ function renderCheckout() {
             updateMunicipalities(parseInt(this.value));
             updateCheckoutSummary();
             updateSelectFloat(this);
+            if (window.__deliveryTimes && window.__deliveryTimes[this.options[this.selectedIndex].text]) {
+                var dt = window.__deliveryTimes[this.options[this.selectedIndex].text];
+                var el = document.getElementById('delivery-estimate');
+                var txt = document.getElementById('delivery-estimate-text');
+                if (el && txt) {
+                    el.style.display = 'block';
+                    var lang = window.i18n ? window.i18n.getLang() : 'fr';
+                    if (lang === 'ar') {
+                        txt.textContent = 'التوصيل المقدر: ' + dt.min_days + '-' + dt.max_days + ' أيام عمل إلى ' + this.options[this.selectedIndex].text;
+                    } else {
+                        txt.textContent = 'Livraison estimée: ' + dt.min_days + '-' + dt.max_days + ' jours ouvrables à ' + this.options[this.selectedIndex].text;
+                    }
+                }
+            } else {
+                var el = document.getElementById('delivery-estimate');
+                if (el) el.style.display = 'none';
+            }
         };
         /* init floating label state on page load */
         updateSelectFloat(wilayaSel);
@@ -1519,6 +1541,10 @@ function renderCheckout() {
 
     /* load delivery prices */
     loadDeliveryPrices();
+
+    fetch('/api/public/delivery-times').then(function(r){return r.json()}).then(function(times){
+        window.__deliveryTimes = times;
+    });
 
     /* populate order summary */
     updateCheckoutSummary();
@@ -2776,4 +2802,54 @@ window.decreaseQty = decreaseQty;
 window.increaseQty = increaseQty;
 window.updateCartItem = updateCartItem;
 window.formatPhoneInput = formatPhoneInput;
+
+function showToast(msg) {
+    var toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1A1A1A;color:#fff;padding:10px 20px;border-radius:6px;font-size:0.82rem;z-index:9999;animation:fadeInUp 0.3s ease;';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(function() { toast.remove(); }, 2500);
+}
+
+function shareWishlist() {
+    fetch('/api/wishlist/share', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({product_ids: wishlist}) })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.url) {
+            var url = location.origin + data.url;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(url);
+                showToast('Lien copié !');
+            } else {
+                prompt('Copiez le lien:', url);
+            }
+        }
+    });
+}
+
+function shareWishlistWhatsApp() {
+    fetch('/api/wishlist/share', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({product_ids: wishlist}) })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.url) {
+            var url = location.origin + data.url;
+            window.open('https://wa.me/?text=' + encodeURIComponent('Découvrez ma liste ADALINA: ' + url), '_blank');
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var waFloat = document.getElementById('whatsapp-float');
+    var waTooltip = document.getElementById('whatsapp-tooltip');
+    if (waFloat && waTooltip) {
+        setTimeout(function() { waTooltip.classList.add('hidden'); }, 6000);
+        waFloat.addEventListener('click', function() {
+            fetch('/api/public/log-event', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({type: 'whatsapp_click', payload: {page: location.pathname}}) });
+        });
+        document.querySelectorAll('input, textarea, select').forEach(function(el) {
+            el.addEventListener('focus', function() { waFloat.style.display = 'none'; });
+            el.addEventListener('blur', function() { waFloat.style.display = 'flex'; });
+        });
+    }
+});
 

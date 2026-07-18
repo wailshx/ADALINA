@@ -123,6 +123,13 @@ def _run_migrations(conn):
                 payload JSONB,
                 created_at TIMESTAMP DEFAULT NOW()
             )""",
+            """CREATE TABLE IF NOT EXISTS wishlists (
+                id SERIAL PRIMARY KEY,
+                hash TEXT UNIQUE NOT NULL,
+                product_ids TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '30 days')
+            )""",
         ]
         for sql in migrations:
             try:
@@ -184,12 +191,72 @@ def _run_migrations(conn):
             except Exception:
                 pass
         try:
+            cur.execute("ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS wilaya TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            cur.execute("ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS min_days INTEGER DEFAULT 2")
+        except Exception:
+            pass
+        try:
+            cur.execute("ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS max_days INTEGER DEFAULT 5")
+        except Exception:
+            pass
+        try:
             cur.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role")
         except Exception:
             pass
+        _seed_delivery_times(cur)
         conn.commit()
     finally:
         cur.close()
+
+def _seed_delivery_times(cur):
+    wilaya_times = {
+        'Alger': (1, 2), 'Oran': (1, 2), 'Constantine': (1, 2), 'Annaba': (1, 2),
+        'Blida': (2, 3), 'Sétif': (2, 3), 'Tlemcen': (2, 3), 'Béjaïa': (2, 3),
+        'Batna': (2, 3), 'Tizi Ouzou': (2, 3), 'Biskra': (3, 5), 'Bouira': (3, 5),
+        'Médéa': (3, 5), 'Mostaganem': (3, 5), "M'sila": (3, 5), 'Mascara': (3, 5),
+        'Chlef': (3, 5), 'Tébessa': (3, 5), 'Tiaret': (3, 5), 'Saïda': (3, 5),
+        'Skikda': (3, 5), 'Jijel': (3, 5), 'Sidi Bel Abbès': (3, 5), 'Guelma': (3, 5),
+        'Mila': (3, 5), 'Boumerdès': (3, 5), 'El Tarf': (3, 5), 'Tissemsilt': (3, 5),
+        'El Oued': (3, 5), 'Khenchela': (3, 5), 'Souk Ahras': (3, 5), 'Tipaza': (3, 5),
+        'Aïn Defla': (3, 5), 'Naâma': (3, 5), 'Aïn Témouchent': (3, 5), 'Relizane': (3, 5),
+        'Ouargla': (3, 5), 'Ghardaïa': (3, 5), 'El Bayadh': (3, 5),
+        'Bordj Bou Arreridj': (3, 5), 'Oum El Bouaghi': (3, 5), 'Laghouat': (4, 7),
+        'Djelfa': (4, 7), 'Tamanrasset': (5, 10), 'Adrar': (5, 10), 'Illizi': (5, 10),
+        'Béchar': (5, 10), 'Tindouf': (5, 10), 'Bordj Badji Mokhtar': (5, 10),
+        'Timimoun': (5, 10), "El M'Ghair": (5, 10), 'El Meniaa': (5, 10),
+        'Béni Abbès': (5, 10), 'In Salah': (5, 10), 'In Guezzam': (5, 10),
+        'Touggourt': (5, 10), 'Djanet': (5, 10), 'Ouled Djellal': (5, 10),
+    }
+    wilaya_names = {
+        1: 'Adrar', 2: 'Chlef', 3: 'Laghouat', 4: 'Oum El Bouaghi', 5: 'Batna',
+        6: 'Béjaïa', 7: 'Biskra', 8: 'Béchar', 9: 'Blida', 10: 'Bouira',
+        11: 'Tamanrasset', 12: 'Tébessa', 13: 'Tlemcen', 14: 'Tiaret', 15: 'Tizi Ouzou',
+        16: 'Alger', 17: 'Djelfa', 18: 'Jijel', 19: 'Sétif', 20: 'Saïda',
+        21: 'Skikda', 22: 'Sidi Bel Abbès', 23: 'Annaba', 24: 'Guelma', 25: 'Constantine',
+        26: 'Médéa', 27: 'Mostaganem', 28: "M'sila", 29: 'Mascara', 30: 'Ouargla',
+        31: 'Oran', 32: 'El Bayadh', 33: 'Illizi', 34: 'Bordj Bou Arreridj',
+        35: 'Boumerdès', 36: 'El Tarf', 37: 'Tindouf', 38: 'Tissemsilt', 39: 'El Oued',
+        40: 'Khenchela', 41: 'Souk Ahras', 42: 'Tipaza', 43: 'Mila', 44: 'Aïn Defla',
+        45: 'Naâma', 46: 'Aïn Témouchent', 47: 'Ghardaïa', 48: 'Relizane', 49: 'Timimoun',
+        50: 'Bordj Badji Mokhtar', 51: 'Ouled Djellal', 52: 'Béni Abbès',
+        53: 'In Salah', 54: 'In Guezzam', 55: 'Touggourt', 56: 'Djanet',
+        57: "El M'Ghair", 58: 'El Meniaa',
+    }
+    for wid in range(1, 59):
+        name = wilaya_names.get(wid, '')
+        mn, mx = wilaya_times.get(name, (3, 5))
+        try:
+            cur.execute("UPDATE delivery_prices SET wilaya=%s, min_days=%s, max_days=%s WHERE wilaya_id=%s AND (min_days IS NULL OR min_days = 2 AND max_days = 5)", (name, mn, mx, wid))
+        except Exception:
+            pass
+        try:
+            cur.execute("INSERT INTO delivery_prices (wilaya_id, wilaya, price, min_days, max_days) VALUES (%s, %s, 0, %s, %s) ON CONFLICT (wilaya_id) DO NOTHING", (wid, name, mn, mx))
+        except Exception:
+            pass
+
 
 def init_db():
     conn = get_db()
@@ -355,7 +422,10 @@ def init_db():
 
     cur.execute("""CREATE TABLE IF NOT EXISTS delivery_prices (
         wilaya_id INTEGER PRIMARY KEY,
-        price DOUBLE PRECISION NOT NULL DEFAULT 0
+        wilaya TEXT DEFAULT '',
+        price DOUBLE PRECISION NOT NULL DEFAULT 0,
+        min_days INTEGER DEFAULT 2,
+        max_days INTEGER DEFAULT 5
     )""")
 
     cur.execute("""CREATE TABLE IF NOT EXISTS settings (
@@ -398,9 +468,18 @@ def init_db():
         created_at TIMESTAMP DEFAULT NOW()
     )""")
 
-    # Seed delivery_prices for all 58 wilayas if not present
+    cur.execute('''CREATE TABLE IF NOT EXISTS wishlists (
+        id SERIAL PRIMARY KEY,
+        hash TEXT UNIQUE NOT NULL,
+        product_ids TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '30 days')
+    )''')
+
     for wid in range(1, 59):
         cur.execute("INSERT INTO delivery_prices (wilaya_id, price) VALUES (%s, 0) ON CONFLICT (wilaya_id) DO NOTHING", (wid,))
+
+    _seed_delivery_times(cur)
 
     # Performance indexes
     for idx_sql in [
@@ -548,6 +627,12 @@ def seed_db():
     conn.close()
 
     migrate_taille_stock()
+
+    conn2 = get_db()
+    cur2 = conn2.cursor()
+    _seed_delivery_times(cur2)
+    conn2.commit()
+    conn2.close()
 
 
 TAILLE_GROUP_MAP = {32: 'Taille 1', 34: 'Taille 1', 36: 'Taille 1', 38: 'Taille 1',

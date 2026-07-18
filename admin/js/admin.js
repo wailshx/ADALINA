@@ -130,6 +130,25 @@ async function initDashboard() {
         : '2.4';
     document.getElementById('stat-conversion').textContent = convRate + '%';
 
+    if (d.health_score !== undefined) {
+        var healthEl = document.getElementById('stat-health');
+        if (healthEl) {
+            var hs = d.health_score;
+            var hsColor = hs > 80 ? '#16a34a' : (hs > 50 ? '#d97706' : '#dc2626');
+            healthEl.textContent = hs + '/100';
+            healthEl.style.color = hsColor;
+        }
+        var hsChange = document.getElementById('stat-health-change');
+        if (hsChange) {
+            hsChange.className = 'stat-change ' + (d.health_score > 80 ? 'up' : (d.health_score > 50 ? '' : 'down'));
+            hsChange.innerHTML = (d.health_score > 80 ? '<i class="fas fa-arrow-up"></i> Excellent' : (d.health_score > 50 ? '<i class="fas fa-minus"></i> Correct' : '<i class="fas fa-arrow-down"></i> Attention'));
+        }
+    }
+    if (d.backlog_count !== undefined) {
+        var backlogEl = document.getElementById('stat-pending-orders');
+        if (backlogEl) backlogEl.textContent = d.backlog_count;
+    }
+
     var bestTbody = document.querySelector('#best-sellers-table tbody');
     if (bestTbody) {
         var sellers = (d.top_products || []).filter(function(p) { return p.sold > 0; });
@@ -1619,7 +1638,11 @@ function renderOrdersTable() {
     if (!tbody) return;
 
     var filtered = ordersData;
-    if (ordersFilterStatus) {
+    if (ordersFilterStatus === 'review_required') {
+        filtered = filtered.filter(function(o) {
+            return (o.risk_score || 0) > 70;
+        });
+    } else if (ordersFilterStatus) {
         filtered = filtered.filter(function (o) {
             return (o.status || '').toLowerCase() === ordersFilterStatus.toLowerCase();
         });
@@ -1656,7 +1679,7 @@ function renderOrdersTable() {
             '<td class="td-phone">' + esc(o.customer_phone || '—') + '</td>' +
             '<td class="td-wilaya">' + esc(o.wilaya || '—') + '</td>' +
             '<td class="td-total">' + formatPriceDA(o.total) + '</td>' +
-            '<td class="td-status">' + badge(o.status) + '</td>' +
+            '<td class="td-status">' + badge(o.status) + ((o.risk_score || 0) > 70 ? ' <span style="display:inline-flex;align-items:center;gap:3px;background:#fef2f2;color:#dc2626;padding:2px 6px;border-radius:4px;font-size:0.68rem;font-weight:600;" title="Score de risque: ' + o.risk_score + ' - ' + (o.risk_reasons || []).join(', ') + '"><i class="fas fa-exclamation-triangle"></i> Risque ' + o.risk_score + '</span>' : '') + '</td>' +
             '<td class="td-date" data-sort-val="' + (o.created_at || '') + '">' + timeAgo(o.created_at) + '</td>' +
             '<td class="td-actions"><button class="btn btn-outline btn-sm" onclick="viewOrder(' + o.id + ')" title="Voir la commande"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Voir</button></td>' +
             '</tr>';
@@ -1690,6 +1713,18 @@ window.viewOrder = async function (id) {
     document.getElementById('od-order-number').textContent = o.order_number || ('#' + o.id);
     document.getElementById('od-order-title').textContent = 'Commande ' + (o.order_number || ('#' + o.id));
     document.getElementById('od-status-badge').innerHTML = badge(o.status);
+    var riskEl = document.getElementById('od-risk-display');
+    if (riskEl) {
+        if ((o.risk_score || 0) > 0) {
+            var riskColor = o.risk_score > 70 ? '#dc2626' : (o.risk_score > 40 ? '#d97706' : '#16a34a');
+            riskEl.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;">' +
+                '<div style="width:32px;height:32px;border-radius:50%;background:' + riskColor + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;">' + o.risk_score + '</div>' +
+                '<div><div style="font-size:0.78rem;font-weight:600;">Score de risque</div>' +
+                '<div style="font-size:0.72rem;color:#666;">' + (o.risk_reasons || []).join(' · ') + '</div></div></div>';
+        } else {
+            riskEl.innerHTML = '';
+        }
+    }
 
     /* Build detail content */
     var items = [];

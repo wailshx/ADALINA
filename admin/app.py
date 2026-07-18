@@ -373,6 +373,38 @@ def batch_enrich_products(rows, cur):
 def enrich_product(row, cur):
     return batch_enrich_products([row], cur)[0]
 
+def calculate_order_risk(order, cur):
+    score = 0
+    reasons = []
+    phone = order.get('customer_phone', '')
+    cur.execute("SELECT COUNT(*) AS cnt FROM orders WHERE customer_phone = %s AND id != %s", (phone, order['id']))
+    prev_orders = cur.fetchone()['cnt']
+    if prev_orders == 0:
+        score += 30
+        reasons.append('Nouveau client')
+    if (order.get('total') or 0) > 20000:
+        score += 25
+        reasons.append('Montant élevé')
+    wilaya = (order.get('wilaya') or '').lower()
+    if phone and len(phone) >= 2:
+        prefix = phone[:2]
+        if prefix in ('05', '06', '07') and 'alger' not in wilaya:
+            score += 20
+            reasons.append('Préfixe téléphone ≠ wilaya')
+        elif prefix in ('34', '55', '66', '77') and 'oran' not in wilaya and 'alg' not in wilaya:
+            score += 20
+            reasons.append('Préfixe téléphone ≠ wilaya')
+    if order.get('customer_id'):
+        cur.execute("SELECT created_at FROM customers WHERE id = %s", (order['customer_id'],))
+        cust = cur.fetchone()
+        if cust and order.get('created_at'):
+            diff = (order['created_at'] - cust['created_at']).total_seconds()
+            if diff < 300:
+                score += 10
+                reasons.append('Commande rapide après inscription')
+    return min(score, 100), reasons
+
+
 class AdminHandler(http.server.BaseHTTPRequestHandler):
 
     def handle_one_request(self):
@@ -481,6 +513,24 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 if p['sold'] > 0:
                     most_sold_chart.append({'name': p['name'], 'sold': p['sold']})
 
+            cur.execute("SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE stock > 5) AS healthy FROM products WHERE status='active'")
+            stock_health = cur.fetchone()
+            stock_pct = (stock_health['healthy'] / max(stock_health['total'], 1)) * 100
+
+            cur.execute("SELECT COUNT(*) AS cnt FROM orders WHERE status IN ('new', 'pending', 'confirmed') AND created_at < NOW() - INTERVAL '24 hours'")
+            backlog_count = cur.fetchone()['cnt']
+            backlog_pct = max(0, 100 - (backlog_count * 20))
+
+            cur.execute("SELECT COALESCE(SUM(total), 0) AS rev FROM orders WHERE status='delivered' AND created_at >= date_trunc('month', NOW())")
+            current_month_rev = cur.fetchone()['rev']
+            cur.execute("SELECT COALESCE(SUM(total), 0) AS rev FROM orders WHERE status='delivered' AND created_at >= date_trunc('month', NOW() - INTERVAL '1 month') AND created_at < date_trunc('month', NOW())")
+            prev_month_rev = cur.fetchone()['rev']
+            target = prev_month_rev * 1.1
+            rev_pct = min(100, (current_month_rev / max(target, 1)) * 100)
+
+            health_score = int(stock_pct * 0.3 + backlog_pct * 0.25 + rev_pct * 0.25 + 80 * 0.2)
+            health_score = min(100, max(0, health_score))
+
             send_json(self, {
                 'revenue': round(revenue, 2),
                 'orders_count': orders_count,
@@ -495,6 +545,8 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 'monthly_orders': monthly_orders,
                 'monthly_revenue': monthly_revenue,
                 'most_sold_chart': most_sold_chart,
+                'health_score': health_score,
+                'backlog_count': backlog_count,
             })
             return True
 
@@ -725,7 +777,12 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 FROM orders o LEFT JOIN customers c ON o.customer_id = c.id ORDER BY o.id DESC
             """)
             rows = cur.fetchall()
-            send_json(self, rows_to_list(rows))
+            orders_list = rows_to_list(rows)
+            for o in orders_list:
+                risk_score, risk_reasons = calculate_order_risk(o, cur)
+                o['risk_score'] = risk_score
+                o['risk_reasons'] = risk_reasons
+            send_json(self, orders_list)
             return True
 
         if path.startswith('/api/orders/') and path.endswith('/history'):

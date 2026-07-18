@@ -1649,6 +1649,7 @@ h1, h2, .main-content h1, .main-content h2 {
 .stat-icon.yellow { background: #FEF3C7 !important; color: #92600A !important; }
 .stat-icon.red { background: #FEE2E2 !important; color: #991B1B !important; }
 .stat-icon.purple { background: #EDE9FE !important; color: #6D28D9 !important; }
+.stat-card .stat-icon.orange { background: #FEF3C7 !important; color: #92600A !important; }
 
 table { background: #FFFFFF !important; color: #2D2D35 !important; }
 thead { background: #F1F1F5 !important; }
@@ -1831,3 +1832,10 @@ td .customer-cell .email { color: #6B6B7B !important; }
 .empty-state i { color: #D0CEC8 !important; }
 .empty-state h3 { color: #6B6B7B !important; }
 .empty-state p { color: #9A9A9A !important; }
+
+.stat-card .stat-icon.purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+.stat-card .stat-icon.orange { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+
+@media (max-width: 1024px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}

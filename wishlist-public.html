@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liste ADALINA</title>
+    <link rel="stylesheet" href="css/styles.css?v=__BUILD__">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        .wl-public { max-width: 900px; margin: 0 auto; padding: 3rem 1.5rem; min-height: 60vh; }
+        .wl-public h1 { font-family: var(--font-heading); font-size: 1.8rem; text-align: center; margin-bottom: 2rem; letter-spacing: 0.04em; }
+        .wl-public-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem; }
+        .wl-public-empty { text-align: center; padding: 4rem 1rem; color: var(--text-light); }
+        @media (max-width: 480px) { .wl-public-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; } }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <header class="header">
+            <div class="header-top-row">
+                <div class="header-left"></div>
+                <a href="index.html" class="logo-block">
+                    <span class="logo">ADALINA</span>
+                    <span class="logo-sub">BOUTIQUE EN LIGNE</span>
+                </a>
+                <div class="header-right">
+                    <button class="header-icon-btn lang-toggle" id="lang-toggle" onclick="i18n.toggleLang()" aria-label="Language">عربي</button>
+                </div>
+            </div>
+        </header>
+        <div class="wl-public">
+            <h1>Liste ADALINA</h1>
+            <div class="wl-public-grid" id="wl-grid"></div>
+        </div>
+        <footer class="footer"><div class="container"><div class="footer-bottom"><p>&copy; ADALINA. Tous droits réservés.</p></div></div></footer>
+    </div>
+    <script src="js/i18n.js"></script>
+    <script>
+    function renderProductCard(p) {
+        var img = (p.images && p.images[0]) || (p.image || '');
+        var price = formatPriceDA(p.sale_price || p.price);
+        var oldPrice = p.sale_price ? '<span style="text-decoration:line-through;color:#999;font-size:0.75rem;margin-left:6px;">' + formatPriceDA(p.price) + '</span>' : '';
+        return '<a href="product.html?id=' + p.id + '" class="product-card" style="text-decoration:none;color:inherit;">' +
+            '<div class="product-image"><img src="' + (typeof cloudinaryThumb === 'function' ? cloudinaryThumb(img, 400) : img) + '" alt="' + esc(p.name) + '" loading="lazy"></div>' +
+            '<div class="product-info"><div class="product-name">' + esc(p.name) + '</div><div class="product-price">' + price + oldPrice + '</div></div></a>';
+    }
+    function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+    function formatPriceDA(p) { return new Intl.NumberFormat('fr-DZ', {style:'decimal'}).format(p||0) + ' DA'; }
+    window.addEventListener('DOMContentLoaded', function() {
+        var hash = location.pathname.split('/').pop();
+        var grid = document.getElementById('wl-grid');
+        if (!hash) { grid.innerHTML = '<div class="wl-public-empty">Liste non trouvée.</div>'; return; }
+        fetch('/api/wishlist/' + hash).then(function(r){return r.json()}).then(function(data) {
+            if (data.error || !data.products || data.products.length === 0) {
+                grid.innerHTML = '<div class="wl-public-empty">Cette liste est vide ou a expiré.</div>';
+                return;
+            }
+            grid.innerHTML = data.products.map(renderProductCard).join('');
+        }).catch(function() {
+            grid.innerHTML = '<div class="wl-public-empty">Erreur de chargement.</div>';
+        });
+    });
+    </script>
+</body>
+</html>
