@@ -99,7 +99,7 @@
                                 <label for="co-full-name" class="floating-label">Nom complet <span class="required-star">*</span></label>
                             </div>
                             <div class="floating-group">
-                                <input type="tel" id="co-phone" class="floating-input" autocomplete="tel" inputmode="numeric" pattern="[0-9 ]+">
+                                <input type="tel" id="co-phone" class="floating-input" autocomplete="tel" inputmode="numeric" pattern="[0-9 ]+" oninput="formatPhoneInput(this)">
                                 <label for="co-phone" class="floating-label">Numéro de téléphone <span class="required-star">*</span></label>
                                 <span class="input-hint">Ex: 0555 12 34 56</span>
                                 <span class="input-error" id="co-phone-error"></span>

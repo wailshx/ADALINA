@@ -245,6 +245,24 @@ function renderProductCard(product) {
     var priceHtml = product.sale_price
         ? '<span class="original-price">' + formatPriceDA(product.price) + '</span><span class="sale-price">' + formatPriceDA(product.sale_price) + '</span>'
         : '<span class="current-price">' + formatPriceDA(product.price) + '</span>';
+    var stockLabelHtml = '';
+    var totalStock = 0;
+    if (product.variants && product.variants.length > 0) {
+        product.variants.forEach(function(v) {
+            if (v.sizes && Array.isArray(v.sizes)) {
+                v.sizes.forEach(function(s) { totalStock += (s.stock || 0); });
+            } else {
+                totalStock += (v.stock || 0);
+            }
+        });
+    } else if (product.stock) {
+        totalStock = product.stock;
+    }
+    if (totalStock > 0 && totalStock <= 5) {
+        stockLabelHtml = '<div class="stock-indicator low">Plus que ' + totalStock + ' en stock</div>';
+    } else if (totalStock === 0) {
+        stockLabelHtml = '<div class="stock-indicator out">Rupture de stock</div>';
+    }
     var inCart = pid && cart.some(function(item) { return item.id === pid; });
     return '<div class="product-card' + (inCart ? ' in-cart' : '') + '" data-product-id="' + pid + '">' +
         '<div class="product-image">' +
@@ -264,7 +282,7 @@ function renderProductCard(product) {
         '<div class="product-info">' +
             '<h3 class="product-title"><a href="product.html?id=' + pid + '">' + esc(product.name) + '</a></h3>' +
             sizesHtml +
-            '<div class="product-price">' + priceHtml + '</div>' +
+            stockLabelHtml + '<div class="product-price">' + priceHtml + '</div>' +
         '</div>' +
     '</div>';
 }
@@ -529,7 +547,19 @@ function updateCartDisplay() {
     if (!container) return;
     const emptyMsg = container.querySelector('.empty-cart');
     if (cart.length === 0) {
-        container.innerHTML = '<div class="empty-cart"><p>Votre panier est vide</p></div>';
+        var recHtml = '';
+        if (products && products.length > 0) {
+            var shuffled = products.slice().sort(function() { return 0.5 - Math.random(); });
+            var recs = shuffled.slice(0, 4);
+            recHtml = '<div class="empty-cart-recs"><p style="font-size:0.82rem;color:var(--text-light);margin-bottom:12px;text-align:center;">Vous aimerez peut-être</p><div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;">';
+            recs.forEach(function(p) {
+                var img = (p.images && p.images[0]) || (p.image || '');
+                var price = formatPriceDA(p.sale_price || p.price);
+                recHtml += '<div style="flex:0 0 120px;text-align:center;cursor:pointer;" onclick="quickView(' + p.id + ')"><img src="' + cloudinaryThumb(img, 200) + '" style="width:120px;height:160px;object-fit:cover;border-radius:6px;" onerror="onImgError(this)"><p style="font-size:0.72rem;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(p.name) + '</p><p style="font-size:0.72rem;color:var(--primary);font-weight:600;">' + price + '</p></div>';
+            });
+            recHtml += '</div></div>';
+        }
+        container.innerHTML = '<div class="empty-cart"><p>Votre panier est vide</p>' + recHtml + '</div>';
         if (totalEl) totalEl.textContent = '0,00 €';
         if (header) header.textContent = 'Mon Panier';
         const emptyBtn = document.querySelector('.empty-cart-btn');
@@ -1550,6 +1580,15 @@ function updateMunicipalities(wilayaId) {
     }
 }
 
+function formatPhoneInput(input) {
+    var val = input.value.replace(/\D/g, '');
+    if (val.length > 10) val = val.substring(0, 10);
+    var formatted = val;
+    if (val.length > 2) formatted = val.substring(0, 2) + ' ' + val.substring(2);
+    if (val.length > 5) formatted = val.substring(0, 2) + ' ' + val.substring(2, 5) + ' ' + val.substring(5);
+    input.value = formatted;
+}
+
 function updateCheckoutSummary() {
     var subtotalEl = document.getElementById('co-subtotal');
     var deliveryEl = document.getElementById('co-delivery');
@@ -2517,25 +2556,40 @@ function goToPage(page) {
 
 /* ── Scroll-reveal (IntersectionObserver) ── */
 function initScrollReveal() {
-    var targets = document.querySelectorAll('.product-card, .category-card, .value-card, .collection-card, .home-section, section:not(.hero-split)');
-    if (!targets.length) return;
-    var observer = new IntersectionObserver(function(entries) {
+    if (!('IntersectionObserver' in window)) {
+        document.querySelectorAll('.reveal-up, .reveal-fade, .reveal-scale').forEach(function(el) { el.classList.add('revealed'); });
+        return;
+    }
+    var revealObserver = new IntersectionObserver(function(entries) {
         entries.forEach(function(entry) {
             if (entry.isIntersecting) {
                 entry.target.classList.add('revealed');
-                observer.unobserve(entry.target);
+                revealObserver.unobserve(entry.target);
             }
         });
-    }, { threshold: 0.08 });
-    targets.forEach(function(el) { el.classList.add('reveal'); observer.observe(el); });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.reveal-up, .reveal-fade, .reveal-scale').forEach(function(el) {
+        revealObserver.observe(el);
+    });
 }
 
 /* Re-run observer after dynamic content loads (shop page, homepage collections) */
 function _refreshReveals() {
-    document.querySelectorAll('.reveal:not(.revealed)').forEach(function(el) {
-        el.classList.remove('reveal');
+    if (!('IntersectionObserver' in window)) {
+        document.querySelectorAll('.reveal-up:not(.revealed), .reveal-fade:not(.revealed), .reveal-scale:not(.revealed)').forEach(function(el) { el.classList.add('revealed'); });
+        return;
+    }
+    var revealObserver = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('revealed');
+                revealObserver.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    document.querySelectorAll('.reveal-up:not(.revealed), .reveal-fade:not(.revealed), .reveal-scale:not(.revealed)').forEach(function(el) {
+        revealObserver.observe(el);
     });
-    setTimeout(initScrollReveal, 60);
 }
 
 /* ── Icon pulse when item added to cart / wishlist ── */
@@ -2721,4 +2775,5 @@ window.addCurrentToWishlist = addCurrentToWishlist;
 window.decreaseQty = decreaseQty;
 window.increaseQty = increaseQty;
 window.updateCartItem = updateCartItem;
+window.formatPhoneInput = formatPhoneInput;
 

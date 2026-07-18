@@ -17,6 +17,8 @@ html {
     --primary-dark: #b3942f;
     --secondary: #1a1a1a;
     --background: #ffffff;
+    --bg-cream: #F9F9FB;
+    --charcoal: #1A1A1A;
     --cream: #faf9f6;
     --beige: #f5e6d3;
     --rose-gold: #b76e79;
@@ -34,7 +36,7 @@ html {
     --radius-md: 6px;
     --radius-lg: 12px;
     --transition-fast: 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    --transition-smooth: 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --transition-smooth: 0.4s cubic-bezier(0.23, 1, 0.32, 1);
     --transition-elegant: 0.6s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
@@ -555,6 +557,16 @@ button {
     }
 }
 
+/* Performance: content-visibility for below-fold sections */
+.categories-section,
+.collection-section,
+.featured-section,
+.product-card,
+.instagram-section {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 500px;
+}
+
 /* === Scroll-reveal animation === */
 .reveal {
     opacity: 0;
@@ -815,8 +827,8 @@ button {
 }
 
 .product-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+    transform: translateY(-8px);
+    box-shadow: 0 24px 64px rgba(0,0,0,0.1);
 }
 
 .product-image {
@@ -1102,6 +1114,21 @@ button {
     color: var(--text-light);
     letter-spacing: 0.02em;
     white-space: nowrap;
+}
+
+.stock-indicator {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-bottom: 6px;
+}
+.stock-indicator.low {
+    color: #d97706;
+}
+.stock-indicator.out {
+    color: #dc2626;
+    text-decoration: line-through;
+    opacity: 0.7;
 }
 
 .product-price {
@@ -1615,10 +1642,8 @@ button {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.4);
+    background-color: rgba(0, 0, 0, 0.3);
     z-index: 1999;
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
 }
 
 .overlay.active {
@@ -2597,6 +2622,12 @@ button {
 }
 
 .shop-filters {
+    position: sticky;
+    top: 80px;
+    z-index: 50;
+    background: #fff;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-light);
     margin-bottom: 2rem;
 }
 
@@ -4674,4 +4705,42 @@ body {
         animation: none;
     }
 }
+
+/* ══════════════════════════════════════
+   LUXURY SCROLL REVEALS
+   ══════════════════════════════════════ */
+.reveal-up {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.7s cubic-bezier(0.23, 1, 0.32, 1), transform 0.7s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.reveal-up.revealed {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.reveal-fade {
+    opacity: 0;
+    transition: opacity 0.8s ease;
+}
+.reveal-fade.revealed {
+    opacity: 1;
+}
+
+.reveal-scale {
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 0.6s cubic-bezier(0.23, 1, 0.32, 1), transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.reveal-scale.revealed {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.stagger-1 { transition-delay: 0.06s; }
+.stagger-2 { transition-delay: 0.12s; }
+.stagger-3 { transition-delay: 0.18s; }
+.stagger-4 { transition-delay: 0.24s; }
+.stagger-5 { transition-delay: 0.30s; }
+.stagger-6 { transition-delay: 0.36s; }
 
