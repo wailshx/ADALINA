@@ -352,24 +352,7 @@ router = APIRouter(prefix='/api', tags=['admin-api'])
 # GET routes
 # ---------------------------------------------------------------------------
 
-@router.get('/health')
-def admin_health(session_token: str = Depends(require_admin_auth)):
-    db = None
-    try:
-        db = get_db()
-        cur = db.cursor()
-        cur.execute('SELECT 1')
-        cur.fetchone()
-        return {'status': 'ok', 'database': 'connected', 'server': 'admin'}
-    except Exception as e:
-        print(f"[Admin] Health check DB error: {e}")
-        return _json_response({'status': 'error', 'database': str(e), 'server': 'admin'}, 503)
-    finally:
-        if db:
-            try:
-                db.close()
-            except Exception:
-                pass
+
 
 
 @router.get('/dashboard/stats')
@@ -1372,55 +1355,6 @@ def create_collection(request: Request, data: dict = Body(...), session_token: s
             pass
 
 
-@router.post('/orders')
-def create_order(request: Request, data: dict = Body(...), session_token: str = Depends(require_admin_auth)):
-    validate_admin_csrf(request)
-    db = get_db()
-    cur = db.cursor()
-    try:
-        items_json = json.dumps(data.get('items', []))
-        cur.execute("""INSERT INTO orders (order_number, customer_id, customer_name, customer_phone, wilaya, commune, shipping_address, payment_method, status, total, items, delivery_fee)
-                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
-                    (data.get('order_number', ''), data.get('customer_id'),
-                     data.get('customer_name', ''), data.get('customer_phone', ''),
-                     data.get('wilaya', ''), data.get('commune', ''),
-                     data.get('shipping', '') or data.get('shipping_address', ''),
-                     data.get('payment_method', ''),
-                     data.get('status', 'pending'), data.get('total', 0), items_json,
-                     data.get('delivery_fee', 0)))
-        oid = cur.fetchone()['id']
-        try:
-            cur.execute("INSERT INTO status_history (order_id, status, note) VALUES (%s, %s, %s)",
-                        (oid, data.get('status', 'new'), 'Commande créée'))
-        except Exception:
-            pass
-        new_status = data.get('status', 'pending')
-        if new_status in ('confirmed', 'processing'):
-            items = data.get('items', [])
-            for item in items:
-                pid = item.get('product_id')
-                qty = item.get('quantity') or item.get('qty') or 1
-                if pid:
-                    cur.execute("SELECT quantity FROM inventory WHERE product_id=%s", (pid,))
-                    inv = cur.fetchone()
-                    before_qty = inv['quantity'] if inv else 0
-                    deduct = min(qty, before_qty)
-                    if deduct > 0:
-                        cur.execute("UPDATE inventory SET quantity = quantity - %s, updated_at = CURRENT_TIMESTAMP WHERE product_id=%s", (deduct, pid))
-                        cur.execute("UPDATE products SET stock = (SELECT quantity FROM inventory WHERE product_id=%s) WHERE id=%s", (pid, pid))
-                        log_stock_change(cur, pid, -deduct, before_qty, f'Order #{oid} {new_status}')
-        db.commit()
-        _signal_cache_invalidate()
-        return _json_response({'id': oid, 'message': 'Order created'}, 201)
-    finally:
-        try:
-            cur.close()
-        except Exception:
-            pass
-        try:
-            db.close()
-        except Exception:
-            pass
 
 
 @router.post('/customers')
