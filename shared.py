@@ -97,6 +97,13 @@ def _ensure_columns():
         cur.execute("ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS wilaya TEXT DEFAULT ''")
         cur.execute("ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS min_days INTEGER DEFAULT 2")
         cur.execute("ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS max_days INTEGER DEFAULT 5")
+        cur.execute("""CREATE TABLE IF NOT EXISTS wishlists (
+            id SERIAL PRIMARY KEY,
+            hash TEXT UNIQUE NOT NULL,
+            product_ids TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '30 days')
+        )""")
         db.commit()
         logger.info('[startup] column migration verified')
     except Exception as e:

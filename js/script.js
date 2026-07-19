@@ -408,8 +408,7 @@ function updateWishlistDisplay() {
         }
     });
     var shareBtns = '<div class="wishlist-share" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border-light);display:flex;gap:8px;">' +
-        '<button class="btn-share-wl" id="share-wishlist-link" style="flex:1;padding:0.6rem;border:1px solid var(--border-light);border-radius:var(--radius-sm);background:#fff;cursor:pointer;font-size:0.78rem;font-family:var(--font-body);" onclick="shareWishlist()">📋 ' + i18n.t('wishlistPage.share') + '</button>' +
-        '<button class="btn-share-wl" style="flex:1;padding:0.6rem;border:1px solid #25D366;border-radius:var(--radius-sm);background:#25D366;color:#fff;cursor:pointer;font-size:0.78rem;font-family:var(--font-body);" onclick="shareWishlistWhatsApp()">💬 ' + i18n.t('wishlistPage.shareWA') + '</button>' +
+        '<button class="btn-share-wl" style="flex:1;padding:0.7rem;border:none;border-radius:var(--radius-sm);background:#25D366;color:#fff;cursor:pointer;font-size:0.82rem;font-family:var(--font-body);font-weight:500;" onclick="shareWishlistWhatsApp()">💬 ' + i18n.t('wishlistPage.shareWA') + '</button>' +
         '</div>';
     fragments.push(shareBtns);
     container.innerHTML = fragments.join('');
@@ -1816,6 +1815,8 @@ function placeOrder(e) {
         document.getElementById('conf-pb-subtotal').textContent = formatPriceDA(subtotal);
         document.getElementById('conf-pb-delivery-label').textContent = i18n.t('checkout.deliveryLabel') + (wilaya ? ' \u2014 ' + wilaya : '');
         document.getElementById('conf-pb-delivery').textContent = deliveryFee > 0 ? formatPriceDA(deliveryFee) : i18n.t('checkout.free');
+        var deliveryModeText = deliveryMode === 'bureau' ? 'التوصيل للمكتب 📦' : 'التوصيل للمنزل 🏠';
+        document.getElementById('conf-pb-delivery-mode').textContent = deliveryModeText;
         document.getElementById('conf-pb-total').textContent = formatPriceDA(total);
         document.getElementById('confirmation-details').textContent = i18n.t('checkout.advisorWillCall') + phone + '.';
         document.getElementById('order-confirmation-modal').classList.add('active');
@@ -2893,30 +2894,32 @@ function showToast(msg) {
     setTimeout(function() { toast.remove(); }, 2500);
 }
 
-function shareWishlist() {
-    fetch('/api/wishlist/share', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({product_ids: wishlist}) })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.url) {
-            var url = location.origin + data.url;
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(url);
-                showToast('Lien copié !');
-            } else {
-                prompt('Copiez le lien:', url);
-            }
-        }
-    });
-}
-
 function shareWishlistWhatsApp() {
-    fetch('/api/wishlist/share', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({product_ids: wishlist}) })
+    if (!wishlist || wishlist.length === 0) return;
+    var baseUrl = location.origin + '/website/products.json';
+    fetch(baseUrl)
     .then(function(r) { return r.json(); })
-    .then(function(data) {
-        if (data.url) {
-            var url = location.origin + data.url;
-            window.open('https://wa.me/?text=' + encodeURIComponent('Découvrez ma liste ADALINA: ' + url), '_blank');
+    .then(function(products) {
+        var names = [];
+        var links = [];
+        wishlist.forEach(function(id) {
+            var p = products.find(function(pr) { return pr.id == id || pr.id === id; });
+            if (p) {
+                names.push(p.name);
+                links.push(location.origin + '/website/product.html?id=' + p.id);
+            }
+        });
+        var text = i18n.t('wishlist.shareDiscover');
+        if (links.length <= 3) {
+            text += names.join(', ') + '\n\n' + links.join('\n');
+        } else {
+            text += names.slice(0, 3).join(', ') + ' +' + (names.length - 3) + '\n\n' + links.join('\n');
         }
+        window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    })
+    .catch(function() {
+        var text = i18n.t('wishlist.shareDiscover') + '\n' + location.origin + '/wishlist/';
+        window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
     });
 }
 
