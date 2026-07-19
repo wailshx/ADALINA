@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Découvrez les catégories mode ADALINA : Robes, Hauts, Bas, Parfums, Accessoires, Maillots de bain et plus encore.">
+    <meta name="keywords" content="" data-setting-content="meta_keywords">
+    <meta name="robots" content="index,follow" data-setting-content="robots_meta">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Catégories - ADALINA" data-setting-content="og_title">
+    <meta property="og:description" content="Découvrez les catégories mode ADALINA." data-setting-content="og_description">
+    <meta property="og:image" content="" data-setting-content="og_image">
+    <meta property="og:url" content="https://adalina-v2.onrender.com/categories.html" data-setting-content="og_url">
+    <meta name="twitter:card" content="summary_large_image">
     <title>Catégories - ADALINA</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='serif' font-weight='300'>A</text></svg>">
     <link rel="stylesheet" href="css/styles.css?v=__BUILD__">
@@ -22,9 +30,27 @@
         if (s.heading_font) document.documentElement.style.setProperty('--font-heading', "'"+s.heading_font+"', serif");
         if (s.body_font) document.documentElement.style.setProperty('--font-body', "'"+s.body_font+"', sans-serif");
         var titleEl = document.querySelector('[data-setting="site_title"]');
-        if (titleEl && s.site_title) { titleEl.textContent = s.site_title; document.title = s.site_title; }
-        var metaEl = document.querySelector('[data-setting-content="meta_description"]');
-        if (metaEl && s.meta_description) metaEl.setAttribute('content', s.meta_description);
+        if (titleEl && s.site_title) { titleEl.textContent = s.site_title; }
+        document.querySelectorAll('[data-setting-content]').forEach(function(el) {
+            var key = el.getAttribute('data-setting-content');
+            if (s[key]) el.setAttribute('content', s[key]);
+        });
+        if (s.meta_title) document.title = 'Catégories - ' + s.meta_title;
+        var robotsEl = document.querySelector('meta[name="robots"]');
+        if (robotsEl && s.robots_meta) robotsEl.setAttribute('content', s.robots_meta);
+        if (s.ga_id) {
+            var gaScript = document.createElement('script');
+            gaScript.async = true;
+            gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=' + s.ga_id;
+            document.head.appendChild(gaScript);
+            var gaInit = document.createElement('script');
+            gaInit.textContent = "window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','" + s.ga_id + "');";
+            document.head.appendChild(gaInit);
+        }
+        if (s.favicon_url) {
+            var existingFav = document.querySelector('link[rel="icon"]');
+            if (existingFav) existingFav.href = s.favicon_url;
+        }
         window.__settings = s;
         return s;
     }).catch(function(){ return null; });

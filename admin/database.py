@@ -569,6 +569,7 @@ def seed_db():
         row = cur.fetchone()
         if row['cnt'] > 0:
             conn.close()
+            migrate_seo_settings()
             migrate_taille_stock()
             return
     cur = conn.cursor()
@@ -614,6 +615,14 @@ def seed_db():
         ('site_title', 'ADALINA — Élégance et Raffinement', 'text', 'seo'),
         ('meta_description', 'Mode féminine de luxe et parfums pour la femme moderne.', 'text', 'seo'),
         ('meta_keywords', 'mode, femme, luxe, parfums, algérie, boutique', 'text', 'seo'),
+        ('meta_title', 'ADALINA — Mode Féminine de Luxe & Parfums', 'text', 'seo'),
+        ('og_title', 'ADALINA — Mode Féminine de Luxe & Parfums', 'text', 'seo'),
+        ('og_description', 'Découvrez notre collection de mode féminine de luxe : robes élégantes, parfums de créateurs et accessoires pour la femme moderne.', 'text', 'seo'),
+        ('og_image', '/images/og-cover.jpg', 'text', 'seo'),
+        ('og_url', 'https://adalina-v2.onrender.com', 'text', 'seo'),
+        ('favicon_url', '', 'text', 'seo'),
+        ('robots_meta', 'index,follow', 'text', 'seo'),
+        ('ga_id', '', 'text', 'seo'),
         ('delivery_info', 'Livraison dans les 58 wilayas', 'text', 'seo'),
         ('free_shipping_threshold', '0', 'number', 'seo'),
         ('delivery_fee', '0', 'number', 'seo'),
@@ -641,12 +650,37 @@ def seed_db():
     conn2.close()
 
 
-TAILLE_GROUP_MAP = {32: 'Taille 1', 34: 'Taille 1', 36: 'Taille 1', 38: 'Taille 1',
-                    40: 'Taille 2', 42: 'Taille 2', 44: 'Taille 2', 46: 'Taille 2',
+TAILLE_GROUP_MAP = {36: 'Taille 1', 38: 'Taille 1', 40: 'Taille 1',
+                    42: 'Taille 2', 44: 'Taille 2', 46: 'Taille 2',
                     48: 'Taille 3', 50: 'Taille 3', 52: 'Taille 3'}
-GROUP_SIZES_INFO = {'Taille 1': [32, 34, 36, 38],
-                    'Taille 2': [40, 42, 44, 46],
+GROUP_SIZES_INFO = {'Taille 1': [36, 38, 40],
+                    'Taille 2': [42, 44, 46],
                     'Taille 3': [48, 50, 52]}
+
+
+def migrate_seo_settings():
+    seo_defaults = [
+        ('site_title', 'ADALINA — Élégance et Raffinement', 'text', 'seo'),
+        ('meta_description', 'Mode féminine de luxe et parfums pour la femme moderne.', 'text', 'seo'),
+        ('meta_keywords', 'mode, femme, luxe, parfums, algérie, boutique', 'text', 'seo'),
+        ('meta_title', 'ADALINA — Mode Féminine de Luxe & Parfums', 'text', 'seo'),
+        ('og_title', 'ADALINA — Mode Féminine de Luxe & Parfums', 'text', 'seo'),
+        ('og_description', 'Découvrez notre collection de mode féminine de luxe : robes élégantes, parfums de créateurs et accessoires pour la femme moderne.', 'text', 'seo'),
+        ('og_image', '/images/og-cover.jpg', 'text', 'seo'),
+        ('og_url', 'https://adalina-v2.onrender.com', 'text', 'seo'),
+        ('favicon_url', '', 'text', 'seo'),
+        ('robots_meta', 'index,follow', 'text', 'seo'),
+        ('ga_id', '', 'text', 'seo'),
+    ]
+    conn = get_db()
+    cur = conn.cursor()
+    for key, val, typ, cat in seo_defaults:
+        cur.execute(
+            "INSERT INTO settings (setting_key, setting_value, setting_type, category) VALUES (%s, %s, %s, %s) ON CONFLICT (setting_key) DO NOTHING",
+            (key, val, typ, cat)
+        )
+    conn.commit()
+    conn.close()
 
 
 def migrate_taille_stock():

@@ -410,6 +410,10 @@
                 <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                 Livraison
             </button>
+            <button class="settings-tab" data-tab="seo">
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                SEO
+            </button>
         </div>
 
         <div class="tab-pane active" id="tab-general">
@@ -577,6 +581,86 @@
                         <div class="form-group">
                             <label>Frais de livraison</label>
                             <input type="number" class="form-control" data-setting="delivery_fee" step="0.01">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane" id="tab-seo">
+            <div class="settings-card">
+                <div class="card-header"><h2>Référencement (SEO)</h2></div>
+                <div class="card-body">
+                    <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:18px;">Ces paramètres contrôlent ce qui s'affiche dans les résultats de recherche Google et les partages sur les réseaux sociaux.</p>
+                    <div class="settings-grid">
+                        <div class="form-group">
+                            <label>Titre de la page (meta title)</label>
+                            <input type="text" class="form-control" data-setting="meta_title" placeholder="ex. ADALINA — Mode féminine de luxe" maxlength="70">
+                            <small style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;display:block;">60 caractères max recommandé. Apparaît dans l'onglet du navigateur et les résultats Google.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Description (meta description)</label>
+                            <textarea class="form-control" data-setting="meta_description" rows="3" placeholder="Découvrez notre collection de mode féminine..." maxlength="160"></textarea>
+                            <small style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;display:block;">155 caractères max recommandé. Apparaît sous le lien dans les résultats de recherche.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Mots-clés (meta keywords)</label>
+                            <input type="text" class="form-control" data-setting="meta_keywords" placeholder="mode, femme, luxe, algérie, boutique">
+                            <small style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;display:block;">Séparés par des virgules. Aide les moteurs de recherche à comprendre le contenu.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-card">
+                <div class="card-header"><h2>Réseaux sociaux (Open Graph)</h2></div>
+                <div class="card-body">
+                    <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:18px;">Contrôle l'apparence du site quand il est partagé sur Facebook, Instagram, WhatsApp, etc.</p>
+                    <div class="settings-grid">
+                        <div class="form-group">
+                            <label>Titre du partage (og:title)</label>
+                            <input type="text" class="form-control" data-setting="og_title" placeholder="ADALINA — Mode Féminine de Luxe" maxlength="95">
+                        </div>
+                        <div class="form-group">
+                            <label>Description du partage (og:description)</label>
+                            <textarea class="form-control" data-setting="og_description" rows="3" placeholder="Découvrez robes, parfums et accessoires..." maxlength="300"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Image du partage (og:image)</label>
+                            <input type="text" class="form-control" data-setting="og_image" placeholder="URL de l'image (ex. /images/og-cover.jpg)">
+                            <small style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;display:block;">Recommandé : 1200x630px. L'image affichée quand quelqu'un partage votre site.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>URL du site (og:url)</label>
+                            <input type="text" class="form-control" data-setting="og_url" placeholder="https://adalina-v2.onrender.com">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-card">
+                <div class="card-header"><h2>Paramètres avancés</h2></div>
+                <div class="card-body">
+                    <div class="settings-grid">
+                        <div class="form-group">
+                            <label>Titre du site (title tag)</label>
+                            <input type="text" class="form-control" data-setting="site_title" placeholder="ADALINA — Élégance et Raffinement">
+                            <small style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;display:block;">Titre dans l'onglet du navigateur.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Favicon</label>
+                            <input type="text" class="form-control" data-setting="favicon_url" placeholder="/images/favicon.ico">
+                        </div>
+                        <div class="form-group">
+                            <label>Autoriser l'indexation (robots)</label>
+                            <select class="form-control" data-setting="robots_meta">
+                                <option value="index,follow">Indexer (default)</option>
+                                <option value="noindex,follow">Ne pas indexer</option>
+                                <option value="noindex,nofollow">Ne pas indexer ni suivre</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Google Analytics ID</label>
+                            <input type="text" class="form-control" data-setting="ga_id" placeholder="G-XXXXXXXXXX">
+                            <small style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;display:block;">Mesure le trafic de votre site.</small>
                         </div>
                     </div>
                 </div>

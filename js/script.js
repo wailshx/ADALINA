@@ -2039,7 +2039,18 @@ function displayProduct(product) {
 
     document.title = product.name + ' - ADALINA';
     var metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) metaDesc.setAttribute('content', product.name + ' - ADALINA. ' + (product.description || '').substring(0, 100));
+    if (metaDesc) metaDesc.setAttribute('content', (product.description || product.name) + ' - ADALINA');
+    var ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', product.name + ' - ADALINA');
+    var ogDesc = document.querySelector('meta[property="og:description"]');
+    if (ogDesc) ogDesc.setAttribute('content', product.description || product.name);
+    var ogType = document.querySelector('meta[property="og:type"]');
+    if (ogType) ogType.setAttribute('content', 'product');
+    var productImages = product.images || product.photos || [];
+    if (productImages.length > 0) {
+        var ogImage = document.querySelector('meta[property="og:image"]');
+        if (ogImage) ogImage.setAttribute('content', productImages[0]);
+    }
 
     renderRelatedProducts(product);
 

@@ -366,8 +366,8 @@ async function fetchNotifications() {
 function tailleGroupForSize(size) {
     var num = parseInt(size);
     if (isNaN(num)) return '';
-    if (num >= 32 && num <= 38) return 'T1';
-    if (num >= 40 && num <= 46) return 'T2';
+    if (num >= 36 && num <= 40) return 'T1';
+    if (num >= 42 && num <= 46) return 'T2';
     if (num >= 48 && num <= 52) return 'T3';
     return '';
 }
