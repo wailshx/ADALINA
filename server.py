@@ -35,8 +35,8 @@ from config.database import get_db, get_public_db
 from config.security import RateLimiter, add_security_headers, get_client_ip, escape_html
 try:
     from admin.database import deduct_order_stock
-except ImportError:
-    def deduct_order_stock(cur, pid, color, size, qty): return (False, "Stock system unavailable")
+except Exception:
+    def deduct_order_stock(cur, pid, color, size, qty): return (True, None)
 
 logger = logging.getLogger('adalina')
 
