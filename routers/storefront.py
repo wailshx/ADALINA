@@ -599,7 +599,7 @@ async def create_order(request: Request, background_tasks: BackgroundTasks):
     logger.info(f'POST /api/orders received from {ip}')
     if not _order_limiter.is_allowed(f'order:{ip}', max_requests=5, window=300):
         retry = _order_limiter.retry_after(f'order:{ip}', window=300)
-        return JSONResponse(
+        return _SafeJSONResponse(
             {'error': f'Trop de requêtes. Réessayez dans {retry}s.'},
             status_code=429,
             headers={'Retry-After': str(retry)}
@@ -625,7 +625,7 @@ async def create_order(request: Request, background_tasks: BackgroundTasks):
         background_tasks.add_task(_process_order_background, order_number, items, customer_name, customer_phone, wilaya, data)
         logger.info(f'POST /api/orders: queued background task for {order_number}')
 
-        return JSONResponse(
+        return _SafeJSONResponse(
             {'order_number': order_number, 'message': 'Commande en cours de traitement'},
             status_code=201
         )
@@ -685,7 +685,7 @@ async def share_wishlist(request: Request):
                 (wl_hash, json.dumps(product_ids))
             )
             db.commit()
-            return JSONResponse({'hash': wl_hash, 'url': '/wishlist/' + wl_hash}, status_code=201)
+            return _SafeJSONResponse({'hash': wl_hash, 'url': '/wishlist/' + wl_hash}, status_code=201)
         except Exception as e:
             logger.exception('[Storefront] Error sharing wishlist')
             return _json_response({'error': 'Erreur serveur'}, status=500)
