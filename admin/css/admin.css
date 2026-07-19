@@ -1839,3 +1839,14 @@ td .customer-cell .email { color: #6B6B7B !important; }
 @media (max-width: 1024px) {
     .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
 }
+
+.topbar-clock {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-muted, #6B6B7B);
+    padding: 6px 12px;
+    border-right: 1px solid var(--border, #E8E6E1);
+    margin-right: 8px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}

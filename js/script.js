@@ -6,6 +6,14 @@ let totalProducts = 0;
 const PER_PAGE = 16;
 let currentCategory = '';
 
+window.addEventListener('error', function(e) {
+    console.error('[ADALINA] Uncaught error:', e.message, e.filename, e.lineno);
+});
+
+window.addEventListener('unhandledrejection', function(e) {
+    console.error('[ADALINA] Unhandled promise rejection:', e.reason);
+});
+
 const PLACEHOLDER_IMG = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="533" fill="%23f0f0f0"><rect width="400" height="533"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23ccc" font-size="16">No Image</text></svg>';
 
 function onImgError(el) { if (el && el.src !== PLACEHOLDER_IMG) el.src = PLACEHOLDER_IMG; }
@@ -115,15 +123,15 @@ function buildGroupedSizesHtml(availSizes, product, curColor, curSize, hasVarian
                     (!available ? '' : ' ' + clickHandlerAttr.replace('{val}', grp.label.replace(/'/g, "\\'"))) + '>' +
                     '<div class="sz-taille-header">' +
                         '<span class="sz-taille-label">' + grp.label + '</span>' +
-                        (!available ? '<span class="sz-taille-oos-text">Épuisé</span>' :
-                         (selected ? '<span class="sz-taille-status">Sélectionné</span>' : '')) +
+                        (!available ? '<span class="sz-taille-oos-text">' + i18n.t('qv.soldOut') + '</span>' :
+                         (selected ? '<span class="sz-taille-status">' + i18n.t('qv.selected') + '</span>' : '')) +
                     '</div>' +
                     '<div class="sz-taille-info">' + infoText + '</div>' +
                 '</div>';
             });
             html += '</div>';
             if (!html || html === '<div class="sz-group-taille-boxes"></div>') {
-                html = '<p style="color:var(--text-light);font-size:0.85rem;">Aucune taille disponible</p>';
+                html = '<p style="color:var(--text-light);font-size:0.85rem;">' + i18n.t('qv.noSizeAvailable') + '</p>';
             }
             return html;
         }
@@ -187,7 +195,7 @@ function buildGroupedSizesHtml(availSizes, product, curColor, curSize, hasVarian
     }
 
     // If nothing to render
-    if (!html) html = '<p style="color:var(--text-light);font-size:0.85rem;">Aucune taille disponible</p>';
+    if (!html) html = '<p style="color:var(--text-light);font-size:0.85rem;">' + i18n.t('qv.noSizeAvailable') + '</p>';
     return html;
 }
 
@@ -259,9 +267,9 @@ function renderProductCard(product) {
         totalStock = product.stock;
     }
     if (totalStock > 0 && totalStock <= 5) {
-        stockLabelHtml = '<div class="stock-indicator low">Plus que ' + totalStock + ' en stock</div>';
+        stockLabelHtml = '<div class="stock-indicator low">' + i18n.t('stock.low').replace('{n}', totalStock) + '</div>';
     } else if (totalStock === 0) {
-        stockLabelHtml = '<div class="stock-indicator out">Rupture de stock</div>';
+        stockLabelHtml = '<div class="stock-indicator out">' + i18n.t('stock.out') + '</div>';
     }
     var inCart = pid && cart.some(function(item) { return item.id === pid; });
     return '<div class="product-card' + (inCart ? ' in-cart' : '') + '" data-product-id="' + pid + '">' +
@@ -276,7 +284,7 @@ function renderProductCard(product) {
             '</button>' +
             '<div class="product-overlay">' +
                 '<button class="btn-overlay" onclick="quickView(' + pid + ')">Aperçu rapide</button>' +
-                '<button class="btn-overlay btn-overlay-primary" onclick="addToCartOrQuickView(' + pid + ')">Ajouter au panier</button>' +
+                '<button class="btn-overlay btn-overlay-primary" onclick="addToCartOrQuickView(' + pid + ')">' + i18n.t('product.addCart') + '</button>' +
             '</div>' +
         '</div>' +
         '<div class="product-info">' +
@@ -307,7 +315,7 @@ function searchProducts(query) {
         (p.brand && p.brand.toLowerCase().includes(q))
     );
     if (results.length === 0) {
-        container.innerHTML = '<p class="no-results" style="display:block;">Aucun produit trouvé</p>';
+        container.innerHTML = '<p class="no-results" style="display:block;">' + i18n.t('search.noResults') + '</p>';
         return;
     }
     container.innerHTML = results.slice(0, 8).map(p => {
@@ -373,7 +381,7 @@ function updateWishlistDisplay() {
     const container = document.getElementById('wishlist-items');
     if (!container) return;
     if (wishlist.length === 0) {
-        container.innerHTML = '<div class="empty-wishlist"><p>Votre liste de souhaits est vide</p></div>';
+        container.innerHTML = '<div class="empty-wishlist"><p>' + i18n.t('wishlist.empty') + '</p></div>';
         return;
     }
     container.innerHTML = '';
@@ -392,7 +400,7 @@ function updateWishlistDisplay() {
                             <h3 class="cart-item-title">${esc(p.name)}</h3>
                         </a>
                         <p class="cart-item-price">${formatPriceDA(p.price)}</p>
-                        <button class="btn btn-outline" onclick="addToCartFromWishlist(${p.id})" style="font-size:0.75rem;padding:4px 8px;margin-bottom:4px;">Ajouter au panier</button>
+                        <button class="btn btn-outline" onclick="addToCartFromWishlist(${p.id})" style="font-size:0.75rem;padding:4px 8px;margin-bottom:4px;">' + i18n.t('qv.addToCart') + '</button>
                         <button class="remove-item" onclick="removeFromWishlist(${p.id})">Supprimer</button>
                     </div>
                 </div>
@@ -400,8 +408,8 @@ function updateWishlistDisplay() {
         }
     });
     var shareBtns = '<div class="wishlist-share" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border-light);display:flex;gap:8px;">' +
-        '<button class="btn-share-wl" id="share-wishlist-link" style="flex:1;padding:0.6rem;border:1px solid var(--border-light);border-radius:var(--radius-sm);background:#fff;cursor:pointer;font-size:0.78rem;font-family:var(--font-body);" onclick="shareWishlist()">📋 Lien</button>' +
-        '<button class="btn-share-wl" style="flex:1;padding:0.6rem;border:1px solid #25D366;border-radius:var(--radius-sm);background:#25D366;color:#fff;cursor:pointer;font-size:0.78rem;font-family:var(--font-body);" onclick="shareWishlistWhatsApp()">💬 WhatsApp</button>' +
+        '<button class="btn-share-wl" id="share-wishlist-link" style="flex:1;padding:0.6rem;border:1px solid var(--border-light);border-radius:var(--radius-sm);background:#fff;cursor:pointer;font-size:0.78rem;font-family:var(--font-body);" onclick="shareWishlist()">📋 ' + i18n.t('wishlistPage.share') + '</button>' +
+        '<button class="btn-share-wl" style="flex:1;padding:0.6rem;border:1px solid #25D366;border-radius:var(--radius-sm);background:#25D366;color:#fff;cursor:pointer;font-size:0.78rem;font-family:var(--font-body);" onclick="shareWishlistWhatsApp()">💬 ' + i18n.t('wishlistPage.shareWA') + '</button>' +
         '</div>';
     fragments.push(shareBtns);
     container.innerHTML = fragments.join('');
@@ -556,7 +564,7 @@ function updateCartDisplay() {
         if (products && products.length > 0) {
             var shuffled = products.slice().sort(function() { return 0.5 - Math.random(); });
             var recs = shuffled.slice(0, 4);
-            recHtml = '<div class="empty-cart-recs"><p style="font-size:0.82rem;color:var(--text-light);margin-bottom:12px;text-align:center;">Vous aimerez peut-être</p><div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;">';
+            recHtml = '<div class="empty-cart-recs"><p style="font-size:0.82rem;color:var(--text-light);margin-bottom:12px;text-align:center;">' + i18n.t('cart.recommendations') + '</p><div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;">';
             recs.forEach(function(p) {
                 var img = (p.images && p.images[0]) || (p.image || '');
                 var price = formatPriceDA(p.sale_price || p.price);
@@ -564,9 +572,9 @@ function updateCartDisplay() {
             });
             recHtml += '</div></div>';
         }
-        container.innerHTML = '<div class="empty-cart"><p>Votre panier est vide</p>' + recHtml + '</div>';
+        container.innerHTML = '<div class="empty-cart"><p>' + i18n.t('cart.empty') + '</p>' + recHtml + '</div>';
         if (totalEl) totalEl.textContent = '0,00 €';
-        if (header) header.textContent = 'Mon Panier';
+        if (header) header.textContent = i18n.t('cart.title');
         const emptyBtn = document.querySelector('.empty-cart-btn');
         if (emptyBtn) emptyBtn.style.display = 'none';
         return;
@@ -582,9 +590,9 @@ function updateCartDisplay() {
         var variantInfo = '';
         if (item.selectedSize || item.selectedColor) {
             variantInfo = '<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:4px;">';
-            if (item.selectedSize) variantInfo += 'Taille : ' + item.selectedSize;
+            if (item.selectedSize) variantInfo += i18n.t('qv.size') + ' : ' + item.selectedSize;
             if (item.selectedSize && item.selectedColor) variantInfo += ' | ';
-            if (item.selectedColor) variantInfo += 'Couleur : ' + item.selectedColor;
+            if (item.selectedColor) variantInfo += i18n.t('qv.color') + ' : ' + item.selectedColor;
             variantInfo += '</div>';
         }
         var cartKey = item.id + '-' + (item.selectedSize || '') + '-' + (item.selectedColor || '');
@@ -595,7 +603,7 @@ function updateCartDisplay() {
                     <h3 class="cart-item-title">${esc(item.name)}</h3>
                     ${variantInfo}
                     <p class="cart-item-price">${formatPriceDA(item.price)}</p>
-                    <div class="cart-item-subtotal">Sous-total : ${formatPriceDA(subtotal)}</div>
+                    <div class="cart-item-subtotal">${i18n.t('cart.subtotal')} : ${formatPriceDA(subtotal)}</div>
                     <div class="cart-item-quantity">
                         <button class="quantity-btn" onclick="changeQtyByKey('${cartKey}', -1)">−</button>
                         <input type="text" class="quantity-input" id="qty-${cartKey}" value="${item.quantity}" onchange="setQtyByKey('${cartKey}')">
@@ -608,7 +616,7 @@ function updateCartDisplay() {
         `);
     });
     container.innerHTML = cartFragments.join('');
-    if (header) header.textContent = `Mon Panier (${itemCount} article${itemCount !== 1 ? 's' : ''})`;
+    if (header) header.textContent = i18n.t('cart.title') + ' (' + itemCount + ')' ;
     if (totalEl) totalEl.textContent = formatPriceDA(total);
     let emptyBtn = document.querySelector('.empty-cart-btn');
     if (!emptyBtn) {
@@ -616,7 +624,7 @@ function updateCartDisplay() {
         if (footer) {
             emptyBtn = document.createElement('button');
             emptyBtn.className = 'btn btn-outline empty-cart-btn';
-            emptyBtn.textContent = 'Vider le panier';
+            emptyBtn.textContent = i18n.t('cart.emptyCart');
             emptyBtn.style.width = '100%';
             emptyBtn.style.marginBottom = '0.5rem';
             emptyBtn.onclick = emptyCart;
@@ -755,7 +763,7 @@ function renderCartPage() {
     var container = document.getElementById('cart-page-items');
     if (!container) return;
     if (cart.length === 0) {
-        container.innerHTML = '<div class="cart-empty"><p>Votre panier est vide.</p><a href="shop.html" class="btn btn-primary" style="display:inline-block;text-decoration:none;margin-top:1rem">Découvrir nos produits</a></div>';
+        container.innerHTML = '<div class="cart-empty"><p>' + i18n.t('cartPage.empty') + '.</p><a href="shop.html" class="btn btn-primary" style="display:inline-block;text-decoration:none;margin-top:1rem">' + i18n.t('wishlistPage.shop') + '</a></div>';
         return;
     }
     var subtotal = 0;
@@ -766,7 +774,7 @@ function renderCartPage() {
         var variantInfo = '';
         if (item.selectedSize || item.selectedColor) {
             variantInfo = '<div class="cart-item-variant">';
-            if (item.selectedSize) variantInfo += 'Taille: ' + item.selectedSize;
+            if (item.selectedSize) variantInfo += i18n.t('qv.size') + ': ' + item.selectedSize;
             if (item.selectedSize && item.selectedColor) variantInfo += ' | ';
             if (item.selectedColor) variantInfo += item.selectedColor;
             variantInfo += '</div>';
@@ -781,7 +789,7 @@ function renderCartPage() {
                     '<button class="quantity-btn" onclick="changeQtyByKey(\'' + cartKey + '\', -1)">−</button>' +
                     '<input type="text" class="quantity-input" id="qty-' + cartKey + '" value="' + item.quantity + '" onchange="setQtyByKey(\'' + cartKey + '\')">' +
                     '<button class="quantity-btn" onclick="changeQtyByKey(\'' + cartKey + '\', 1)">+</button>' +
-                    '<button class="btn btn-sm btn-outline modifier-btn" onclick="quickViewForCart(\'' + cartKey + '\')">Modifier</button>' +
+                    '<button class="btn btn-sm btn-outline modifier-btn" onclick="quickViewForCart(\'' + cartKey + '\')">' + i18n.t('cart.modifier') + '</button>' +
                     '<button class="remove-item" onclick="removeFromCartByKey(\'' + cartKey + '\')">✕</button>' +
                 '</div>' +
             '</div>' +
@@ -807,10 +815,10 @@ function openSearchModal() {
         modal.innerHTML = `
             <div class="modal-content">
                 <span class="close-modal" onclick="closeSearchModal()">&times;</span>
-                <h2>Rechercher</h2>
+                <h2>' + i18n.t('search.title') + '</h2>
                 <div class="search-container">
-                    <input type="text" id="search-input" placeholder="Rechercher un produit..." onkeyup="handleSearchInput(event)">
-                    <button onclick="searchProducts(document.getElementById('search-input').value)">Rechercher</button>
+                    <input type="text" id="search-input" placeholder="' + i18n.t('search.placeholder') + '" onkeyup="handleSearchInput(event)">
+                    <button onclick="searchProducts(document.getElementById(\'search-input\').value)">' + i18n.t('search.button') + '</button>
                 </div>
                 <div class="search-results" id="search-results"></div>
             </div>
@@ -894,6 +902,8 @@ function quickView(productId) {
 
     var modal = document.getElementById('quick-view-modal');
     if (modal) modal.classList.add('active');
+    var qvCheck = document.getElementById('qv-toggle');
+    if (qvCheck) qvCheck.checked = false;
 
     /* Colors */
     var qvVariants = product.variants || [];
@@ -970,7 +980,7 @@ function quickView(productId) {
     var wishlistText = document.getElementById('qv-wishlist-text');
     if (wishlistText) {
         var inWish = wishlist.indexOf(product.id) !== -1;
-        wishlistText.textContent = inWish ? 'Retirer des favoris' : 'Ajouter aux favoris';
+        wishlistText.textContent = inWish ? i18n.t('qv.wishlistRemove') : i18n.t('qv.wishlist');
     }
 
     /* Description */
@@ -978,7 +988,7 @@ function quickView(productId) {
     if (descEl) {
         var desc = product.description || '';
         if (desc.trim()) {
-            descEl.innerHTML = '<div class="qv-desc-box"><h4>Description</h4><p>' + esc(desc) + '</p></div>';
+            descEl.innerHTML = '<div class="qv-desc-box"><h4>' + i18n.t('qv.description') + '</h4><p>' + esc(desc) + '</p></div>';
             descEl.style.display = '';
         } else {
             descEl.innerHTML = '';
@@ -1175,7 +1185,7 @@ function qvDisableButtons(disabled) {
         btn.disabled = disabled;
     });
     var addBtn = modal.querySelector('.qv-btn-primary');
-    if (addBtn) addBtn.textContent = disabled ? 'Rupture de stock' : 'Ajouter au panier';
+    if (addBtn) addBtn.textContent = disabled ? i18n.t('stock.out') : i18n.t('qv.addToCart');
 }
 
 function qvUpdateStockDisplay() {
@@ -1189,16 +1199,16 @@ function qvUpdateStockDisplay() {
     if (!el) return;
     if (curColor && curSize && hasVariants) {
         var vstock = getVariantStock(product, curColor, curSize);
-        el.innerHTML = stockLabel(vstock) + ' <span class="stock-qty">' + vstock + ' disponible(s)</span>';
+        el.innerHTML = stockLabel(vstock) + ' <span class="stock-qty">' + i18n.t('qv.disponible').replace('{n}', vstock) + '</span>';
         qvDisableButtons(vstock === 0);
     } else if (hasVariants && (!curColor || !curSize)) {
-        el.innerHTML = '<span class="stock-badge in-stock">Sélectionnez taille et couleur</span>';
+        el.innerHTML = '<span class="stock-badge in-stock">' + i18n.t('qv.selectSizeAndColor') + '</span>';
         qvDisableButtons(false);
     } else if (product.stock > 0) {
-        el.innerHTML = '<span class="stock-badge in-stock">En stock</span>';
+        el.innerHTML = '<span class="stock-badge in-stock">' + i18n.t('qv.inStock') + '</span>';
         qvDisableButtons(false);
     } else {
-        el.innerHTML = '<span class="stock-badge out-of-stock">Rupture de stock</span>';
+        el.innerHTML = '<span class="stock-badge out-of-stock">' + i18n.t('stock.out') + '</span>';
         qvDisableButtons(true);
     }
 }
@@ -1217,11 +1227,11 @@ function qvValidateSelection() {
     if (!p) return false;
     var hasVariants = (p.variants || []).length > 0;
     if (hasVariants && p.sizes && p.sizes.length > 0 && !_qv.selectedSize) {
-        alert('Veuillez sélectionner une taille');
+        alert(i18n.t('product.validateSize'));
         return false;
     }
     if (hasVariants && p.colors && p.colors.length > 0 && !_qv.selectedColor) {
-        alert('Veuillez sélectionner une couleur');
+        alert(i18n.t('product.validateColor'));
         return false;
     }
     return true;
@@ -1268,7 +1278,7 @@ function qvToggleWishlist() {
     updateWishlistCounter();
     var wishlistText = document.getElementById('qv-wishlist-text');
     if (wishlistText) {
-        wishlistText.textContent = idx === -1 ? 'Retirer des favoris' : 'Ajouter aux favoris';
+        wishlistText.textContent = idx === -1 ? i18n.t('qv.wishlistRemove') : i18n.t('qv.wishlist');
     }
 }
 
@@ -1369,7 +1379,7 @@ function openTab(tabName) {
 function updateResultsCount(count) {
     const el = document.getElementById('results-count');
     if (el) {
-        el.textContent = count + ' produit' + (count !== 1 ? 's' : '');
+        el.textContent = count + ' ' + (count !== 1 ? i18n.t('collection.produitsPlural') : i18n.t('collection.produits'));
     }
 }
 
@@ -1486,7 +1496,8 @@ function getDeliveryPrice(wilayaId) {
 function renderCheckout() {
     var wilayaSel = document.getElementById('co-wilaya');
     if (wilayaSel) {
-        wilayaSel.innerHTML = '<option value="">Sélectionnez une wilaya</option>' +
+        var selectWilaya = (getLang() === 'ar') ? 'اختر ولاية' : i18n.t('checkout.selectWilaya');
+        wilayaSel.innerHTML = '<option value="">' + selectWilaya + '</option>' +
             algerianWilayas.map(function (w) {
                 return '<option value="' + w.id + '">' + w.name + '</option>';
             }).join('');
@@ -1494,22 +1505,27 @@ function renderCheckout() {
             updateMunicipalities(parseInt(this.value));
             updateCheckoutSummary();
             updateSelectFloat(this);
-            if (window.__deliveryTimes && window.__deliveryTimes[this.options[this.selectedIndex].text]) {
-                var dt = window.__deliveryTimes[this.options[this.selectedIndex].text];
-                var el = document.getElementById('delivery-estimate');
-                var txt = document.getElementById('delivery-estimate-text');
-                if (el && txt) {
-                    el.style.display = 'block';
-                    var lang = window.i18n ? window.i18n.getLang() : 'fr';
-                    if (lang === 'ar') {
-                        txt.textContent = 'التوصيل المقدر: ' + dt.min_days + '-' + dt.max_days + ' أيام عمل إلى ' + this.options[this.selectedIndex].text;
-                    } else {
-                        txt.textContent = 'Livraison estimée: ' + dt.min_days + '-' + dt.max_days + ' jours ouvrables à ' + this.options[this.selectedIndex].text;
+            if (window.__deliveryTimes) {
+                var selText = this.options[this.selectedIndex].text;
+                var selVal = this.value;
+                var dt = window.__deliveryTimes[selText] || null;
+                if (!dt) {
+                    var dtKeys = Object.keys(window.__deliveryTimes);
+                    for (var di = 0; di < dtKeys.length; di++) {
+                        var dk = window.__deliveryTimes[dtKeys[di]];
+                        if (dk && String(dk.wilaya_id) === String(selVal)) { dt = dk; break; }
                     }
                 }
-            } else {
                 var el = document.getElementById('delivery-estimate');
-                if (el) el.style.display = 'none';
+                var txt = document.getElementById('delivery-estimate-text');
+                if (dt && el && txt) {
+                    el.style.display = 'block';
+                    var estLabel = (getLang() === 'ar') ? 'التسليم المتوقع' : i18n.t('checkout.estimatedDelivery');
+                    var daysLabel = (getLang() === 'ar') ? 'أيام' : i18n.t('checkout.days');
+                    txt.textContent = estLabel + ': ' + dt.min_days + '-' + dt.max_days + ' ' + daysLabel;
+                } else if (el) {
+                    el.style.display = 'none';
+                }
             }
         };
         /* init floating label state on page load */
@@ -1518,6 +1534,12 @@ function renderCheckout() {
 
     var muniSel = document.getElementById('co-municipality');
     if (muniSel) updateSelectFloat(muniSel);
+
+    var deliveryModeSel = document.getElementById('co-delivery-mode');
+    if (deliveryModeSel) {
+        updateSelectFloat(deliveryModeSel);
+        deliveryModeSel.onchange = function() { updateSelectFloat(this); };
+    }
 
     /* floating label toggle for all text inputs */
     document.querySelectorAll('.floating-input:not(select)').forEach(function(inp) {
@@ -1573,7 +1595,7 @@ function validatePhone(inp) {
     var err = document.getElementById('co-phone-error');
     var val = inp.value.trim();
     if (!val) {
-        if (err) err.textContent = 'Le numéro de téléphone est requis.';
+        if (err) err.textContent = i18n.t('checkout.phoneRequired');
         inp.classList.add('error');
         return false;
     }
@@ -1581,7 +1603,7 @@ function validatePhone(inp) {
     if (cleaned.startsWith('+213')) cleaned = cleaned.substring(4);
     else if (cleaned.startsWith('213')) cleaned = cleaned.substring(3);
     if (!/^[0-9]{9,10}$/.test(cleaned)) {
-        if (err) err.textContent = 'Numéro invalide. Ex: 0555 12 34 56';
+        if (err) err.textContent = i18n.t('checkout.phoneInvalid');
         inp.classList.add('error');
         return false;
     }
@@ -1595,12 +1617,14 @@ function updateMunicipalities(wilayaId) {
     if (!muniSel) return;
     var communes = algerianMunicipalities[wilayaId];
     if (communes && communes.length > 0) {
-        muniSel.innerHTML = '<option value="">Sélectionnez une commune</option>' +
+        var selectCommune = (getLang() === 'ar') ? 'اختر ولاية أولاً' : i18n.t('checkout.selectCommune');
+        muniSel.innerHTML = '<option value="">' + selectCommune + '</option>' +
             communes.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
         muniSel.disabled = false;
         updateSelectFloat(muniSel);
     } else {
-        muniSel.innerHTML = '<option value="">Aucune commune disponible</option>';
+        var noCommune = (getLang() === 'ar') ? 'لا توجد بلدية' : i18n.t('checkout.noCommune');
+        muniSel.innerHTML = '<option value="">' + noCommune + '</option>';
         muniSel.disabled = true;
         updateSelectFloat(muniSel);
     }
@@ -1623,7 +1647,8 @@ function updateCheckoutSummary() {
     if (!subtotalEl || !deliveryEl || !totalEl || !itemsEl) return;
 
     if (!cart || cart.length === 0) {
-        itemsEl.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:1rem 0">Votre panier est vide</p>';
+        var emptyCartMsg = (getLang() === 'ar') ? 'سلتك فارغة' : i18n.t('checkout.emptyCart');
+        itemsEl.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:1rem 0">' + emptyCartMsg + '</p>';
         subtotalEl.textContent = '0 DA';
         deliveryEl.textContent = '0 DA';
         totalEl.textContent = '0 DA';
@@ -1635,18 +1660,22 @@ function updateCheckoutSummary() {
         var itemTotal = item.price * item.quantity;
         subtotal += itemTotal;
         var meta = [];
-        if (item.selectedSize) meta.push('Taille: ' + item.selectedSize);
+        var sizeLabel = (getLang() === 'ar') ? 'الحجم' : i18n.t('qv.size');
+        var qtyLabel = (getLang() === 'ar') ? 'الكمية: ' : i18n.t('checkout.qty');
+        var editLabel = (getLang() === 'ar') ? 'تعديل' : i18n.t('cart.modifier');
+        var removeLabel = (getLang() === 'ar') ? 'إزالة' : i18n.t('checkout.remove');
+        if (item.selectedSize) meta.push(sizeLabel + ': ' + item.selectedSize);
         if (item.selectedColor) meta.push(item.selectedColor);
         var cartKey = item.id + '-' + (item.selectedSize || '') + '-' + (item.selectedColor || '');
         return '<div class="checkout-item-row">' +
             '<div class="checkout-item-info">' +
                 '<div class="checkout-item-name">' + esc(item.name) + '</div>' +
                 (meta.length > 0 ? '<div class="checkout-item-meta">' + meta.join(' | ') + '</div>' : '') +
-                '<div class="checkout-item-qty">Qté: ' + item.quantity + ' × ' + formatPriceDA(item.price) + '</div>' +
+                '<div class="checkout-item-qty">' + qtyLabel + item.quantity + ' \u00d7 ' + formatPriceDA(item.price) + '</div>' +
             '</div>' +
             '<div class="checkout-item-actions">' +
-                '<button class="modifier-btn" onclick="quickViewForCart(\'' + cartKey + '\')">Modifier</button>' +
-                '<button class="remove-btn" onclick="removeFromCartByKey(\'' + cartKey + '\'); updateCheckoutSummary(); renderCartPage();">Retirer</button>' +
+                '<button class="modifier-btn" onclick="quickViewForCart(\'' + cartKey + '\')">' + editLabel + '</button>' +
+                '<button class="remove-btn" onclick="removeFromCartByKey(\'' + cartKey + '\'); updateCheckoutSummary(); renderCartPage();">' + removeLabel + '</button>' +
             '</div>' +
             '<div class="checkout-item-total">' + formatPriceDA(itemTotal) + '</div>' +
         '</div>';
@@ -1664,13 +1693,15 @@ function updateCheckoutSummary() {
         var found = algerianWilayas.find(function(w) { return w.id === wilayaId; });
         if (found) wilayaName = found.name;
     }
-    var deliveryLabel = wilayaName ? 'Livraison — ' + wilayaName : 'Livraison';
+    var dlText = (getLang() === 'ar') ? 'التوصيل' : i18n.t('checkout.deliveryLabel');
+    var freeText = (getLang() === 'ar') ? 'مجاني' : i18n.t('checkout.free');
+    var deliveryLabel = wilayaName ? dlText + ' \u2014 ' + wilayaName : dlText;
     var deliveryLine = deliveryEl.parentNode;
     var labelSpan = deliveryLine.querySelector('span:first-child');
     if (labelSpan) labelSpan.textContent = deliveryLabel;
 
     subtotalEl.textContent = formatPriceDA(subtotal);
-    deliveryEl.textContent = delivery > 0 ? formatPriceDA(delivery) : 'Gratuite';
+    deliveryEl.textContent = delivery > 0 ? formatPriceDA(delivery) : freeText;
     totalEl.textContent = formatPriceDA(total);
 }
 
@@ -1683,9 +1714,18 @@ function placeOrder(e) {
     var wilaya = wilayaSel.options[wilayaSel.selectedIndex] ? wilayaSel.options[wilayaSel.selectedIndex].text : '';
     var muniSel = document.getElementById('co-municipality');
     var municipality = muniSel.options[muniSel.selectedIndex] ? muniSel.options[muniSel.selectedIndex].text : '';
+    var deliveryModeSel = document.getElementById('co-delivery-mode');
+    var deliveryMode = deliveryModeSel ? deliveryModeSel.value : '';
 
     if (!name || !phone || !wilayaSel.value || !muniSel.value) {
-        alert('Veuillez remplir tous les champs obligatoires.');
+        var fillReqMsg = (getLang() === 'ar') ? 'يرجى ملء جميع الحقول المطلوبة' : i18n.t('checkout.fillRequired');
+        alert(fillReqMsg);
+        return;
+    }
+
+    if (!deliveryMode) {
+        var deliveryModeMsg = (getLang() === 'ar') ? 'يرجى اختيار طريقة التوصيل' : i18n.t('checkout.deliveryModeRequired');
+        alert(deliveryModeMsg);
         return;
     }
 
@@ -1695,7 +1735,8 @@ function placeOrder(e) {
     }
 
     if (cart.length === 0) {
-        alert('Votre panier est vide.');
+        var emptyMsg = (getLang() === 'ar') ? 'سلتك فارغة' : i18n.t('checkout.emptyCart');
+        alert(emptyMsg);
         return;
     }
 
@@ -1709,6 +1750,7 @@ function placeOrder(e) {
     var shippingAddr = municipality + ', ' + wilaya;
 
     var orderNumber = 'CMD-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    var deliveryModeLabel = deliveryMode === 'bureau' ? 'LIVRAISON AU BUREAU' : 'A DOMICILE';
     var payload = {
         items: orderItems,
         order_number: orderNumber,
@@ -1718,6 +1760,7 @@ function placeOrder(e) {
         wilaya_id: wilayaId,
         commune: municipality,
         shipping: shippingAddr,
+        delivery_mode: deliveryMode,
         payment_method: 'Cash on Delivery',
         total: total,
         delivery_fee: deliveryFee
@@ -1728,16 +1771,16 @@ function placeOrder(e) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     }).then(function (res) {
-        if (!res.ok) return res.json().then(function (errData) { throw new Error(errData.error || 'Erreur serveur'); });
+        if (!res.ok) return res.json().then(function (errData) { throw new Error(errData.error || i18n.t('checkout.serverError')); });
         return res.json();
     }).then(function (data) {
         var refNumber = data.order_number || orderNumber;
         document.getElementById('confirmation-order-number').textContent = '#' + refNumber;
         document.getElementById('conf-pb-subtotal').textContent = formatPriceDA(subtotal);
-        document.getElementById('conf-pb-delivery-label').textContent = 'Livraison' + (wilaya ? ' — ' + wilaya : '');
-        document.getElementById('conf-pb-delivery').textContent = deliveryFee > 0 ? formatPriceDA(deliveryFee) : 'Gratuite';
+        document.getElementById('conf-pb-delivery-label').textContent = i18n.t('checkout.deliveryLabel') + (wilaya ? ' \u2014 ' + wilaya : '');
+        document.getElementById('conf-pb-delivery').textContent = deliveryFee > 0 ? formatPriceDA(deliveryFee) : i18n.t('checkout.free');
         document.getElementById('conf-pb-total').textContent = formatPriceDA(total);
-        document.getElementById('confirmation-details').textContent = 'Un conseiller vous contactera au ' + phone + ' pour confirmer la livraison à ' + shippingAddr + '.';
+        document.getElementById('confirmation-details').textContent = i18n.t('checkout.advisorWillCall') + phone + '.';
         document.getElementById('order-confirmation-modal').classList.add('active');
         cart = [];
         localStorage.setItem('adalinaCart', JSON.stringify(cart));
@@ -1746,11 +1789,11 @@ function placeOrder(e) {
         updateCheckoutSummary();
     }).catch(function (err) {
         console.error('Order error:', err);
-        alert(err.message || 'Erreur lors de la commande. Veuillez réessayer.');
+        alert(err.message || i18n.t('checkout.orderError'));
     });
     } catch (domErr) {
         console.error('Order error:', domErr);
-        alert('Une erreur est survenue. Veuillez réessayer.');
+        alert(i18n.t('checkout.generalError'));
     }
 }
 
@@ -1770,13 +1813,13 @@ function loadProductPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const productId = parseInt(urlParams.get('id'));
     if (!productId) {
-        container.innerHTML = '<div class="breadcrumb"><a href="index.html">Accueil</a><span>/</span><a href="shop.html">Boutique</a></div><div style="text-align:center;padding:4rem 0"><h2>Produit non trouvé</h2><p style="color:var(--text-light);margin:1rem 0">Le produit que vous recherchez n\'existe pas ou a été supprimé.</p><a href="shop.html" class="btn btn-primary" style="display:inline-block;text-decoration:none">Retour à la boutique</a></div>';
+        container.innerHTML = '<div class="breadcrumb"><a href="index.html">' + i18n.t('breadcrumb.home') + '</a><span>/</span><a href="shop.html">' + i18n.t('breadcrumb.shop') + '</a></div><div style="text-align:center;padding:4rem 0"><h2>' + i18n.t('product.notFound') + '</h2><p style="color:var(--text-light);margin:1rem 0">' + i18n.t('product.notFoundDesc') + '</p><a href="shop.html" class="btn btn-primary" style="display:inline-block;text-decoration:none">' + i18n.t('product.backToShop') + '</a></div>';
         return;
     }
 
     const product = products.find(p => p.id === productId);
     if (!product) {
-        container.innerHTML = '<div class="breadcrumb"><a href="index.html">Accueil</a><span>/</span><a href="shop.html">Boutique</a></div><div style="text-align:center;padding:4rem 0"><h2>Produit non trouvé</h2><p style="color:var(--text-light);margin:1rem 0">Le produit que vous recherchez n\'existe pas ou a été supprimé.</p><a href="shop.html" class="btn btn-primary" style="display:inline-block;text-decoration:none">Retour à la boutique</a></div>';
+        container.innerHTML = '<div class="breadcrumb"><a href="index.html">' + i18n.t('breadcrumb.home') + '</a><span>/</span><a href="shop.html">' + i18n.t('breadcrumb.shop') + '</a></div><div style="text-align:center;padding:4rem 0"><h2>' + i18n.t('product.notFound') + '</h2><p style="color:var(--text-light);margin:1rem 0">' + i18n.t('product.notFoundDesc') + '</p><a href="shop.html" class="btn btn-primary" style="display:inline-block;text-decoration:none">' + i18n.t('product.backToShop') + '</a></div>';
         return;
     }
 
@@ -1831,9 +1874,9 @@ function getVariantStock(product, color, size) {
 }
 
 function stockLabel(stock) {
-    if (stock > 5) return '<span class="stock-badge in-stock">En stock</span>';
-    if (stock > 0) return '<span class="stock-badge low-stock">Stock faible</span>';
-    return '<span class="stock-badge out-of-stock">Rupture de stock</span>';
+    if (stock > 5) return '<span class="stock-badge in-stock">' + i18n.t('qv.inStock') + '</span>';
+    if (stock > 0) return '<span class="stock-badge low-stock">' + i18n.t('stock.low').replace('{n}', stock) + '</span>';
+    return '<span class="stock-badge out-of-stock">' + i18n.t('stock.out') + '</span>';
 }
 
 function displayProduct(product) {
@@ -1879,7 +1922,7 @@ function displayProduct(product) {
 
                 <p class="pp-desc">${esc(product.description || '')}</p>
 
-                ${availColors.length > 0 ? '<div class="pp-section"><label>Couleur</label><div class="pp-colors">' + availColors.map(function (c) {
+                ${availColors.length > 0 ? '<div class="pp-section"><label>' + i18n.t('qv.color') + '</label><div class="pp-colors">' + availColors.map(function (c) {
                     var cname = typeof c === 'object' ? c.name : c;
                     var hex = typeof c === 'object' ? (c.hex || colorToHex[cname] || '#ccc') : (colorToHex[c] || '#ccc');
                     var sel = cname === curColor ? ' selected' : '';
@@ -1891,7 +1934,7 @@ function displayProduct(product) {
                     return '<button class="pp-color-swatch' + sel + out + '" style="background:' + hex + '" onclick="selectProductColor(\'' + cname.replace(/'/g, "\\'") + '\', this)" title="' + cname + '"></button>';
                 }).join('') + '</div></div>' : ''}
 
-                ${availSizes.length > 0 ? '<div class="pp-section"><label>Taille</label><div class="pp-sizes">' + buildGroupedSizesHtml(
+                ${availSizes.length > 0 ? '<div class="pp-section"><label>' + i18n.t('qv.size') + '</label><div class="pp-sizes">' + buildGroupedSizesHtml(
                     availSizes, product, curColor, curSize, hasVariants,
                     'pp-size-btn', 'pp-size-wrap',
                     'onclick="selectProductSize(\'{val}\', this)"',
@@ -1899,11 +1942,11 @@ function displayProduct(product) {
                 ) + '</div></div>' : ''}
 
                 <div class="pp-section pp-stock-info" id="pp-stock-info">
-                    ${curColor && curSize && hasVariants ? stockLabel(curStock) + ' <span class="stock-qty">' + curStock + ' disponible(s)</span>' : (product.stock > 0 ? '<span class="stock-badge in-stock">En stock</span>' : '<span class="stock-badge out-of-stock">Rupture de stock</span>')}
+                    ${curColor && curSize && hasVariants ? stockLabel(curStock) + ' <span class="stock-qty">' + i18n.t('qv.disponible').replace('{n}', curStock) + '</span>' : (product.stock > 0 ? '<span class="stock-badge in-stock">' + i18n.t('qv.inStock') + '</span>' : '<span class="stock-badge out-of-stock">' + i18n.t('stock.out') + '</span>')}
                 </div>
 
                 <div class="pp-section">
-                    <label>Quantité</label>
+                    <label>${i18n.t('qv.quantity')}</label>
                     <div class="pp-qty">
                         <button class="pp-qty-btn" onclick="changeProductQty(-1)">−</button>
                         <input type="text" id="product-qty-input" value="1" readonly>
@@ -1911,12 +1954,12 @@ function displayProduct(product) {
                     </div>
                 </div>
 
-                <button class="pp-btn pp-btn-primary" onclick="addCurrentToCart()" id="pp-add-to-cart-btn">Ajouter au panier</button>
-                <button class="pp-btn pp-btn-dark" onclick="ppBuyNow()">Acheter maintenant</button>
+                <button class="pp-btn pp-btn-primary" onclick="addCurrentToCart()" id="pp-add-to-cart-btn">${i18n.t('qv.addToCart')}</button>
+                <button class="pp-btn pp-btn-dark" onclick="ppBuyNow()">${i18n.t('product.buyNow')}</button>
 
-                <button class="pp-btn pp-btn-outline" onclick="addCurrentToWishlist()"><svg width="18" height="18" viewBox="0 0 24 24" fill="${isInWishlist ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg><span id="pp-wishlist-text">${isInWishlist ? 'Dans mes favoris' : 'Ajouter aux favoris'}</span></button>
+                <button class="pp-btn pp-btn-outline" onclick="addCurrentToWishlist()"><svg width="18" height="18" viewBox="0 0 24 24" fill="${isInWishlist ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg><span id="pp-wishlist-text">${isInWishlist ? i18n.t('product.wishlistIn') : i18n.t('qv.wishlist')}</span></button>
 
-                <a href="shop.html" class="pp-continue">Continuer les achats</a>
+                <a href="shop.html" class="pp-continue">${i18n.t('qv.continueShopping')}</a>
             </div>
 
             <div class="pp-gallery">
@@ -1932,7 +1975,7 @@ function displayProduct(product) {
         </div>
 
         <div class="related-products" id="related-products">
-            <h2 class="related-title">Vous aimerez aussi</h2>
+            <h2 class="related-title">${i18n.t('product.relatedTitle')}</h2>
             <div class="products-grid" id="related-products-grid"></div>
         </div>
     `;
@@ -2104,12 +2147,12 @@ function addCurrentToCart() {
     if (!product) return;
 
     if (product.sizes && product.sizes.length > 0 && !productPageState.selectedSize) {
-        alert('Veuillez sélectionner une taille');
+        alert(i18n.t('product.validateSize'));
         return;
     }
 
     if (product.colors && product.colors.length > 0 && !productPageState.selectedColor) {
-        alert('Veuillez sélectionner une couleur');
+        alert(i18n.t('product.validateColor'));
         return;
     }
 
@@ -2839,6 +2882,7 @@ function shareWishlistWhatsApp() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/public/log-event', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({type: 'page_view', payload: {page: location.pathname}}) }).catch(function(){});
     var waFloat = document.getElementById('whatsapp-float');
     var waTooltip = document.getElementById('whatsapp-tooltip');
     if (waFloat && waTooltip) {

@@ -92,6 +92,7 @@
         </button>
     </div>
     <div class="topbar-right">
+        <div class="topbar-clock" id="topbar-clock"></div>
         <div class="notif-wrapper">
             <button class="topbar-btn" id="notif-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -191,6 +192,19 @@
 <!-- Print-only invoice (dynamically populated) -->
 <div id="print-invoice" class="invoice-print-only"></div>
 
+<script>
+(function() {
+    function updateClock() {
+        var el = document.getElementById('topbar-clock');
+        if (!el) return;
+        var now = new Date();
+        var opts = { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+        el.textContent = now.toLocaleDateString('fr-FR', opts);
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+})();
+</script>
 <script src="/admin/js/sizes.js"></script>
 <script src="js/admin.js"></script>
 </body>

@@ -78,7 +78,7 @@ function formatDate(dateStr) {
     if (!dateStr) return '—';
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr.split(' ')[0] || '—';
-    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return d.toLocaleDateString('fr-DZ', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function avatarUrl(name, bg = '6366f1') {
@@ -114,17 +114,19 @@ async function initDashboard() {
     const d = await api('GET', '/dashboard/stats');
     if (!d) return;
 
-    var totalVisitors = 0;
     var weeklyVisitors = [];
     var weeklyBuyers = [];
+    var totalVisitors = 0;
     for (var i = 0; i < 7; i++) {
-        var v = Math.floor(Math.random() * 180) + 40;
-        var b = Math.floor(v * (Math.random() * 0.08 + 0.02));
+        var v = (d.weekly_views && d.weekly_views[i]) || 0;
+        var o = (d.weekly_orders && d.weekly_orders[i]) || {};
         weeklyVisitors.push(v);
-        weeklyBuyers.push(b);
+        weeklyBuyers.push(o.count || 0);
         totalVisitors += v;
     }
     document.getElementById('stat-visitors').textContent = totalVisitors.toLocaleString();
+    var ordersToday = d.orders_today || 0;
+    var revenueToday = d.revenue_today || 0;
     var convRate = d.orders_count > 0 && d.customers_count > 0
         ? ((d.orders_count / Math.max(d.customers_count, 1)) * 100).toFixed(1)
         : '2.4';
@@ -244,10 +246,11 @@ async function initDashboard() {
 function timeAgo(dateStr) {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 60) return mins + 'm ago';
+    if (mins < 1) return 'à l\'instant';
+    if (mins < 60) return mins + 'min';
     const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return hrs + 'h ago';
-    return Math.floor(hrs / 24) + 'd ago';
+    if (hrs < 24) return hrs + 'h';
+    return Math.floor(hrs / 24) + 'j';
 }
 
 /* ── Notifications ── */
@@ -1783,6 +1786,7 @@ window.viewOrder = async function (id) {
                 '<div class="detail-row"><span class="detail-label">Paiement</span><span class="detail-value">' + esc(o.payment_method || '—') + '</span></div>' +
                 '<div class="detail-row"><span class="detail-label">Articles</span><span class="detail-value">' + totalItems + '</span></div>' +
                 '<div class="detail-row"><span class="detail-label">Livraison</span><span class="detail-value">' + (o.delivery_fee > 0 ? formatPriceDA(o.delivery_fee) : 'Gratuite') + '</span></div>' +
+                (o.delivery_mode ? '<div class="detail-row"><span class="detail-label">Mode livraison</span><span class="detail-value">' + esc(o.delivery_mode === 'bureau' ? 'AU BUREAU' : 'A DOMICILE') + '</span></div>' : '') +
                 '<div class="detail-row total-row"><span class="detail-label">Total</span><span class="detail-value total-amount">' + formatPriceDA(o.total) + '</span></div>' +
             '</div>' +
         '</div>' +

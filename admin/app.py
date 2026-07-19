@@ -531,6 +531,33 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             health_score = int(stock_pct * 0.3 + backlog_pct * 0.25 + rev_pct * 0.25 + 80 * 0.2)
             health_score = min(100, max(0, health_score))
 
+            cur.execute("""
+                SELECT EXTRACT(DOW FROM created_at) AS dow,
+                       COUNT(*) AS order_count,
+                       COALESCE(SUM(total), 0) AS revenue
+                FROM orders
+                WHERE created_at >= NOW() - INTERVAL '7 days'
+                GROUP BY EXTRACT(DOW FROM created_at)
+            """)
+            weekly_orders = {int(r['dow']): {'count': r['order_count'], 'revenue': float(r['revenue'])} for r in cur.fetchall()}
+
+            cur.execute("""
+                SELECT EXTRACT(DOW FROM created_at) AS dow,
+                       COUNT(*) AS views
+                FROM search_events
+                WHERE event_type = 'page_view' AND created_at >= NOW() - INTERVAL '7 days'
+                GROUP BY EXTRACT(DOW FROM created_at)
+            """)
+            weekly_views = {int(r['dow']): r['views'] for r in cur.fetchall()}
+
+            cur.execute("""
+                SELECT COUNT(*) AS orders_today,
+                       COALESCE(SUM(total), 0) AS revenue_today
+                FROM orders
+                WHERE DATE(created_at) = CURRENT_DATE
+            """)
+            today_stats = cur.fetchone()
+
             send_json(self, {
                 'revenue': round(revenue, 2),
                 'orders_count': orders_count,
@@ -547,6 +574,10 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 'most_sold_chart': most_sold_chart,
                 'health_score': health_score,
                 'backlog_count': backlog_count,
+                'weekly_orders': weekly_orders,
+                'weekly_views': weekly_views,
+                'orders_today': today_stats['orders_today'],
+                'revenue_today': float(today_stats['revenue_today']),
             })
             return True
 

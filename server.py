@@ -290,6 +290,7 @@ def _process_order_background(order_number, items, customer_name, customer_phone
 
         delivery_fee = 0
         wid = data.get('wilaya_id')
+        delivery_mode = (data.get('delivery_mode') or '').strip()
         if wid is not None:
             try:
                 wid = int(wid)
@@ -301,10 +302,10 @@ def _process_order_background(order_number, items, customer_name, customer_phone
                 pass
 
         cur.execute("""
-            INSERT INTO orders (order_number, customer_id, customer_name, customer_phone, wilaya, commune, status, total, items, shipping_address, payment_method, delivery_fee)
-            VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO orders (order_number, customer_id, customer_name, customer_phone, wilaya, commune, status, total, items, shipping_address, payment_method, delivery_fee, delivery_mode)
+            VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
-        """, (order_number, customer_name, customer_phone, wilaya, commune, 'new', server_total, json.dumps(items), shipping_address, payment, delivery_fee))
+        """, (order_number, customer_name, customer_phone, wilaya, commune, 'new', server_total, json.dumps(items), shipping_address, payment, delivery_fee, delivery_mode))
 
         oid = cur.fetchone()['id']
         cur.execute("INSERT INTO status_history (order_id, status, note) VALUES (%s, %s, %s)",
@@ -964,9 +965,9 @@ class AdalinaServer(SimpleHTTPRequestHandler):
             try:
                 db = get_public_db()
                 cur = db.cursor()
-                cur.execute("SELECT wilaya, min_days, max_days FROM delivery_prices ORDER BY wilaya")
+                cur.execute("SELECT wilaya_id, COALESCE(NULLIF(wilaya,''), wilaya_id::text) AS wilaya, min_days, max_days FROM delivery_prices ORDER BY wilaya_id")
                 rows = cur.fetchall()
-                result = {r['wilaya']: {'min_days': r['min_days'], 'max_days': r['max_days']} for r in rows}
+                result = {r['wilaya']: {'min_days': r['min_days'], 'max_days': r['max_days'], 'wilaya_id': r['wilaya_id']} for r in rows}
                 send_json_cached(self, result, max_age=3600)
             except Exception as e:
                 logger.exception('[Server] Error loading delivery times')

@@ -1334,24 +1334,83 @@ button {
 
 .close-modal {
     position: absolute;
-    top: 18px;
-    right: 18px;
-    font-size: 1.8rem;
+    top: 14px;
+    right: 14px;
+    font-size: 1.5rem;
     cursor: pointer;
-    color: var(--text-lighter);
+    color: var(--text-light, #6b6b6b);
     transition: all var(--transition-fast);
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
     line-height: 1;
+    background: var(--cream, #faf9f6);
+    border: 1px solid var(--border, #e8e6e1);
+    z-index: 10;
 }
 
 .close-modal:hover {
-    color: var(--secondary);
-    background: var(--cream);
+    color: var(--secondary, #1a1a1a);
+    background: #fff;
+    border-color: var(--secondary, #1a1a1a);
+}
+
+/* Quick-view close toggle button */
+.qv-close-toggle {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--cream, #faf9f6);
+    border: 1px solid var(--border, #e8e6e1);
+    cursor: pointer;
+    z-index: 10;
+    transition: all var(--transition-fast);
+}
+
+.qv-close-toggle:hover {
+    color: var(--secondary, #1a1a1a);
+    background: #fff;
+    border-color: var(--secondary, #1a1a1a);
+}
+
+.qv-close-toggle input[type="checkbox"] {
+    display: none;
+}
+
+.qv-close-toggle .qv-icon-open {
+    display: inline;
+    font-size: 1.1rem;
+    color: var(--text-light, #6b6b6b);
+    line-height: 1;
+}
+
+.qv-close-toggle .qv-icon-closed {
+    display: none;
+    font-size: 1.1rem;
+    color: var(--secondary, #1a1a1a);
+    line-height: 1;
+}
+
+.qv-close-toggle input[type="checkbox"]:checked ~ .qv-icon-open {
+    display: none;
+}
+
+.qv-close-toggle input[type="checkbox"]:checked ~ .qv-icon-closed {
+    display: inline;
+}
+
+[dir="rtl"] .qv-close-toggle {
+    right: auto;
+    left: 14px;
 }
 
 .search-container {
@@ -1996,21 +2055,26 @@ button {
 }
 
 .qv-continue {
-    background: none;
-    border: none;
-    color: var(--text-lighter);
-    font-family: 'Manrope', sans-serif;
-    font-size: 0.75rem;
-    text-decoration: underline;
+    background: var(--cream, #faf9f6);
+    border: 1px solid var(--border, #e8e6e1);
+    color: var(--text-light, #6b6b6b);
+    font-family: var(--font-body, 'Manrope', sans-serif);
+    font-size: 0.85rem;
+    font-weight: 400;
+    text-decoration: none;
     cursor: pointer;
-    padding: 0.5rem 0;
+    padding: 0.75rem 1.25rem;
     text-align: center;
-    transition: color var(--transition-fast);
-    letter-spacing: 0.03em;
+    transition: all var(--transition-fast);
+    letter-spacing: 0.02em;
+    border-radius: var(--radius-md, 6px);
+    width: 100%;
 }
 
 .qv-continue:hover {
-    color: var(--secondary);
+    color: var(--secondary, #1a1a1a);
+    border-color: var(--secondary, #1a1a1a);
+    background: #fff;
 }
 
 /* FAQ Accordion */
@@ -3106,7 +3170,9 @@ input[type="checkbox"] {
         padding: 1.5rem;
     }
     .quick-view-main-wrap img {
-        height: 300px;
+        height: 340px;
+        object-fit: contain;
+        width: 100%;
     }
     
     .contact-container {
@@ -3246,7 +3312,9 @@ input[type="checkbox"] {
     }
     
     .quick-view-main-wrap img {
-        height: 280px;
+        height: 320px;
+        object-fit: contain;
+        width: 100%;
     }
 
     .quick-view-content {
@@ -4872,5 +4940,70 @@ body {
 }
 [dir="rtl"] .container {
     text-align: right;
+}
+
+.lang-switch {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--bg-cream, #f4f3f0);
+    border: 1px solid var(--border-light);
+    border-radius: 20px;
+    padding: 3px;
+    cursor: pointer;
+    position: relative;
+    height: 32px;
+    min-width: 72px;
+    user-select: none;
+}
+
+.lang-switch .lang-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+    font-family: var(--font-body);
+    letter-spacing: 0.04em;
+    z-index: 2;
+    position: relative;
+    flex: 1;
+    text-align: center;
+    color: var(--text-light);
+    transition: color 0.3s ease;
+    padding: 0 2px;
+    height: 100%;
+    line-height: 1;
+}
+
+.lang-switch .lang-option.active {
+    color: #fff;
+}
+
+.lang-switch .lang-slider {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: calc(50% - 3px);
+    height: calc(100% - 6px);
+    background: var(--charcoal, #1A1A1A);
+    border-radius: 16px;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1;
+}
+
+.lang-switch.arabic-active .lang-slider {
+    transform: translateX(calc(100% + 0px));
+}
+
+@media (max-width: 768px) {
+    .lang-switch {
+        min-width: 64px;
+        height: 28px;
+        padding: 2px;
+    }
+    .lang-switch .lang-option {
+        font-size: 0.68rem;
+    }
 }
 

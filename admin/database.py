@@ -383,6 +383,8 @@ def init_db():
         FOREIGN KEY (customer_id) REFERENCES customers(id)
     )""")
 
+    cur.execute("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='delivery_mode') THEN ALTER TABLE orders ADD COLUMN delivery_mode TEXT DEFAULT ''; END IF; END $$")
+
     cur.execute("""CREATE TABLE IF NOT EXISTS inventory (
         id SERIAL PRIMARY KEY,
         product_id INTEGER UNIQUE NOT NULL,
