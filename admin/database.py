@@ -206,6 +206,10 @@ def _run_migrations(conn):
             cur.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role")
         except Exception:
             pass
+        try:
+            cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_mode TEXT DEFAULT ''")
+        except Exception:
+            pass
         _seed_delivery_times(cur)
         conn.commit()
     finally:

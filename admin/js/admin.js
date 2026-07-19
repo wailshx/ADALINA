@@ -1680,7 +1680,7 @@ function renderOrdersTable() {
             '<td class="td-order-num"><span class="order-num">' + esc(o.order_number || '#' + o.id) + '</span></td>' +
             '<td><div class="customer-cell"><img src="' + avatarUrl(o.customer_name || '?') + '" alt=""><div class="name">' + esc(o.customer_name || '—') + '</div></div></td>' +
             '<td class="td-phone">' + esc(o.customer_phone || '—') + '</td>' +
-            '<td class="td-wilaya">' + esc(o.wilaya || '—') + '</td>' +
+            '<td class="td-wilaya">' + esc(o.wilaya || '—') + (o.delivery_mode ? '<br><span style="font-size:0.68rem;color:var(--text-secondary,#888);">' + esc(o.delivery_mode === 'bureau' ? '📦 Bureau' : '🏠 Domicile') + '</span>' : '') + '</td>' +
             '<td class="td-total">' + formatPriceDA(o.total) + '</td>' +
             '<td class="td-status">' + badge(o.status) + ((o.risk_score || 0) > 70 ? ' <span style="display:inline-flex;align-items:center;gap:3px;background:#fef2f2;color:#dc2626;padding:2px 6px;border-radius:4px;font-size:0.68rem;font-weight:600;" title="Score de risque: ' + o.risk_score + ' - ' + (o.risk_reasons || []).join(', ') + '"><i class="fas fa-exclamation-triangle"></i> Risque ' + o.risk_score + '</span>' : '') + '</td>' +
             '<td class="td-date" data-sort-val="' + (o.created_at || '') + '">' + timeAgo(o.created_at) + '</td>' +
