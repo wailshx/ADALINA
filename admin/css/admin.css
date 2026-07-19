@@ -510,6 +510,9 @@ td .customer-cell { display: flex; align-items: center; gap: 12px; }
 td .customer-cell img { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--glass-border); }
 td .customer-cell .name { font-weight: 600; color: #F0EDE8; }
 td .customer-cell .email { font-size: 0.72rem; color: var(--text-muted); }
+td .customer-cell .basket-icon { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #1B4D3E, #2E7D5B); display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
+
+table input[type="checkbox"] { width: 16px; height: 16px; accent-color: #1B4D3E; cursor: pointer; }
 
 /* ══════════════════════════════════════
    BADGES — Premium Pill Badges

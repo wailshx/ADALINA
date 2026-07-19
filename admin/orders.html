@@ -120,7 +120,8 @@
                     <input type="text" id="orders-search-input" placeholder="Rechercher par client, téléphone, wilaya ou commune...">
                     <button type="button" class="orders-search-clear" aria-label="Effacer la recherche">&times;</button>
                 </div>
-                <button class="btn btn-outline btn-sm" onclick="exportAllOrdersToSheet()" title="Exporter toutes les commandes en CSV pour Google Sheets"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exporter CSV</button>
+                <button class="btn btn-outline btn-sm" onclick="exportAllOrdersToSheet()" title="Exporter toutes les commandes en Excel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Excel</button>
+                <button class="btn btn-danger btn-sm" id="bulk-delete-orders-btn" style="display:none;" onclick="bulkDeleteOrders()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Supprimer (<span id="orders-selected-count">0</span>)</button>
                 <select id="order-status-filter" class="form-control">
                     <option value="">Tous les statuts</option>
                     <option value="new">En attente</option>
@@ -142,6 +143,7 @@
                     <table id="orders-table">
                         <thead>
                             <tr>
+                                <th style="width:40px;text-align:center;"><input type="checkbox" id="select-all-orders" onchange="toggleSelectAllOrders(this)"></th>
                                 <th class="sortable" data-sort="order_number">Commande <i class="fas fa-sort"></i></th>
                                 <th class="sortable" data-sort="customer_name">Client <i class="fas fa-sort"></i></th>
                                 <th>Téléphone</th>

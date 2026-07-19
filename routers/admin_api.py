@@ -414,6 +414,10 @@ def dashboard_stats(request: Request, session_token: str = Depends(require_admin
             ORDER BY sold DESC
         """)
         all_products_data = [dict(r) for r in cur.fetchall()]
+        all_products_data = batch_enrich_products(all_products_data, cur)
+        for p in all_products_data:
+            if not p.get('image') and p.get('images') and isinstance(p['images'], list) and len(p['images']) > 0:
+                p['image'] = p['images'][0]
         top_products_data = all_products_data[:5]
         unsold_products_data = [p for p in all_products_data if p['sold'] == 0][:10]
 
@@ -910,8 +914,9 @@ def order_history(oid: str, session_token: str = Depends(require_admin_auth)):
 @router.get('/orders/export/csv')
 def export_orders_csv(request: Request, session_token: str = Depends(require_admin_auth)):
     from starlette.responses import StreamingResponse
-    import csv
     import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     db = get_db()
     cur = db.cursor()
     try:
@@ -924,12 +929,27 @@ def export_orders_csv(request: Request, session_token: str = Depends(require_adm
             ORDER BY o.created_at DESC
         """)
         rows = cur.fetchall()
-        buf = io.StringIO()
-        writer = csv.writer(buf)
-        writer.writerow(['Numéro', 'Client', 'Téléphone', 'Wilaya', 'Commune',
-                         'Total (DA)', 'Statut', 'Livraison', 'Frais livraison',
-                         'Paiement', 'Articles', 'Date'])
-        for r in rows:
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'Commandes'
+        headers = ['Numéro', 'Client', 'Téléphone', 'Wilaya', 'Commune',
+                   'Total (DA)', 'Statut', 'Livraison', 'Frais livraison',
+                   'Paiement', 'Articles', 'Date']
+        header_font = Font(bold=True, color='FFFFFF', size=11)
+        header_fill = PatternFill(start_color='1B4D3E', end_color='1B4D3E', fill_type='solid')
+        thin_border = Border(
+            left=Side(style='thin', color='CCCCCC'),
+            right=Side(style='thin', color='CCCCCC'),
+            top=Side(style='thin', color='CCCCCC'),
+            bottom=Side(style='thin', color='CCCCCC')
+        )
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=h)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center')
+            cell.border = thin_border
+        for ri, r in enumerate(rows, 2):
             rd = dict(r)
             items_str = ''
             try:
@@ -944,25 +964,23 @@ def export_orders_csv(request: Request, session_token: str = Depends(require_adm
             except Exception:
                 items_str = str(rd.get('items', ''))
             created = rd['created_at'].strftime('%Y-%m-%d %H:%M') if rd['created_at'] else ''
-            writer.writerow([
-                rd.get('order_number', ''),
-                rd.get('customer_name', ''),
-                rd.get('customer_phone', ''),
-                rd.get('wilaya', ''),
-                rd.get('commune', ''),
-                rd.get('total', 0),
-                rd.get('status', ''),
-                rd.get('delivery_mode', ''),
-                rd.get('delivery_fee', 0),
-                rd.get('payment_method', ''),
-                items_str,
-                created
-            ])
+            vals = [rd.get('order_number', ''), rd.get('customer_name', ''),
+                    rd.get('customer_phone', ''), rd.get('wilaya', ''), rd.get('commune', ''),
+                    rd.get('total', 0), rd.get('status', ''), rd.get('delivery_mode', ''),
+                    rd.get('delivery_fee', 0), rd.get('payment_method', ''), items_str, created]
+            for col, v in enumerate(vals, 1):
+                cell = ws.cell(row=ri, column=col, value=v)
+                cell.border = thin_border
+        for col in ws.columns:
+            max_len = max(len(str(cell.value or '')) for cell in col)
+            ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 35)
+        buf = io.BytesIO()
+        wb.save(buf)
         buf.seek(0)
         return StreamingResponse(
-            iter(['\ufeff' + buf.getvalue()]),
-            media_type='text/csv',
-            headers={'Content-Disposition': 'attachment; filename="commandes_adalina.csv"'}
+            iter([buf.getvalue()]),
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': 'attachment; filename="commandes_adalina.xlsx"'}
         )
     finally:
         try:
@@ -978,8 +996,9 @@ def export_orders_csv(request: Request, session_token: str = Depends(require_adm
 @router.get('/orders/{oid}/export/csv')
 def export_order_csv(oid: str, request: Request, session_token: str = Depends(require_admin_auth)):
     from starlette.responses import StreamingResponse
-    import csv
     import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     db = get_db()
     cur = db.cursor()
     try:
@@ -995,11 +1014,26 @@ def export_order_csv(oid: str, request: Request, session_token: str = Depends(re
         if not r:
             return _json_response({'error': 'Commande introuvable'}, 404)
         rd = dict(r)
-        buf = io.StringIO()
-        writer = csv.writer(buf)
-        writer.writerow(['Numéro', 'Client', 'Téléphone', 'Wilaya', 'Commune',
-                         'Total (DA)', 'Statut', 'Livraison', 'Frais livraison',
-                         'Paiement', 'Articles', 'Date'])
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'Commande'
+        headers = ['Numéro', 'Client', 'Téléphone', 'Wilaya', 'Commune',
+                   'Total (DA)', 'Statut', 'Livraison', 'Frais livraison',
+                   'Paiement', 'Articles', 'Date']
+        header_font = Font(bold=True, color='FFFFFF', size=11)
+        header_fill = PatternFill(start_color='1B4D3E', end_color='1B4D3E', fill_type='solid')
+        thin_border = Border(
+            left=Side(style='thin', color='CCCCCC'),
+            right=Side(style='thin', color='CCCCCC'),
+            top=Side(style='thin', color='CCCCCC'),
+            bottom=Side(style='thin', color='CCCCCC')
+        )
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=h)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center')
+            cell.border = thin_border
         items_str = ''
         try:
             items = json.loads(rd['items']) if rd['items'] else []
@@ -1013,26 +1047,24 @@ def export_order_csv(oid: str, request: Request, session_token: str = Depends(re
         except Exception:
             items_str = str(rd.get('items', ''))
         created = rd['created_at'].strftime('%Y-%m-%d %H:%M') if rd['created_at'] else ''
-        writer.writerow([
-            rd.get('order_number', ''),
-            rd.get('customer_name', ''),
-            rd.get('customer_phone', ''),
-            rd.get('wilaya', ''),
-            rd.get('commune', ''),
-            rd.get('total', 0),
-            rd.get('status', ''),
-            rd.get('delivery_mode', ''),
-            rd.get('delivery_fee', 0),
-            rd.get('payment_method', ''),
-            items_str,
-            created
-        ])
+        vals = [rd.get('order_number', ''), rd.get('customer_name', ''),
+                rd.get('customer_phone', ''), rd.get('wilaya', ''), rd.get('commune', ''),
+                rd.get('total', 0), rd.get('status', ''), rd.get('delivery_mode', ''),
+                rd.get('delivery_fee', 0), rd.get('payment_method', ''), items_str, created]
+        for col, v in enumerate(vals, 1):
+            cell = ws.cell(row=2, column=col, value=v)
+            cell.border = thin_border
+        for col in ws.columns:
+            max_len = max(len(str(cell.value or '')) for cell in col)
+            ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 35)
+        buf = io.BytesIO()
+        wb.save(buf)
         buf.seek(0)
         num = rd.get('order_number', oid)
         return StreamingResponse(
-            iter(['\ufeff' + buf.getvalue()]),
-            media_type='text/csv',
-            headers={'Content-Disposition': f'attachment; filename="commande_{num}.csv"'}
+            iter([buf.getvalue()]),
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename="commande_{num}.xlsx"'}
         )
     finally:
         try:

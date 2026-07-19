@@ -158,8 +158,9 @@ async function initDashboard() {
             bestTbody.innerHTML = emptyState('fa-shopping-cart', 'Aucune vente', 'Aucun produit vendu pour le moment.');
         } else {
             bestTbody.innerHTML = sellers.map(function(p) {
+                var prodImg = p.image || (p.images && p.images[0]) || '';
                 return '<tr>' +
-                    '<td><div class="product-cell"><img src="' + cloudinaryThumb(imgSrc(esc(p.image)), 80) + '" alt="" loading="lazy" onerror="this.src=\'https://placehold.co/40x40/e2e8f0/718096?text=P\'"><div class="info"><div class="name">' + esc(p.name) + '</div></div></div></td>' +
+                    '<td><div class="product-cell"><img src="' + cloudinaryThumb(imgSrc(esc(prodImg)), 80) + '" alt="" loading="lazy" onerror="this.src=\'https://placehold.co/40x40/e2e8f0/718096?text=P\'"><div class="info"><div class="name">' + esc(p.name) + '</div></div></div></td>' +
                     '<td>' + formatPriceDA(p.price) + '</td>' +
                     '<td><strong>' + (p.sold || 0) + '</strong></td>' +
                 '</tr>';
@@ -174,8 +175,9 @@ async function initDashboard() {
             unsoldTbody.innerHTML = emptyState('fa-check-circle', 'Tout est vendu', 'Tous les produits ont au moins une vente.');
         } else {
             unsoldTbody.innerHTML = unsold.map(function(p) {
+                var prodImg = p.image || (p.images && p.images[0]) || '';
                 return '<tr>' +
-                    '<td><div class="product-cell"><img src="' + cloudinaryThumb(imgSrc(esc(p.image)), 80) + '" alt="" loading="lazy" onerror="this.src=\'https://placehold.co/40x40/e2e8f0/718096?text=P\'"><div class="info"><div class="name">' + esc(p.name) + '</div></div></div></td>' +
+                    '<td><div class="product-cell"><img src="' + cloudinaryThumb(imgSrc(esc(prodImg)), 80) + '" alt="" loading="lazy" onerror="this.src=\'https://placehold.co/40x40/e2e8f0/718096?text=P\'"><div class="info"><div class="name">' + esc(p.name) + '</div></div></div></td>' +
                     '<td>' + formatPriceDA(p.price) + '</td>' +
                     '<td>' + (p.stock || 0) + '</td>' +
                 '</tr>';
@@ -472,6 +474,33 @@ window.exportAllOrdersToSheet = function() {
     window.open(API + '/orders/export/csv', '_blank');
 };
 
+window.toggleSelectAllOrders = function(cb) {
+    document.querySelectorAll('.order-select-cb').forEach(function(el) { el.checked = cb.checked; });
+    updateBulkDeleteOrdersUI();
+};
+
+window.updateBulkDeleteOrdersUI = function() {
+    var checked = document.querySelectorAll('.order-select-cb:checked').length;
+    var btn = document.getElementById('bulk-delete-orders-btn');
+    var cnt = document.getElementById('orders-selected-count');
+    if (btn) btn.style.display = checked > 0 ? '' : 'none';
+    if (cnt) cnt.textContent = checked;
+};
+
+window.bulkDeleteOrders = async function() {
+    var ids = [];
+    document.querySelectorAll('.order-select-cb:checked').forEach(function(el) { ids.push(el.value); });
+    if (!ids.length) return;
+    if (!confirm('Supprimer ' + ids.length + ' commande(s) ? Cette action est irréversible.')) return;
+    var ok = 0, fail = 0;
+    for (var i = 0; i < ids.length; i++) {
+        var r = await api('DELETE', '/orders/' + ids[i]);
+        if (r && r.message) ok++; else fail++;
+    }
+    showToast(ok + ' supprimée(s)' + (fail ? ', ' + fail + ' échouée(s)' : ''));
+    initOrders();
+};
+
 /* ── Products ── */
 var productFilterState = { search: '', category: '' };
 
@@ -494,6 +523,7 @@ async function initProducts() {
         var prodImg = p.image || (p.images && p.images[0]) || '';
         return `
         <tr>
+            <td style="text-align:center;"><input type="checkbox" class="product-select-cb" value="${p.id}" onchange="updateBulkDeleteProductsUI()"></td>
             <td><div class="product-cell"><img src="${cloudinaryThumb(imgSrc(esc(prodImg)), 80)}" alt="" loading="lazy" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div></div></div></td>
             <td>SKU-${p.id}</td>
             <td>${esc(p.category_name||'')}</td>
@@ -615,6 +645,33 @@ window.deleteAllProducts = async function() {
     if (result && result.message) {
         showToast('✓ ' + result.message);
     }
+    initProducts();
+};
+
+window.toggleSelectAllProducts = function(cb) {
+    document.querySelectorAll('.product-select-cb').forEach(function(el) { el.checked = cb.checked; });
+    updateBulkDeleteProductsUI();
+};
+
+window.updateBulkDeleteProductsUI = function() {
+    var checked = document.querySelectorAll('.product-select-cb:checked').length;
+    var btn = document.getElementById('bulk-delete-products-btn');
+    var cnt = document.getElementById('products-selected-count');
+    if (btn) btn.style.display = checked > 0 ? '' : 'none';
+    if (cnt) cnt.textContent = checked;
+};
+
+window.bulkDeleteProducts = async function() {
+    var ids = [];
+    document.querySelectorAll('.product-select-cb:checked').forEach(function(el) { ids.push(el.value); });
+    if (!ids.length) return;
+    if (!confirm('Supprimer ' + ids.length + ' produit(s) ? Cette action est irréversible.')) return;
+    var ok = 0, fail = 0;
+    for (var i = 0; i < ids.length; i++) {
+        var r = await api('DELETE', '/products/' + ids[i]);
+        if (r && r.message) ok++; else fail++;
+    }
+    showToast(ok + ' produit(s) supprimé(s)' + (fail ? ', ' + fail + ' échoué(s)' : ''));
     initProducts();
 };
 
@@ -1702,8 +1759,9 @@ function renderOrdersTable() {
         var isUnread = o.is_read === 0 || o.is_read === null;
         var rowClass = isUnread ? ' class="order-row-unread"' : '';
         return '<tr' + rowClass + '>' +
+            '<td style="text-align:center;"><input type="checkbox" class="order-select-cb" value="' + o.id + '" onchange="updateBulkDeleteOrdersUI()"></td>' +
             '<td class="td-order-num"><span class="order-num">' + esc(o.order_number || '#' + o.id) + '</span></td>' +
-            '<td><div class="customer-cell"><img src="' + avatarUrl(o.customer_name || '?') + '" alt=""><div class="name">' + esc(o.customer_name || '—') + '</div></div></td>' +
+            '<td><div class="customer-cell"><div class="basket-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div><div class="name">' + esc(o.customer_name || '—') + '</div></div></td>' +
             '<td class="td-phone">' + esc(o.customer_phone || '—') + '</td>' +
             '<td class="td-wilaya">' + esc(o.wilaya || '—') + (o.delivery_mode ? '<br><span style="font-size:0.68rem;color:var(--text-secondary,#888);">' + esc(o.delivery_mode === 'bureau' ? '📦 Bureau' : '🏠 Domicile') + '</span>' : '') + '</td>' +
             '<td class="td-total">' + formatPriceDA(o.total) + '</td>' +
@@ -1711,7 +1769,7 @@ function renderOrdersTable() {
             '<td class="td-date" data-sort-val="' + (o.created_at || '') + '">' + timeAgo(o.created_at) + '</td>' +
             '<td class="td-actions">' +
                 '<button class="btn btn-outline btn-sm" onclick="viewOrder(' + o.id + ')" title="Voir la commande"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Voir</button>' +
-                '<button class="btn btn-outline btn-sm" onclick="exportOrderToSheet(' + o.id + ')" title="Exporter vers Google Sheets (CSV)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Sheet</button>' +
+                '<button class="btn btn-outline btn-sm" onclick="exportOrderToSheet(' + o.id + ')" title="Exporter Excel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Excel</button>' +
                 '<button class="btn btn-danger btn-sm" onclick="deleteOrder(' + o.id + ')" title="Supprimer la commande"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>' +
             '</td>' +
             '</tr>';
