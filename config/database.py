@@ -22,16 +22,16 @@ _pool = None
 _public_pool = None
 
 try:
-    _pool = ThreadedConnectionPool(2, 10, _normalize_url(DATABASE_URL), connect_timeout=10)
-    print("[DB] Connection pool initialized (min=2, max=10)")
+    _pool = ThreadedConnectionPool(2, 20, _normalize_url(DATABASE_URL), connect_timeout=10)
+    print("[DB] Connection pool initialized (min=2, max=20)")
 except Exception as e:
     print(f"[DB] WARNING: Could not create connection pool: {e}")
     print("[DB] Falling back to per-request connections.")
 
 if DATABASE_PUBLIC_URL and DATABASE_PUBLIC_URL != DATABASE_URL:
     try:
-        _public_pool = ThreadedConnectionPool(2, 10, _normalize_url(DATABASE_PUBLIC_URL), connect_timeout=10)
-        print("[DB] Public connection pool initialized (min=2, max=10)")
+        _public_pool = ThreadedConnectionPool(2, 20, _normalize_url(DATABASE_PUBLIC_URL), connect_timeout=10)
+        print("[DB] Public connection pool initialized (min=2, max=20)")
     except Exception as e:
         print(f"[DB] WARNING: Could not create public connection pool: {e}")
 
