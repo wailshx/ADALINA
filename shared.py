@@ -88,13 +88,17 @@ def row_to_dict(row):
 
 
 def _ensure_columns():
+    from config.database import get_db as _get_admin_db
     db = None
     try:
-        db = get_public_db()
+        db = _get_admin_db()
         cur = db.cursor()
         cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_mode TEXT DEFAULT ''")
+        cur.execute("ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS wilaya TEXT DEFAULT ''")
+        cur.execute("ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS min_days INTEGER DEFAULT 2")
+        cur.execute("ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS max_days INTEGER DEFAULT 5")
         db.commit()
-        logger.info('[startup] delivery_mode column verified')
+        logger.info('[startup] column migration verified')
     except Exception as e:
         logger.warning(f'[startup] Column migration check failed (non-fatal): {e}')
         if db:

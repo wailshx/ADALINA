@@ -534,9 +534,14 @@ def get_delivery_times():
     try:
         db = get_public_db()
         cur = db.cursor()
-        cur.execute("SELECT wilaya_id, COALESCE(NULLIF(wilaya,''), wilaya_id::text) AS wilaya, min_days, max_days FROM delivery_prices ORDER BY wilaya_id")
-        rows = cur.fetchall()
-        result = {r['wilaya']: {'min_days': r['min_days'], 'max_days': r['max_days'], 'wilaya_id': r['wilaya_id']} for r in rows}
+        try:
+            cur.execute("SELECT wilaya_id, COALESCE(NULLIF(wilaya,''), wilaya_id::text) AS wilaya, min_days, max_days FROM delivery_prices ORDER BY wilaya_id")
+            rows = cur.fetchall()
+            result = {r['wilaya']: {'min_days': r['min_days'], 'max_days': r['max_days'], 'wilaya_id': r['wilaya_id']} for r in rows}
+        except Exception:
+            cur.execute("SELECT wilaya_id, price FROM delivery_prices ORDER BY wilaya_id")
+            rows = cur.fetchall()
+            result = {str(r['wilaya_id']): {'min_days': 2, 'max_days': 5, 'wilaya_id': r['wilaya_id']} for r in rows}
         return _json_response(result, max_age=3600)
     except Exception as e:
         logger.exception('[Storefront] Error loading delivery times')
