@@ -809,6 +809,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             """)
             rows = cur.fetchall()
             orders_list = rows_to_list(rows)
+            print(f"[Admin] GET /api/orders returned {len(orders_list)} orders")
             for o in orders_list:
                 risk_score, risk_reasons = calculate_order_risk(o, cur)
                 o['risk_score'] = risk_score

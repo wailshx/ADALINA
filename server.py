@@ -40,6 +40,24 @@ except Exception:
 
 logger = logging.getLogger('adalina')
 
+def _ensure_columns():
+    db = None
+    try:
+        db = get_public_db()
+        cur = db.cursor()
+        cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_mode TEXT DEFAULT ''")
+        db.commit()
+        logger.info('[startup] delivery_mode column verified')
+    except Exception as e:
+        logger.warning(f'[startup] Column migration check failed (non-fatal): {e}')
+        if db:
+            try: db.rollback()
+            except Exception: pass
+    finally:
+        if db:
+            try: db.close()
+            except Exception: pass
+
 _order_limiter = RateLimiter()
 _cleanup_counter = 0
 
@@ -254,8 +272,16 @@ MAX_REQUEST_SIZE = 1 * 1024 * 1024  # 1 MB for JSON requests
 def _process_order_background(order_number, items, customer_name, customer_phone, wilaya, data):
     db = None
     try:
+        logger.info(f'[{order_number}] Background thread started, connecting to DB...')
         db = get_public_db()
         cur = db.cursor()
+        logger.info(f'[{order_number}] DB connected, checking columns...')
+        try:
+            cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='orders' AND column_name='delivery_mode'")
+            has_dm = cur.fetchone()
+            logger.info(f'[{order_number}] delivery_mode column exists: {bool(has_dm)}')
+        except Exception as col_err:
+            logger.warning(f'[{order_number}] Column check failed: {col_err}')
 
         commune = (data.get('commune') or '').strip()
         shipping = data.get('shipping', '')
@@ -264,10 +290,12 @@ def _process_order_background(order_number, items, customer_name, customer_phone
 
         server_total = 0
         product_ids = [item.get('product_id') for item in items]
+        price_map = {}
         if product_ids:
             placeholders = ','.join(['%s'] * len(product_ids))
             cur.execute(f"SELECT id, price, sale_price FROM products WHERE id IN ({placeholders})", product_ids)
             price_map = {r['id']: r for r in cur.fetchall()}
+            logger.info(f'[{order_number}] Found {len(price_map)}/{len(product_ids)} products')
         stock_warnings = []
         for item in items:
             pid = item.get('product_id')
@@ -277,7 +305,7 @@ def _process_order_background(order_number, items, customer_name, customer_phone
 
             prod = price_map.get(pid)
             if not prod:
-                logger.error(f'Order {order_number}: product {pid} not found, skipping')
+                logger.warning(f'[{order_number}] product {pid} not found, skipping')
                 continue
             unit_price = prod['sale_price'] if prod['sale_price'] else prod['price']
             server_total += (unit_price or 0) * qty
@@ -286,10 +314,10 @@ def _process_order_background(order_number, items, customer_name, customer_phone
                 ok, err = deduct_order_stock(cur, pid, color, size, qty)
                 if not ok:
                     stock_warnings.append(f'{pid}: {err}')
-                    logger.warning(f'Order {order_number}: stock deduction skipped for {pid}: {err}')
+                    logger.warning(f'[{order_number}] stock deduction skipped for {pid}: {err}')
             except Exception as stock_err:
                 stock_warnings.append(f'{pid}: {stock_err}')
-                logger.warning(f'Order {order_number}: stock deduction error for {pid}: {stock_err}')
+                logger.warning(f'[{order_number}] stock deduction error for {pid}: {stock_err}')
 
         delivery_fee = 0
         wid = data.get('wilaya_id')
@@ -304,6 +332,7 @@ def _process_order_background(order_number, items, customer_name, customer_phone
             except (ValueError, TypeError):
                 pass
 
+        logger.info(f'[{order_number}] Inserting order: total={server_total}, delivery_fee={delivery_fee}, delivery_mode={delivery_mode}, wilaya={wilaya}')
         cur.execute("""
             INSERT INTO orders (order_number, customer_id, customer_name, customer_phone, wilaya, commune, status, total, items, shipping_address, payment_method, delivery_fee, delivery_mode)
             VALUES (%s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
@@ -311,17 +340,20 @@ def _process_order_background(order_number, items, customer_name, customer_phone
         """, (order_number, customer_name, customer_phone, wilaya, commune, 'new', server_total, json.dumps(items), shipping_address, payment, delivery_fee, delivery_mode))
 
         oid = cur.fetchone()['id']
+        logger.info(f'[{order_number}] Order inserted with id={oid}, inserting status history...')
         cur.execute("INSERT INTO status_history (order_id, status, note) VALUES (%s, %s, %s)",
                     (oid, 'new', 'Commande créée'))
+        logger.info(f'[{order_number}] Committing...')
         db.commit()
+        logger.info(f'[{order_number}] Committed! Order created successfully (id={oid})')
         _cache.invalidate('products')
         _cache.invalidate('featured')
-        logger.info(f'Order {order_number} created (id={oid})')
     except Exception as e:
-        logger.exception(f'Background order {order_number} failed')
+        logger.exception(f'[{order_number}] Background order FAILED')
         if db:
             try:
                 db.rollback()
+                logger.info(f'[{order_number}] Rolled back after error')
             except Exception:
                 pass
     finally:
@@ -387,7 +419,14 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                 cur = db.cursor()
                 cur.execute('SELECT 1')
                 cur.fetchone()
-                send_json(self, {'status': 'ok', 'database': 'connected'})
+                cur.execute("SELECT COUNT(*) AS cnt FROM orders")
+                order_count = cur.fetchone()['cnt']
+                try:
+                    cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name='orders' AND column_name='delivery_mode'")
+                    has_dm = bool(cur.fetchone())
+                except Exception:
+                    has_dm = 'unknown'
+                send_json(self, {'status': 'ok', 'database': 'connected', 'order_count': order_count, 'delivery_mode_column': has_dm})
             except Exception as e:
                 logger.error(f'Health check DB error: {e}')
                 send_json(self, {'status': 'error', 'database': str(e)}, 503)
@@ -1040,6 +1079,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
         if path == '/api/orders':
             ip = get_client_ip(self)
+            logger.info(f'POST /api/orders received from {ip}')
             if not _order_limiter.is_allowed(f'order:{ip}', max_requests=5, window=300):
                 retry = _order_limiter.retry_after(f'order:{ip}', window=300)
                 send_json(self, {'error': f'Trop de requêtes. Réessayez dans {retry}s.'}, 429)
@@ -1075,6 +1115,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     daemon=True
                 )
                 t.start()
+                logger.info(f'POST /api/orders: spawned background thread for {order_number}')
 
                 send_json(self, {'order_number': order_number, 'message': 'Commande en cours de traitement'}, 201)
             except Exception as e:
@@ -1166,6 +1207,7 @@ def main():
     PORT = int(os.environ.get('PORT_MAIN', '3000'))
 
     init_database()
+    _ensure_columns()
 
     try:
         db = get_public_db()

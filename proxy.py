@@ -88,7 +88,10 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         referer = self.headers.get('Referer', '')
         backend_host, backend_port = route_to_backend(self.path, self.command, referer)
         origin = 'Admin' if (self.path.startswith('/admin') or '/admin' in referer) else 'Main'
-        print(f"[proxy] {self.command} {self.path} -> port {backend_port} ({origin})")
+        if self.path.startswith('/api/orders') or self.path.startswith('/api/public/orders'):
+            print(f"[proxy] {self.command} {self.path} -> port {backend_port} ({origin}) referer={referer[:80]}")
+        else:
+            print(f"[proxy] {self.command} {self.path} -> port {backend_port} ({origin})")
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             if content_length > MAX_PROXY_BODY:
