@@ -268,6 +268,7 @@ def _process_order_background(order_number, items, customer_name, customer_phone
             placeholders = ','.join(['%s'] * len(product_ids))
             cur.execute(f"SELECT id, price, sale_price FROM products WHERE id IN ({placeholders})", product_ids)
             price_map = {r['id']: r for r in cur.fetchall()}
+        stock_warnings = []
         for item in items:
             pid = item.get('product_id')
             qty = item.get('quantity') or 1
@@ -276,17 +277,19 @@ def _process_order_background(order_number, items, customer_name, customer_phone
 
             prod = price_map.get(pid)
             if not prod:
-                db.rollback()
-                logger.error(f'Order {order_number}: product {pid} not found')
-                return
+                logger.error(f'Order {order_number}: product {pid} not found, skipping')
+                continue
             unit_price = prod['sale_price'] if prod['sale_price'] else prod['price']
             server_total += (unit_price or 0) * qty
 
-            ok, err = deduct_order_stock(cur, pid, color, size, qty)
-            if not ok:
-                db.rollback()
-                logger.error(f'Order {order_number}: stock deduction failed for {pid}: {err}')
-                return
+            try:
+                ok, err = deduct_order_stock(cur, pid, color, size, qty)
+                if not ok:
+                    stock_warnings.append(f'{pid}: {err}')
+                    logger.warning(f'Order {order_number}: stock deduction skipped for {pid}: {err}')
+            except Exception as stock_err:
+                stock_warnings.append(f'{pid}: {stock_err}')
+                logger.warning(f'Order {order_number}: stock deduction error for {pid}: {stock_err}')
 
         delivery_fee = 0
         wid = data.get('wilaya_id')

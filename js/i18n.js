@@ -396,7 +396,7 @@
     var dict = { fr: FR, ar: AR };
 
     function getLang() {
-        return localStorage.getItem('adalina-lang') || 'fr';
+        return 'fr';
     }
 
     function t(key) {
