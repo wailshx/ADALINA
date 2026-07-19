@@ -675,8 +675,10 @@ def migrate_seo_settings():
     conn = get_db()
     cur = conn.cursor()
     for key, val, typ, cat in seo_defaults:
+        if not val:
+            continue
         cur.execute(
-            "INSERT INTO settings (setting_key, setting_value, setting_type, category) VALUES (%s, %s, %s, %s) ON CONFLICT (setting_key) DO NOTHING",
+            "INSERT INTO settings (setting_key, setting_value, setting_type, category) VALUES (%s, %s, %s, %s) ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value WHERE settings.setting_value IS NULL OR settings.setting_value = ''",
             (key, val, typ, cat)
         )
     conn.commit()
