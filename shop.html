@@ -187,6 +187,9 @@
                     <div class="quick-view-images">
                         <div class="quick-view-main-wrap">
                             <img id="quick-view-main-image" src="" alt="Product">
+                            <button class="qv-zoom-btn" onclick="openQvZoom()" aria-label="Zoom">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                            </button>
                             <button class="qv-nav qv-prev" onclick="qvPrevImage()">&#10094;</button>
                             <button class="qv-nav qv-next" onclick="qvNextImage()">&#10095;</button>
                         </div>
@@ -233,6 +236,11 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div id="qv-zoom-overlay" class="qv-zoom-overlay">
+            <button class="qv-zoom-close" onclick="closeQvZoom()" aria-label="Close zoom">&times;</button>
+            <img id="qv-zoom-image" src="" alt="Zoomed product">
         </div>
 
         <footer class="footer">

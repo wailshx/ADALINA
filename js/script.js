@@ -1013,6 +1013,43 @@ function closeQuickView() {
     setTimeout(function() { qv.classList.remove('closing'); }, 420);
 }
 
+function openQvZoom() {
+    var mainImg = document.getElementById('quick-view-main-image');
+    var zoomImg = document.getElementById('qv-zoom-image');
+    var overlay = document.getElementById('qv-zoom-overlay');
+    if (!mainImg || !mainImg.src || !zoomImg || !overlay) return;
+    var bigSrc = mainImg.src.replace(/\/w_\d+,/, '/w_1200,').replace(/\/h_\d+,/, '/h_1200,');
+    if (bigSrc === mainImg.src) bigSrc = mainImg.src;
+    zoomImg.src = bigSrc;
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeQvZoom() {
+    var overlay = document.getElementById('qv-zoom-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+(function() {
+    document.addEventListener('click', function(e) {
+        var overlay = document.getElementById('qv-zoom-overlay');
+        if (overlay && overlay.classList.contains('active') && (e.target === overlay || e.target.classList.contains('qv-zoom-close'))) {
+            closeQvZoom();
+        }
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            var overlay = document.getElementById('qv-zoom-overlay');
+            if (overlay && overlay.classList.contains('active')) {
+                closeQvZoom();
+                e.stopPropagation();
+            }
+        }
+    });
+})();
+
 function qvGoToImage(index) {
     _qv.currentIndex = index;
     var images = getQVariantImages();
@@ -1496,7 +1533,7 @@ function getDeliveryPrice(wilayaId) {
 function renderCheckout() {
     var wilayaSel = document.getElementById('co-wilaya');
     if (wilayaSel) {
-        var selectWilaya = (getLang() === 'ar') ? 'اختر ولاية' : i18n.t('checkout.selectWilaya');
+        var selectWilaya = (i18n.getLang() === 'ar') ? 'اختر ولاية' : i18n.t('checkout.selectWilaya');
         wilayaSel.innerHTML = '<option value="">' + selectWilaya + '</option>' +
             algerianWilayas.map(function (w) {
                 return '<option value="' + w.id + '">' + w.name + '</option>';
@@ -1520,8 +1557,8 @@ function renderCheckout() {
                 var txt = document.getElementById('delivery-estimate-text');
                 if (dt && el && txt) {
                     el.style.display = 'block';
-                    var estLabel = (getLang() === 'ar') ? 'التسليم المتوقع' : i18n.t('checkout.estimatedDelivery');
-                    var daysLabel = (getLang() === 'ar') ? 'أيام' : i18n.t('checkout.days');
+                    var estLabel = (i18n.getLang() === 'ar') ? 'التسليم المتوقع' : i18n.t('checkout.estimatedDelivery');
+                    var daysLabel = (i18n.getLang() === 'ar') ? 'أيام' : i18n.t('checkout.days');
                     txt.textContent = estLabel + ': ' + dt.min_days + '-' + dt.max_days + ' ' + daysLabel;
                 } else if (el) {
                     el.style.display = 'none';
@@ -1617,13 +1654,13 @@ function updateMunicipalities(wilayaId) {
     if (!muniSel) return;
     var communes = algerianMunicipalities[wilayaId];
     if (communes && communes.length > 0) {
-        var selectCommune = (getLang() === 'ar') ? 'اختر ولاية أولاً' : i18n.t('checkout.selectCommune');
+        var selectCommune = (i18n.getLang() === 'ar') ? 'اختر ولاية أولاً' : i18n.t('checkout.selectCommune');
         muniSel.innerHTML = '<option value="">' + selectCommune + '</option>' +
             communes.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
         muniSel.disabled = false;
         updateSelectFloat(muniSel);
     } else {
-        var noCommune = (getLang() === 'ar') ? 'لا توجد بلدية' : i18n.t('checkout.noCommune');
+        var noCommune = (i18n.getLang() === 'ar') ? 'لا توجد بلدية' : i18n.t('checkout.noCommune');
         muniSel.innerHTML = '<option value="">' + noCommune + '</option>';
         muniSel.disabled = true;
         updateSelectFloat(muniSel);
@@ -1647,7 +1684,7 @@ function updateCheckoutSummary() {
     if (!subtotalEl || !deliveryEl || !totalEl || !itemsEl) return;
 
     if (!cart || cart.length === 0) {
-        var emptyCartMsg = (getLang() === 'ar') ? 'سلتك فارغة' : i18n.t('checkout.emptyCart');
+        var emptyCartMsg = (i18n.getLang() === 'ar') ? 'سلتك فارغة' : i18n.t('checkout.emptyCart');
         itemsEl.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:1rem 0">' + emptyCartMsg + '</p>';
         subtotalEl.textContent = '0 DA';
         deliveryEl.textContent = '0 DA';
@@ -1660,10 +1697,10 @@ function updateCheckoutSummary() {
         var itemTotal = item.price * item.quantity;
         subtotal += itemTotal;
         var meta = [];
-        var sizeLabel = (getLang() === 'ar') ? 'الحجم' : i18n.t('qv.size');
-        var qtyLabel = (getLang() === 'ar') ? 'الكمية: ' : i18n.t('checkout.qty');
-        var editLabel = (getLang() === 'ar') ? 'تعديل' : i18n.t('cart.modifier');
-        var removeLabel = (getLang() === 'ar') ? 'إزالة' : i18n.t('checkout.remove');
+        var sizeLabel = (i18n.getLang() === 'ar') ? 'الحجم' : i18n.t('qv.size');
+        var qtyLabel = (i18n.getLang() === 'ar') ? 'الكمية: ' : i18n.t('checkout.qty');
+        var editLabel = (i18n.getLang() === 'ar') ? 'تعديل' : i18n.t('cart.modifier');
+        var removeLabel = (i18n.getLang() === 'ar') ? 'إزالة' : i18n.t('checkout.remove');
         if (item.selectedSize) meta.push(sizeLabel + ': ' + item.selectedSize);
         if (item.selectedColor) meta.push(item.selectedColor);
         var cartKey = item.id + '-' + (item.selectedSize || '') + '-' + (item.selectedColor || '');
@@ -1693,8 +1730,8 @@ function updateCheckoutSummary() {
         var found = algerianWilayas.find(function(w) { return w.id === wilayaId; });
         if (found) wilayaName = found.name;
     }
-    var dlText = (getLang() === 'ar') ? 'التوصيل' : i18n.t('checkout.deliveryLabel');
-    var freeText = (getLang() === 'ar') ? 'مجاني' : i18n.t('checkout.free');
+    var dlText = (i18n.getLang() === 'ar') ? 'التوصيل' : i18n.t('checkout.deliveryLabel');
+    var freeText = (i18n.getLang() === 'ar') ? 'مجاني' : i18n.t('checkout.free');
     var deliveryLabel = wilayaName ? dlText + ' \u2014 ' + wilayaName : dlText;
     var deliveryLine = deliveryEl.parentNode;
     var labelSpan = deliveryLine.querySelector('span:first-child');
@@ -1718,13 +1755,13 @@ function placeOrder(e) {
     var deliveryMode = deliveryModeSel ? deliveryModeSel.value : '';
 
     if (!name || !phone || !wilayaSel.value || !muniSel.value) {
-        var fillReqMsg = (getLang() === 'ar') ? 'يرجى ملء جميع الحقول المطلوبة' : i18n.t('checkout.fillRequired');
+        var fillReqMsg = (i18n.getLang() === 'ar') ? 'يرجى ملء جميع الحقول المطلوبة' : i18n.t('checkout.fillRequired');
         alert(fillReqMsg);
         return;
     }
 
     if (!deliveryMode) {
-        var deliveryModeMsg = (getLang() === 'ar') ? 'يرجى اختيار طريقة التوصيل' : i18n.t('checkout.deliveryModeRequired');
+        var deliveryModeMsg = (i18n.getLang() === 'ar') ? 'يرجى اختيار طريقة التوصيل' : i18n.t('checkout.deliveryModeRequired');
         alert(deliveryModeMsg);
         return;
     }
@@ -1735,7 +1772,7 @@ function placeOrder(e) {
     }
 
     if (cart.length === 0) {
-        var emptyMsg = (getLang() === 'ar') ? 'سلتك فارغة' : i18n.t('checkout.emptyCart');
+        var emptyMsg = (i18n.getLang() === 'ar') ? 'سلتك فارغة' : i18n.t('checkout.emptyCart');
         alert(emptyMsg);
         return;
     }
@@ -2789,6 +2826,8 @@ window.handleSearchInput = handleSearchInput;
 window.quickView = quickView;
 window.quickViewForCart = quickViewForCart;
 window.closeQuickView = closeQuickView;
+window.openQvZoom = openQvZoom;
+window.closeQvZoom = closeQvZoom;
 window.qvPrevImage = qvPrevImage;
 window.qvNextImage = qvNextImage;
 window.qvGoToImage = qvGoToImage;
