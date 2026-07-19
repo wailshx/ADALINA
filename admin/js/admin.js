@@ -1002,7 +1002,7 @@ function _handleVariantChange(action, el) {
                 if (['.jpg', '.jpeg', '.png', '.webp'].indexOf(ext) === -1) { alert(f.name + ': unsupported format'); continue; }
                 if (f.size > 10 * 1024 * 1024) { alert(f.name + ': too large (max 10MB)'); continue; }
                 var fd = new FormData();
-                fd.append('images', f);
+                fd.append('files', f);
                 try {
                     var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd, headers: { 'X-CSRF-Token': getCookie('csrf_token') } });
                     if (!res.ok) { var errText = await res.text(); throw new Error(errText.substring(0, 200) || 'Upload failed (HTTP ' + res.status + ')'); }
@@ -1653,7 +1653,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         try {
             var fd = new FormData();
-            fd.append('images', file);
+            fd.append('files', file);
             var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd, headers: { 'X-CSRF-Token': getCookie('csrf_token') } });
             if (!res.ok) { var errText = await res.text(); throw new Error(errText.substring(0, 200) || 'Upload failed (HTTP ' + res.status + ')'); }
             var data = await safeJson(res);
@@ -3103,7 +3103,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (text) text.textContent = 'Uploading ' + (file.name || 'image') + ' (' + (i + 1) + '/' + files.length + ')...';
             try {
                 var fd = new FormData();
-                fd.append('images', file);
+                fd.append('files', file);
                 var res = await fetch('/api/upload', { method: 'POST', credentials: 'same-origin', body: fd, headers: { 'X-CSRF-Token': getCookie('csrf_token') } });
                 if (!res.ok) { var errText = await res.text(); throw new Error(errText.substring(0, 200) || 'HTTP ' + res.status); }
                 var data = await safeJson(res);

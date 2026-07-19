@@ -719,7 +719,7 @@ window.uploadSettingsImage = async function(evt, key) {
     try {
         var fd = new FormData();
         fd.append('type', 'settings');
-        fd.append('file', file);
+        fd.append('files', file);
         var csrf = (window.__csrf || '');
         var headers = {};
         if (csrf) headers['X-CSRF-Token'] = csrf;
