@@ -328,6 +328,9 @@ async def serve_website_file(path: str):
     if not path:
         return RedirectResponse(url='/website/', status_code=302)
 
+    if path == 'products.json':
+        return await serve_products_json()
+
     file_path = BASE_DIR / path
     real = os.path.realpath(file_path)
     if not real.startswith(str(BASE_DIR)):
