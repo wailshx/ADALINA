@@ -78,12 +78,12 @@ else:
 # --- Test 2: Static Asset Cache Headers ---
 print('\n[2] Static Asset Caching')
 
-resp_css = req('/website/css/styles.css?v=abc123test')
+resp_css = req('/collection/css/styles.css?v=abc123test')
 cc_css = resp_css.headers.get('Cache-Control', '')
 test('CSS has immutable Cache-Control', 'immutable' in cc_css, f'got: {cc_css}')
 test('CSS max-age >= 31536000', 'max-age=31536000' in cc_css, f'got: {cc_css}')
 
-resp_js = req('/website/js/script.js?v=abc123test')
+resp_js = req('/collection/js/script.js?v=abc123test')
 cc_js = resp_js.headers.get('Cache-Control', '')
 test('JS has immutable Cache-Control', 'immutable' in cc_js, f'got: {cc_js}')
 

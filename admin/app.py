@@ -180,7 +180,7 @@ def is_authenticated(self):
 def require_auth(self):
     if not is_authenticated(self):
         self.send_response(302)
-        self.send_header('Location', '/admin/login')
+        self.send_header('Location', '/gestion/login')
         self.end_headers()
         return False
     token = get_token_from_cookies(self.headers.get('Cookie'))
@@ -1798,23 +1798,23 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 send_json(self, {'error': 'Not found'}, 404)
                 return
 
-            if path == '/admin/login':
+            if path == '/gestion/login':
                 if is_authenticated(self):
-                    redirect(self, '/admin/dashboard.html')
+                    redirect(self, '/gestion/dashboard.html')
                 else:
                     send_file(self, os.path.join(BASE_DIR, 'login.html'))
-            elif path == '/admin/logout':
+            elif path == '/gestion/logout':
                 token = get_token_from_cookies(self.headers.get('Cookie'))
                 if token:
                     delete_session(token)
                 self.send_response(302)
                 secure = 'Secure' if os.environ.get('HTTPS', '') else ''
                 self.send_header('Set-Cookie', f'admin_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; {secure}'.strip())
-                self.send_header('Location', '/admin/login')
+                self.send_header('Location', '/gestion/login')
                 self.end_headers()
-            elif path == '/website/' or path == '/website':
+            elif path == '/collection/' or path == '/website':
                 send_file(self, os.path.join(PARENT_DIR, 'index.html'))
-            elif path.startswith('/website/'):
+            elif path.startswith('/collection/'):
                 clean_path = path[9:]
                 if not clean_path:
                     clean_path = 'index.html'
@@ -1828,18 +1828,18 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 else:
                     self.send_response(403)
                     self.end_headers()
-            elif path.startswith('/admin/css/'):
-                rp = secure_path(os.path.join(BASE_DIR, 'css'), os.path.relpath(path, '/admin/css/'))
+            elif path.startswith('/gestion/css/'):
+                rp = secure_path(os.path.join(BASE_DIR, 'css'), os.path.relpath(path, '/gestion/css/'))
                 if rp: send_file(self, rp)
                 else: self.send_response(403); self.end_headers()
-            elif path.startswith('/admin/js/'):
-                rp = secure_path(os.path.join(BASE_DIR, 'js'), os.path.relpath(path, '/admin/js/'))
+            elif path.startswith('/gestion/js/'):
+                rp = secure_path(os.path.join(BASE_DIR, 'js'), os.path.relpath(path, '/gestion/js/'))
                 if rp: send_file(self, rp)
                 else: self.send_response(403); self.end_headers()
-            elif path.startswith('/admin/'):
+            elif path.startswith('/gestion/'):
                 if not require_auth(self):
                     return
-                rp = secure_path(BASE_DIR, os.path.relpath(path, '/admin/'))
+                rp = secure_path(BASE_DIR, os.path.relpath(path, '/gestion/'))
                 if rp and rp.endswith('.html'):
                     session_token = get_token_from_cookies(self.headers.get('Cookie'))
                     csrf_val = get_csrf_token_for_session(session_token) if session_token else ''
@@ -1884,7 +1884,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             path = parsed.path
             content_type = self.headers.get('Content-Type', '')
 
-            if path == '/admin/login':
+            if path == '/gestion/login':
                 ip = get_client_ip(self)
                 if not _login_limiter.is_allowed(f'login:{ip}', max_requests=5, window=900):
                     retry = _login_limiter.retry_after(f'login:{ip}', window=900)
@@ -1906,12 +1906,12 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     self.send_response(302)
                     self.send_header('Set-Cookie', cookie)
                     self.send_header('Set-Cookie', f'csrf_token={csrf}; Path=/; SameSite=Lax; {secure}'.strip())
-                    self.send_header('Location', '/admin/dashboard.html')
+                    self.send_header('Location', '/gestion/dashboard.html')
                     self.end_headers()
                     audit_log.log('LOGIN_SUCCESS', username, ip=ip)
                 else:
                     audit_log.log('LOGIN_FAILED', username, f'bad password from {ip}', ip=ip)
-                    redirect(self, '/admin/login?error=1')
+                    redirect(self, '/gestion/login?error=1')
             elif path.startswith('/api/'):
                 if not require_auth(self):
                     return

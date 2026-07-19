@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 proxy.py — Lightweight streaming reverse proxy using only Python stdlib.
-Routes /admin/* to admin server (PORT_ADMIN).
+Routes /gestion/* to admin server (PORT_ADMIN).
 Routes /api/public/* and POST /api/orders to main server (PORT_MAIN).
 All other /api/* routes go to admin server (PORT_ADMIN).
 Everything else goes to main server (PORT_MAIN).
@@ -40,11 +40,11 @@ MAX_PROXY_BODY = 50 * 1024 * 1024  # 50 MB max request body
 
 
 def route_to_backend(path, method='GET', referer=''):
-    if (path.startswith('/admin') or
-            path.startswith('/api/admin') or
+    if (path.startswith('/gestion') or
+            path.startswith('/api/gestion') or
             path.startswith('/notifications') or
             path.startswith('/logout') or
-            '/admin' in referer):
+            '/gestion' in referer):
         return ('127.0.0.1', ADMIN_PORT)
     if path.startswith('/api/'):
         if method == 'POST':
@@ -87,7 +87,7 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
     def _proxy(self):
         referer = self.headers.get('Referer', '')
         backend_host, backend_port = route_to_backend(self.path, self.command, referer)
-        origin = 'Admin' if (self.path.startswith('/admin') or '/admin' in referer) else 'Main'
+        origin = 'Admin' if (self.path.startswith('/gestion') or '/gestion' in referer) else 'Main'
         if self.path.startswith('/api/orders') or self.path.startswith('/api/public/orders'):
             print(f"[proxy] {self.command} {self.path} -> port {backend_port} ({origin}) referer={referer[:80]}")
         else:
@@ -203,7 +203,7 @@ class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
 
 
 if __name__ == '__main__':
-    print(f'[proxy] Routing /admin/* and most /api/* → localhost:{ADMIN_PORT}')
+    print(f'[proxy] Routing /gestion/* and most /api/* → localhost:{ADMIN_PORT}')
     print(f'[proxy] Routing /api/public/* and POST /api/orders → localhost:{MAIN_PORT}')
     print(f'[proxy] Routing everything else → localhost:{MAIN_PORT}')
     print(f'[proxy] Streaming mode: {CHUNK_SIZE // 1024}KB chunks, gzip compression enabled')

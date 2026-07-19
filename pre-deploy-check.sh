@@ -111,25 +111,25 @@ import sys, json; d = json.load(sys.stdin); sys.exit(0 if d else 1)
 # ══════════════════════════════════════════════════════════════
 section "CLIENT-FACING: Homepage"
 {
-  code=$(get "$BASE_URL/website/")
+  code=$(get "$BASE_URL/collection/")
   [ "$code" = "200" ] && pass "Homepage loads (200)" || fail "Homepage returned $code"
 
   # Hero image
-  has_hero=$(curl $CURL_OPTS "$BASE_URL/website/" | grep -ci 'hero\|slider\|banner' || true)
+  has_hero=$(curl $CURL_OPTS "$BASE_URL/collection/" | grep -ci 'hero\|slider\|banner' || true)
   [ "$has_hero" -gt 0 ] && pass "Hero/slider section present" || fail "Hero section missing"
 
   # Announcement bar
-  has_bar=$(curl $CURL_OPTS "$BASE_URL/website/" | grep -ci 'announcement\|marquee\|promo' || true)
+  has_bar=$(curl $CURL_OPTS "$BASE_URL/collection/" | grep -ci 'announcement\|marquee\|promo' || true)
   [ "$has_bar" -gt 0 ] && pass "Announcement bar present" || fail "Announcement bar missing"
 
   # JS/CSS load
-  css_code=$(get "$BASE_URL/website/css/styles.css")
+  css_code=$(get "$BASE_URL/collection/css/styles.css")
   [ "$css_code" = "200" ] && pass "Main CSS loads" || fail "Main CSS returned $css_code"
 
-  js_code=$(get "$BASE_URL/website/js/script.js")
+  js_code=$(get "$BASE_URL/collection/js/script.js")
   [ "$js_code" = "200" ] && pass "Main JS loads" || fail "Main JS returned $js_code"
 
-  sizes_code=$(get "$BASE_URL/website/js/sizes.js")
+  sizes_code=$(get "$BASE_URL/collection/js/sizes.js")
   [ "$sizes_code" = "200" ] && pass "sizes.js loads" || fail "sizes.js returned $sizes_code"
 }
 
@@ -178,56 +178,56 @@ section "CLIENT-FACING: API — Settings & Delivery"
 
 section "CLIENT-FACING: Shop Page"
 {
-  code=$(get "$BASE_URL/website/shop.html")
+  code=$(get "$BASE_URL/collection/shop.html")
   [ "$code" = "200" ] && pass "Shop page loads (200)" || fail "Shop page returned $code"
 
   # Taille filter UI
-  has_taille=$(curl $CURL_OPTS "$BASE_URL/website/shop.html" | grep -ci 'taille\|size.*filter\|buildSizeFilter' || true)
+  has_taille=$(curl $CURL_OPTS "$BASE_URL/collection/shop.html" | grep -ci 'taille\|size.*filter\|buildSizeFilter' || true)
   [ "$has_taille" -gt 0 ] && pass "Taille filter referenced in HTML/JS" || fail "Taille filter missing"
 
   # Category filter
-  has_cat=$(curl $CURL_OPTS "$BASE_URL/website/shop.html" | grep -ci 'category.*filter\|buildCategoryFilter\|catFilter' || true)
+  has_cat=$(curl $CURL_OPTS "$BASE_URL/collection/shop.html" | grep -ci 'category.*filter\|buildCategoryFilter\|catFilter' || true)
   [ "$has_cat" -gt 0 ] && pass "Category filter referenced in HTML/JS" || fail "Category filter missing"
 
   # Pagination
-  has_page=$(curl $CURL_OPTS "$BASE_URL/website/shop.html" | grep -ci 'pagination\|loadShopPage\|loadServerPage\|loadFilteredPage' || true)
+  has_page=$(curl $CURL_OPTS "$BASE_URL/collection/shop.html" | grep -ci 'pagination\|loadShopPage\|loadServerPage\|loadFilteredPage' || true)
   [ "$has_page" -gt 0 ] && pass "Pagination logic present" || fail "Pagination missing"
 }
 
 section "CLIENT-FACING: Product Page"
 {
-  code=$(get "$BASE_URL/website/product.html")
+  code=$(get "$BASE_URL/collection/product.html")
   [ "$code" = "200" ] && pass "Product page template loads (200)" || fail "Product page returned $code"
 
   # Check script.js has product page functions (loaded via <script src>)
-  has_pp=$(curl $CURL_OPTS "$BASE_URL/website/js/script.js" | grep -c 'loadProductPage\|displayProduct\|selectProductColor\|selectProductSize' || true)
+  has_pp=$(curl $CURL_OPTS "$BASE_URL/collection/js/script.js" | grep -c 'loadProductPage\|displayProduct\|selectProductColor\|selectProductSize' || true)
   [ "$has_pp" -gt 0 ] && pass "Product page JS functions present" || fail "Product page JS missing"
 }
 
 section "CLIENT-FACING: Quick View"
 {
-  has_qv=$(curl $CURL_OPTS "$BASE_URL/website/js/script.js" | grep -c 'function quickView' || true)
+  has_qv=$(curl $CURL_OPTS "$BASE_URL/collection/js/script.js" | grep -c 'function quickView' || true)
   [ "$has_qv" -gt 0 ] && pass "quickView() function defined" || fail "quickView() missing"
 
-  has_qv_cart=$(curl $CURL_OPTS "$BASE_URL/website/js/script.js" | grep -c 'quickViewForCart' || true)
+  has_qv_cart=$(curl $CURL_OPTS "$BASE_URL/collection/js/script.js" | grep -c 'quickViewForCart' || true)
   [ "$has_qv_cart" -gt 0 ] && pass "quickViewForCart() for Modify button" || fail "quickViewForCart() missing"
 }
 
 section "CLIENT-FACING: Panier (Cart)"
 {
-  has_cart=$(curl $CURL_OPTS "$BASE_URL/website/js/script.js" | grep -c 'renderCartPage\|updateCartDisplay' || true)
+  has_cart=$(curl $CURL_OPTS "$BASE_URL/collection/js/script.js" | grep -c 'renderCartPage\|updateCartDisplay' || true)
   [ "$has_cart" -gt 0 ] && pass "Cart rendering functions present" || fail "Cart functions missing"
 
-  has_modify=$(curl $CURL_OPTS "$BASE_URL/website/js/script.js" | grep -c 'quickViewForCart\|Modifier' || true)
+  has_modify=$(curl $CURL_OPTS "$BASE_URL/collection/js/script.js" | grep -c 'quickViewForCart\|Modifier' || true)
   [ "$has_modify" -gt 0 ] && pass "Modifier (edit) button logic present" || fail "Modifier logic missing"
 }
 
 section "CLIENT-FACING: Checkout"
 {
-  code=$(get "$BASE_URL/website/checkout.html")
+  code=$(get "$BASE_URL/collection/checkout.html")
   [ "$code" = "200" ] && pass "Checkout page loads (200)" || fail "Checkout page returned $code"
 
-  has_checkout=$(curl $CURL_OPTS "$BASE_URL/website/checkout.html" | grep -ci 'placeOrder\|renderCheckout\|wilaya\|delivery' || true)
+  has_checkout=$(curl $CURL_OPTS "$BASE_URL/collection/checkout.html" | grep -ci 'placeOrder\|renderCheckout\|wilaya\|delivery' || true)
   [ "$has_checkout" -gt 0 ] && pass "Checkout JS functions present" || fail "Checkout JS missing"
 
   # Delivery prices API
@@ -242,7 +242,7 @@ sys.exit(0 if isinstance(d, dict) and len(d) > 0 else 1)
 section "CLIENT-FACING: Static Assets"
 {
   for f in "css/styles.css" "js/script.js" "js/sizes.js" "images/"; do
-    code=$(get "$BASE_URL/website/$f")
+    code=$(get "$BASE_URL/collection/$f")
     [ "$code" = "200" ] && pass "$f loads (200)" || fail "$f returned $code"
   done
 
@@ -254,12 +254,12 @@ section "CLIENT-FACING: Static Assets"
 section "CLIENT-FACING: Proxy Routing"
 {
   # Client site
-  code=$(get "$BASE_URL/website/")
-  [ "$code" = "200" ] && pass "Proxy → Main: /website/" || fail "Proxy → Main failed ($code)"
+  code=$(get "$BASE_URL/collection/")
+  [ "$code" = "200" ] && pass "Proxy → Main: /collection/" || fail "Proxy → Main failed ($code)"
 
   # Admin login
-  code=$(get "$BASE_URL/admin/")
-  [ "$code" = "200" ] || [ "$code" = "302" ] && pass "Proxy → Admin: /admin/" || fail "Proxy → Admin failed ($code)"
+  code=$(get "$BASE_URL/gestion/")
+  [ "$code" = "200" ] || [ "$code" = "302" ] && pass "Proxy → Admin: /gestion/" || fail "Proxy → Admin failed ($code)"
 
   # Public API via proxy
   code=$(get "$BASE_URL/api/public/products")
@@ -271,10 +271,10 @@ section "CLIENT-FACING: Proxy Routing"
 # ══════════════════════════════════════════════════════════════
 section "ADMIN: Login"
 {
-  code=$(post_json "$BASE_URL/admin/login" -d "username=admin&password=admin123" -H "Content-Type: application/x-www-form-urlencoded" -c "$COOKIES")
+  code=$(post_json "$BASE_URL/gestion/login" -d "username=admin&password=admin123" -H "Content-Type: application/x-www-form-urlencoded" -c "$COOKIES")
   [ "$code" = "302" ] && pass "Login POST returns 302 (success)" || fail "Login returned $code"
 
-  code=$(get "$BASE_URL/admin/dashboard.html" -b "$COOKIES")
+  code=$(get "$BASE_URL/gestion/dashboard.html" -b "$COOKIES")
   [ "$code" = "200" ] && pass "Dashboard accessible with session" || fail "Dashboard returned $code"
 }
 
@@ -498,9 +498,9 @@ section "ADMIN: Admin Static Assets"
     code=$(get "$BASE_URL/$f" -b "$COOKIES")
     [ "$code" = "200" ] && pass "/$f (200)" || fail "/$f returned $code"
   done
-  # /admin/login returns 302 to dashboard when already authenticated — this is correct
-  code=$(get "$BASE_URL/admin/login" -b "$COOKIES")
-  [ "$code" = "200" ] || [ "$code" = "302" ] && pass "/admin/login ($code — redirect=authenticated)" || fail "/admin/login returned $code"
+  # /gestion/login returns 302 to dashboard when already authenticated — this is correct
+  code=$(get "$BASE_URL/gestion/login" -b "$COOKIES")
+  [ "$code" = "200" ] || [ "$code" = "302" ] && pass "/gestion/login ($code — redirect=authenticated)" || fail "/gestion/login returned $code"
 }
 
 # ── Cleanup test product ──────────────────────────────────────

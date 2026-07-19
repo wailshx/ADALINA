@@ -180,7 +180,7 @@ def is_admin_authenticated(request: Request):
 
 def require_admin_auth(request: Request):
     if not is_admin_authenticated(request):
-        raise HTTPException(status_code=307, headers={'Location': '/admin/login'})
+        raise HTTPException(status_code=307, headers={'Location': '/gestion/login'})
     token = get_token_from_cookies(request.headers.get('cookie'))
     if token:
         touch_session(token)
@@ -265,7 +265,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         for k, v in SECURITY_HEADERS.items():
             response.headers[k] = v
         path = request.url.path
-        if path.startswith('/admin/'):
+        if path.startswith('/gestion/'):
             response.headers['Content-Security-Policy'] = ADMIN_CSP
         else:
             response.headers['Content-Security-Policy'] = PUBLIC_CSP
@@ -291,8 +291,8 @@ app.mount('/css', StaticFiles(directory=str(css_dir)), name='css')
 app.mount('/js', StaticFiles(directory=str(js_dir)), name='js')
 app.mount('/images', StaticFiles(directory=str(images_dir)), name='images')
 app.mount('/uploads', StaticFiles(directory=str(uploads_dir)), name='uploads')
-app.mount('/admin/css', StaticFiles(directory=str(admin_css_dir)), name='admin_css')
-app.mount('/admin/js', StaticFiles(directory=str(admin_js_dir)), name='admin_js')
+app.mount('/gestion/css', StaticFiles(directory=str(admin_css_dir)), name='admin_css')
+app.mount('/gestion/js', StaticFiles(directory=str(admin_js_dir)), name='admin_js')
 
 # ---------------------------------------------------------------------------
 # Routers
@@ -312,9 +312,9 @@ app.include_router(_admin_pages_module.router)
 
 @app.get('/')
 async def root_redirect():
-    return RedirectResponse(url='/website/', status_code=302)
+    return RedirectResponse(url='/collection/', status_code=302)
 
-@app.get('/website/')
+@app.get('/collection/')
 async def serve_website_index():
     file_path = BASE_DIR / 'index.html'
     if not file_path.exists():
@@ -323,10 +323,10 @@ async def serve_website_index():
     content = content.replace(b'?v=__BUILD__', ('?v=' + BUILD_VERSION).encode())
     return HTMLResponse(content=content, media_type='text/html')
 
-@app.get('/website/{path:path}')
+@app.get('/collection/{path:path}')
 async def serve_website_file(path: str):
     if not path:
-        return RedirectResponse(url='/website/', status_code=302)
+        return RedirectResponse(url='/collection/', status_code=302)
 
     if path == 'products.json':
         return await serve_products_json()
@@ -350,7 +350,7 @@ async def serve_website_file(path: str):
 # Products.json endpoint (served from DB)
 # ---------------------------------------------------------------------------
 
-@app.get('/website/products.json')
+@app.get('/collection/products.json')
 async def serve_products_json():
     cached = _cache.get('products_json', ttl=300)
     if cached is not None:
@@ -412,11 +412,11 @@ async def serve_wishlist_empty():
 @app.get('/track/{order_number}')
 async def track_redirect(order_number: str):
     from starlette.responses import RedirectResponse
-    return RedirectResponse(url=f'/website/track.html?order={order_number}', status_code=302)
+    return RedirectResponse(url=f'/collection/track.html?order={order_number}', status_code=302)
 
 @app.get('/track/')
 async def track_empty():
-    return RedirectResponse(url='/website/track.html', status_code=302)
+    return RedirectResponse(url='/collection/track.html', status_code=302)
 
 # ---------------------------------------------------------------------------
 # Health

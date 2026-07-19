@@ -884,7 +884,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
             return
 
         # Products.json endpoint — served from DB
-        if path == '/website/products.json':
+        if path == '/collection/products.json':
             cached = _cache.get('products_json', ttl=300)
             if cached is not None:
                 self.send_response(200)
@@ -926,11 +926,11 @@ class AdalinaServer(SimpleHTTPRequestHandler):
                     except Exception: pass
             return
 
-        elif path == '/website/' or path == '/website':
+        elif path == '/collection/' or path == '/website':
             self.path = '/index.html'
             return self._serve_html('/index.html')
 
-        elif path.startswith('/website/'):
+        elif path.startswith('/collection/'):
             clean_path = path[9:]
             if not clean_path:
                 clean_path = 'index.html'
@@ -956,14 +956,14 @@ class AdalinaServer(SimpleHTTPRequestHandler):
             order_number = path[7:].strip()
             if not order_number:
                 self.send_response(302)
-                self.send_header('Location', '/website/track.html')
+                self.send_header('Location', '/collection/track.html')
                 self.end_headers()
                 return
             parsed_qs = urllib.parse.parse_qs(parsed.query)
             phone_last4 = (parsed_qs.get('phone', [''])[0])[-4:]
             if not phone_last4 or len(phone_last4) != 4:
                 self.send_response(302)
-                self.send_header('Location', '/website/track.html?order=' + urllib.parse.quote(order_number))
+                self.send_header('Location', '/collection/track.html?order=' + urllib.parse.quote(order_number))
                 self.end_headers()
                 return
             db = None
@@ -1064,7 +1064,7 @@ class AdalinaServer(SimpleHTTPRequestHandler):
 
         elif path == '/' or path == '':
             self.send_response(302)
-            self.send_header('Location', '/website/')
+            self.send_header('Location', '/collection/')
             self.end_headers()
 
         else:
@@ -1223,7 +1223,7 @@ def main():
     print(f'Port: {PORT}')
     print(f'DB: {"OK" if db_ok else "UNREACHABLE"}')
     print(f'{"="*50}')
-    print(f'✓ Access website: http://localhost:{PORT}/website/')
+    print(f'✓ Access website: http://localhost:{PORT}/collection/')
     print(f'✓ Database: PostgreSQL (Supabase)')
     print(f'{"="*50}')
     print(f'Press Ctrl+C to stop the server.')

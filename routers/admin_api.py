@@ -342,7 +342,7 @@ def _get_client_ip(request: Request) -> str:
 def require_admin_auth(request: Request) -> str:
     token = request.cookies.get('admin_session')
     if not token or not get_session(token):
-        raise HTTPException(status_code=302, headers={'Location': '/admin/login'})
+        raise HTTPException(status_code=302, headers={'Location': '/gestion/login'})
     touch_session(token)
     return token
 

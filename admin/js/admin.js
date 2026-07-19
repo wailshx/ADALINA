@@ -22,8 +22,8 @@ async function api(method, url, data) {
     }
     try {
         const res = await fetch(API + url, opts);
-        if (res.url.includes('/admin/login') || (res.headers.get('content-type') || '').includes('text/html')) {
-            window.location.href = '/admin/login';
+        if (res.url.includes('/gestion/login') || (res.headers.get('content-type') || '').includes('text/html')) {
+            window.location.href = '/gestion/login';
             return null;
         }
         return await safeJson(res);

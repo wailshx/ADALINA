@@ -2954,7 +2954,7 @@ function showToast(msg) {
 
 function shareWishlistWhatsApp() {
     if (!wishlist || wishlist.length === 0) return;
-    var baseUrl = location.origin + '/website/products.json';
+    var baseUrl = location.origin + '/collection/products.json';
     fetch(baseUrl)
     .then(function(r) { return r.json(); })
     .then(function(products) {
@@ -2964,7 +2964,7 @@ function shareWishlistWhatsApp() {
             var p = products.find(function(pr) { return pr.id == id || pr.id === id; });
             if (p) {
                 names.push(p.name);
-                links.push(location.origin + '/website/product.html?id=' + p.id);
+                links.push(location.origin + '/collection/product.html?id=' + p.id);
             }
         });
         var text = i18n.t('wishlist.shareDiscover');

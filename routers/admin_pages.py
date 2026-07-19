@@ -15,7 +15,7 @@ from routers.admin_api import (
     PROJECT_ROOT, ADMIN_DIR,
 )
 
-router = APIRouter(prefix='/admin', tags=['admin-pages'])
+router = APIRouter(prefix='/gestion', tags=['admin-pages'])
 
 
 def _is_authenticated(request: Request) -> bool:
@@ -44,7 +44,7 @@ def _serve_admin_html(file_path: str, request: Request) -> HTMLResponse:
 @router.get('/login')
 def login_page(request: Request):
     if _is_authenticated(request):
-        return RedirectResponse(url='/admin/dashboard.html', status_code=302)
+        return RedirectResponse(url='/gestion/dashboard.html', status_code=302)
     login_path = os.path.join(ADMIN_DIR, 'login.html')
     if not os.path.isfile(login_path):
         return HTMLResponse(content='Login page not found', status_code=404)
@@ -75,7 +75,7 @@ async def login_submit(
         save_csrf_token(token, csrf)
         max_age = 30 * 24 * 3600 if remember == 'on' else None
         secure = 'Secure' if os.environ.get('HTTPS', '') else ''
-        response = RedirectResponse(url='/admin/dashboard.html', status_code=302)
+        response = RedirectResponse(url='/gestion/dashboard.html', status_code=302)
         cookie_val = f'admin_session={token}; Path=/; HttpOnly; SameSite=Lax; {secure}'.strip()
         if max_age:
             cookie_val += f'; Max-Age={max_age}'
@@ -96,7 +96,7 @@ async def login_submit(
         return response
     else:
         audit_log.log('LOGIN_FAILED', username, f'bad password from {ip}', ip=ip)
-        return RedirectResponse(url='/admin/login?error=1', status_code=302)
+        return RedirectResponse(url='/gestion/login?error=1', status_code=302)
 
 
 @router.get('/logout')
@@ -104,7 +104,7 @@ def logout(request: Request):
     token = request.cookies.get('admin_session')
     if token:
         delete_session(token)
-    response = RedirectResponse(url='/admin/login', status_code=302)
+    response = RedirectResponse(url='/gestion/login', status_code=302)
     response.delete_cookie('admin_session', path='/', httponly=True)
     response.delete_cookie('csrf_token', path='/')
     return response
