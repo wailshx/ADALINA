@@ -443,9 +443,10 @@
     function toggleLang() {}
 
     function init() {
-        var lang = getLang();
+        localStorage.removeItem('adalina-lang');
+        var lang = 'fr';
         document.documentElement.lang = lang;
-        document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+        document.documentElement.dir = 'ltr';
         applyTranslations(lang);
         updateLangToggle(lang);
         updateWhatsAppTooltip();

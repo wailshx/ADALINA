@@ -184,7 +184,7 @@ async function initDashboard() {
     }
 
     if (typeof Chart !== 'undefined') {
-        var labels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+        var labels = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
         var maizeColor = colorVar('--primary', '#f5d042');
         var ctx = document.getElementById('weekly-visitors-chart');
         if (ctx) {
@@ -406,6 +406,8 @@ function buildInvoiceHTML(order) {
         return sum + (Number(item.price || 0) * (item.quantity || item.qty || 1));
     }, 0);
 
+    var deliveryModeLabel = order.delivery_mode === 'bureau' ? 'Au Bureau' : (order.delivery_mode === 'domicile' ? 'À Domicile' : '');
+
     return '<div class="rc-receipt">' +
         '<div class="rc-header">' +
             '<div class="rc-store">' + esc(storeName) + '</div>' +
@@ -424,6 +426,7 @@ function buildInvoiceHTML(order) {
         '<div class="rc-info">' +
             '<span>Adresse</span><span>' + esc((order.commune || '') + (order.wilaya ? ', ' + order.wilaya : '')) + '</span>' +
         '</div>' +
+        (deliveryModeLabel ? '<div class="rc-info"><span>Livraison</span><span>' + esc(deliveryModeLabel) + '</span></div>' : '') +
         '<div class="rc-info">' +
             '<span>Paiement</span><span>' + esc(order.payment_method || '—') + '</span>' +
         '</div>' +
