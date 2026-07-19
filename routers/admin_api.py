@@ -11,7 +11,7 @@ import subprocess
 from typing import Optional, List, Any
 
 from fastapi import APIRouter, Request, HTTPException, Depends, Body, Query, File, UploadFile, Form
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse as _StarletteJSONResponse
 
 import sys as _sys
 _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -184,8 +184,18 @@ def secure_path(base_dir, requested_path):
     return real
 
 
+class _SafeJSONResponse(_StarletteJSONResponse):
+    def render(self, content) -> bytes:
+        import datetime as _dt
+        def _default(o):
+            if isinstance(o, (_dt.datetime, _dt.date, _dt.time)):
+                return o.isoformat()
+            raise TypeError(f'Object of type {type(o).__name__} is not JSON serializable')
+        return json.dumps(content, default=_default, ensure_ascii=False, allow_nan=False, indent=None, separators=(',', ':')).encode('utf-8')
+
+
 def _json_response(data, status_code=200):
-    return JSONResponse(content=data, status_code=status_code)
+    return _SafeJSONResponse(content=data, status_code=status_code)
 
 
 def row_to_dict(row):

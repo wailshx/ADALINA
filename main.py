@@ -39,6 +39,16 @@ from shared import (
 
 logger = logging.getLogger('adalina')
 
+class _SafeJSONResponse(JSONResponse):
+    def render(self, content) -> bytes:
+        import datetime as _dt
+        def _default(o):
+            if isinstance(o, (_dt.datetime, _dt.date, _dt.time)):
+                return o.isoformat()
+            raise TypeError(f'Object of type {type(o).__name__} is not JSON serializable')
+        return json.dumps(content, default=_default, ensure_ascii=False, allow_nan=False, indent=None, separators=(',', ':')).encode('utf-8')
+
+
 CORS_ORIGIN = os.environ.get('CORS_ORIGIN', 'https://adalina-v2.onrender.com')
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', '')
@@ -341,7 +351,7 @@ async def serve_website_file(path: str):
 async def serve_products_json():
     cached = _cache.get('products_json', ttl=300)
     if cached is not None:
-        return JSONResponse(content=cached)
+        return _SafeJSONResponse(content=cached)
     db = None
     try:
         db = get_public_db()
@@ -358,10 +368,10 @@ async def serve_products_json():
         rows = cur.fetchall()
         products = batch_format_products(rows, cur)
         _cache.set('products_json', products)
-        return JSONResponse(content=products)
+        return _SafeJSONResponse(content=products)
     except Exception as e:
         logger.exception('Error loading products.json')
-        return JSONResponse(content={'error': 'Erreur serveur'}, status_code=500)
+        return _SafeJSONResponse(content={'error': 'Erreur serveur'}, status_code=500)
     finally:
         if db:
             try: db.close()
@@ -427,7 +437,7 @@ async def health_check():
         return {'status': 'ok', 'database': 'connected', 'order_count': order_count, 'delivery_mode_column': has_dm}
     except Exception as e:
         logger.error(f'Health check DB error: {e}')
-        return JSONResponse({'status': 'error', 'database': str(e)}, status_code=503)
+        return _SafeJSONResponse({'status': 'error', 'database': str(e)}, status_code=503)
     finally:
         if db:
             try:

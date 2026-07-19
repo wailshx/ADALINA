@@ -6,7 +6,7 @@ import hashlib
 import time
 
 from fastapi import APIRouter, Request, Query, BackgroundTasks
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse as _StarletteJSONResponse
 from config.database import get_public_db
 from config.security import RateLimiter, get_client_ip, escape_html
 
@@ -35,13 +35,23 @@ def _get_client_ip(request: Request) -> str:
     return 'unknown'
 
 
+class _SafeJSONResponse(_StarletteJSONResponse):
+    def render(self, content) -> bytes:
+        import datetime as _dt
+        def _default(o):
+            if isinstance(o, (_dt.datetime, _dt.date, _dt.time)):
+                return o.isoformat()
+            raise TypeError(f'Object of type {type(o).__name__} is not JSON serializable')
+        return json.dumps(content, default=_default, ensure_ascii=False, allow_nan=False, indent=None, separators=(',', ':')).encode('utf-8')
+
+
 def _json_response(data, status=200, max_age=None):
     headers = {}
     if max_age is not None:
         headers['Cache-Control'] = f'public, max-age={max_age}'
     else:
         headers['Cache-Control'] = 'no-store, must-revalidate'
-    return JSONResponse(content=data, status_code=status, headers=headers)
+    return _SafeJSONResponse(content=data, status_code=status, headers=headers)
 
 
 # ─── GET Routes ──────────────────────────────────────────────────────────────
