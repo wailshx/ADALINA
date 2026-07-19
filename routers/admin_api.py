@@ -213,6 +213,8 @@ def _parse_product_fields(d):
         d['sizes'] = json.loads(d['sizes'])
     if d.get('colors') and isinstance(d['colors'], str):
         d['colors'] = json.loads(d['colors'])
+    if not d.get('image') and d.get('images') and isinstance(d['images'], list) and len(d['images']) > 0:
+        d['image'] = d['images'][0]
     d['featured'] = bool(d.get('featured', 0))
     d['new_arrival'] = bool(d.get('new_arrival', 0))
     d['category'] = d.get('category_name') or ''
@@ -415,15 +417,19 @@ def dashboard_stats(request: Request, session_token: str = Depends(require_admin
         top_products_data = all_products_data[:5]
         unsold_products_data = [p for p in all_products_data if p['sold'] == 0][:10]
 
-        cur.execute("""
-            SELECT
-                COUNT(*) FILTER (WHERE quantity > 0 AND quantity <= low_stock_threshold) AS low_stock,
-                COUNT(*) FILTER (WHERE quantity = 0) AS out_of_stock
-            FROM inventory
-        """)
-        stock_row = cur.fetchone()
-        low_stock = stock_row['low_stock']
-        out_of_stock = stock_row['out_of_stock']
+        try:
+            cur.execute("""
+                SELECT
+                    COUNT(*) FILTER (WHERE quantity > 0 AND quantity <= low_stock_threshold) AS low_stock,
+                    COUNT(*) FILTER (WHERE quantity = 0) AS out_of_stock
+                FROM inventory
+            """)
+            stock_row = cur.fetchone()
+            low_stock = stock_row['low_stock']
+            out_of_stock = stock_row['out_of_stock']
+        except Exception:
+            low_stock = 0
+            out_of_stock = 0
 
         cur.execute("""
             SELECT EXTRACT(MONTH FROM created_at) AS month, COUNT(*) AS cnt, COALESCE(SUM(total),0) AS rev
@@ -447,7 +453,7 @@ def dashboard_stats(request: Request, session_token: str = Depends(require_admin
         stock_health = cur.fetchone()
         stock_pct = (stock_health['healthy'] / max(stock_health['total'], 1)) * 100
 
-        cur.execute("SELECT COUNT(*) AS cnt FROM orders WHERE status IN ('new', 'pending', 'confirmed') AND created_at < NOW() - INTERVAL '24 hours'")
+        cur.execute("SELECT COUNT(*) AS cnt FROM orders WHERE status IN ('new', 'pending', 'confirmed', 'preparing') AND created_at < NOW() - INTERVAL '24 hours'")
         backlog_count = cur.fetchone()['cnt']
         backlog_pct = max(0, 100 - (backlog_count * 20))
 
@@ -471,22 +477,28 @@ def dashboard_stats(request: Request, session_token: str = Depends(require_admin
         """)
         weekly_orders = {int(r['dow']): {'count': r['order_count'], 'revenue': float(r['revenue'])} for r in cur.fetchall()}
 
-        cur.execute("""
-            SELECT EXTRACT(DOW FROM created_at) AS dow,
-                   COUNT(*) AS views
-            FROM search_events
-            WHERE event_type = 'page_view' AND created_at >= NOW() - INTERVAL '7 days'
-            GROUP BY EXTRACT(DOW FROM created_at)
-        """)
-        weekly_views = {int(r['dow']): r['views'] for r in cur.fetchall()}
+        try:
+            cur.execute("""
+                SELECT EXTRACT(DOW FROM created_at) AS dow,
+                       COUNT(*) AS views
+                FROM search_events
+                WHERE event_type = 'page_view' AND created_at >= NOW() - INTERVAL '7 days'
+                GROUP BY EXTRACT(DOW FROM created_at)
+            """)
+            weekly_views = {int(r['dow']): r['views'] for r in cur.fetchall()}
+        except Exception:
+            weekly_views = {}
 
-        cur.execute("""
-            SELECT COUNT(*) AS orders_today,
-                   COALESCE(SUM(total), 0) AS revenue_today
-            FROM orders
-            WHERE DATE(created_at) = CURRENT_DATE
-        """)
-        today_stats = cur.fetchone()
+        try:
+            cur.execute("""
+                SELECT COUNT(*) AS orders_today,
+                       COALESCE(SUM(total), 0) AS revenue_today
+                FROM orders
+                WHERE DATE(created_at) = CURRENT_DATE
+            """)
+            today_stats = cur.fetchone()
+        except Exception:
+            today_stats = {'orders_today': 0, 'revenue_today': 0}
 
         return {
             'revenue': round(revenue, 2),
@@ -884,6 +896,144 @@ def order_history(oid: str, session_token: str = Depends(require_admin_auth)):
         rows = cur.fetchall()
         result = [{'status': r['status'], 'note': r['note'], 'created_at': r['created_at'].isoformat() if r['created_at'] else None} for r in rows]
         return result
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+@router.get('/orders/export/csv')
+def export_orders_csv(request: Request, session_token: str = Depends(require_admin_auth)):
+    from starlette.responses import StreamingResponse
+    import csv
+    import io
+    db = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            SELECT o.id, o.order_number, COALESCE(c.name, o.customer_name) AS customer_name,
+                   o.customer_phone, o.wilaya, o.commune, o.total, o.status,
+                   o.delivery_mode, o.delivery_fee, o.payment_method, o.items,
+                   o.created_at
+            FROM orders o LEFT JOIN customers c ON o.customer_id = c.id
+            ORDER BY o.created_at DESC
+        """)
+        rows = cur.fetchall()
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(['Numéro', 'Client', 'Téléphone', 'Wilaya', 'Commune',
+                         'Total (DA)', 'Statut', 'Livraison', 'Frais livraison',
+                         'Paiement', 'Articles', 'Date'])
+        for r in rows:
+            rd = dict(r)
+            items_str = ''
+            try:
+                items = json.loads(rd['items']) if rd['items'] else []
+                parts = []
+                for it in items:
+                    name = it.get('name') or it.get('product_name', '')
+                    sz = it.get('size') or it.get('selectedSize', '')
+                    qty = it.get('quantity') or it.get('qty', 1)
+                    parts.append(f"{name} ({sz}) x{qty}")
+                items_str = '; '.join(parts)
+            except Exception:
+                items_str = str(rd.get('items', ''))
+            created = rd['created_at'].strftime('%Y-%m-%d %H:%M') if rd['created_at'] else ''
+            writer.writerow([
+                rd.get('order_number', ''),
+                rd.get('customer_name', ''),
+                rd.get('customer_phone', ''),
+                rd.get('wilaya', ''),
+                rd.get('commune', ''),
+                rd.get('total', 0),
+                rd.get('status', ''),
+                rd.get('delivery_mode', ''),
+                rd.get('delivery_fee', 0),
+                rd.get('payment_method', ''),
+                items_str,
+                created
+            ])
+        buf.seek(0)
+        return StreamingResponse(
+            iter(['\ufeff' + buf.getvalue()]),
+            media_type='text/csv',
+            headers={'Content-Disposition': 'attachment; filename="commandes_adalina.csv"'}
+        )
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+@router.get('/orders/{oid}/export/csv')
+def export_order_csv(oid: str, request: Request, session_token: str = Depends(require_admin_auth)):
+    from starlette.responses import StreamingResponse
+    import csv
+    import io
+    db = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            SELECT o.id, o.order_number, COALESCE(c.name, o.customer_name) AS customer_name,
+                   o.customer_phone, o.wilaya, o.commune, o.total, o.status,
+                   o.delivery_mode, o.delivery_fee, o.payment_method, o.items,
+                   o.created_at
+            FROM orders o LEFT JOIN customers c ON o.customer_id = c.id
+            WHERE o.id = %s
+        """, (oid,))
+        r = cur.fetchone()
+        if not r:
+            return _json_response({'error': 'Commande introuvable'}, 404)
+        rd = dict(r)
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(['Numéro', 'Client', 'Téléphone', 'Wilaya', 'Commune',
+                         'Total (DA)', 'Statut', 'Livraison', 'Frais livraison',
+                         'Paiement', 'Articles', 'Date'])
+        items_str = ''
+        try:
+            items = json.loads(rd['items']) if rd['items'] else []
+            parts = []
+            for it in items:
+                name = it.get('name') or it.get('product_name', '')
+                sz = it.get('size') or it.get('selectedSize', '')
+                qty = it.get('quantity') or it.get('qty', 1)
+                parts.append(f"{name} ({sz}) x{qty}")
+            items_str = '; '.join(parts)
+        except Exception:
+            items_str = str(rd.get('items', ''))
+        created = rd['created_at'].strftime('%Y-%m-%d %H:%M') if rd['created_at'] else ''
+        writer.writerow([
+            rd.get('order_number', ''),
+            rd.get('customer_name', ''),
+            rd.get('customer_phone', ''),
+            rd.get('wilaya', ''),
+            rd.get('commune', ''),
+            rd.get('total', 0),
+            rd.get('status', ''),
+            rd.get('delivery_mode', ''),
+            rd.get('delivery_fee', 0),
+            rd.get('payment_method', ''),
+            items_str,
+            created
+        ])
+        buf.seek(0)
+        num = rd.get('order_number', oid)
+        return StreamingResponse(
+            iter(['\ufeff' + buf.getvalue()]),
+            media_type='text/csv',
+            headers={'Content-Disposition': f'attachment; filename="commande_{num}.csv"'}
+        )
     finally:
         try:
             cur.close()
@@ -2153,8 +2303,6 @@ def delete_order(oid: str, request: Request, session_token: str = Depends(requir
         row = cur.fetchone()
         if row is None:
             return _json_response({'error': 'Commande introuvable'}, 404)
-        if row['status'] not in ('arrived', 'delivered'):
-            return _json_response({'error': 'Suppression autorisée uniquement pour les commandes arrivées'}, 403)
         cur.execute("DELETE FROM orders WHERE id=%s", (oid,))
         db.commit()
         _signal_cache_invalidate()

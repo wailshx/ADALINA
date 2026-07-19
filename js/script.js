@@ -450,7 +450,6 @@ function renderWishlistPage() {
                 '<a href="product.html?id=' + p.id + '" class="wpi-name">' + esc(p.name) + '</a>' +
                 '<div class="wpi-price">' + priceHtml + '</div>' +
                 '<div class="wpi-actions">' +
-                    '<button class="btn btn-primary btn-sm" onclick="addToCartFromWishlist(' + p.id + ')">' + i18n.t('qv.addToCart') + '</button>' +
                     '<button class="btn btn-outline btn-sm" onclick="removeFromWishlist(' + p.id + ')">Supprimer</button>' +
                 '</div>' +
             '</div>' +

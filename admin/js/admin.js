@@ -188,7 +188,8 @@ async function initDashboard() {
         var maizeColor = colorVar('--primary', '#f5d042');
         var ctx = document.getElementById('weekly-visitors-chart');
         if (ctx) {
-            new Chart(ctx, {
+            if (window._weeklyChart) { window._weeklyChart.destroy(); window._weeklyChart = null; }
+            window._weeklyChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
@@ -452,6 +453,25 @@ window.printOrder = function (order) {
     printContainer.innerHTML = '';
 };
 
+window.deleteOrder = async function(id) {
+    if (!confirm('Supprimer cette commande ? Cette action est irréversible.')) return;
+    var result = await api('DELETE', '/orders/' + id);
+    if (result && result.message) {
+        showToast('Commande supprimée');
+        initOrders();
+    } else if (result && result.error) {
+        showToast('Erreur: ' + result.error);
+    }
+};
+
+window.exportOrderToSheet = function(id) {
+    window.open(API + '/orders/' + id + '/export/csv', '_blank');
+};
+
+window.exportAllOrdersToSheet = function() {
+    window.open(API + '/orders/export/csv', '_blank');
+};
+
 /* ── Products ── */
 var productFilterState = { search: '', category: '' };
 
@@ -470,9 +490,11 @@ async function initProducts() {
         document.querySelector('.page-header p').textContent = 'Manage your product catalog (0 products)';
         return;
     }
-    tbody.innerHTML = products.map(p => `
+    tbody.innerHTML = products.map(p => {
+        var prodImg = p.image || (p.images && p.images[0]) || '';
+        return `
         <tr>
-            <td><div class="product-cell"><img src="${cloudinaryThumb(imgSrc(esc(p.image)), 80)}" alt="" loading="lazy" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div></div></div></td>
+            <td><div class="product-cell"><img src="${cloudinaryThumb(imgSrc(esc(prodImg)), 80)}" alt="" loading="lazy" onerror="this.src='https://placehold.co/40x40/e2e8f0/718096?text=P'"><div class="info"><div class="name">${esc(p.name)}</div></div></div></td>
             <td>SKU-${p.id}</td>
             <td>${esc(p.category_name||'')}</td>
             <td>${formatPriceDA(p.price)}</td>
@@ -483,8 +505,8 @@ async function initProducts() {
                 <button class="btn btn-outline btn-sm" onclick="archiveProduct(${p.id})" title="Archive"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg></button>
                 <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
             </td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
     document.querySelector('.page-header p').textContent = `Manage your product catalog (${products.length} products)`;
 }
 
@@ -1687,7 +1709,11 @@ function renderOrdersTable() {
             '<td class="td-total">' + formatPriceDA(o.total) + '</td>' +
             '<td class="td-status">' + badge(o.status) + ((o.risk_score || 0) > 70 ? ' <span style="display:inline-flex;align-items:center;gap:3px;background:#fef2f2;color:#dc2626;padding:2px 6px;border-radius:4px;font-size:0.68rem;font-weight:600;" title="Score de risque: ' + o.risk_score + ' - ' + (o.risk_reasons || []).join(', ') + '"><i class="fas fa-exclamation-triangle"></i> Risque ' + o.risk_score + '</span>' : '') + '</td>' +
             '<td class="td-date" data-sort-val="' + (o.created_at || '') + '">' + timeAgo(o.created_at) + '</td>' +
-            '<td class="td-actions"><button class="btn btn-outline btn-sm" onclick="viewOrder(' + o.id + ')" title="Voir la commande"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Voir</button></td>' +
+            '<td class="td-actions">' +
+                '<button class="btn btn-outline btn-sm" onclick="viewOrder(' + o.id + ')" title="Voir la commande"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Voir</button>' +
+                '<button class="btn btn-outline btn-sm" onclick="exportOrderToSheet(' + o.id + ')" title="Exporter vers Google Sheets (CSV)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Sheet</button>' +
+                '<button class="btn btn-danger btn-sm" onclick="deleteOrder(' + o.id + ')" title="Supprimer la commande"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>' +
+            '</td>' +
             '</tr>';
     }).join('');
 }
