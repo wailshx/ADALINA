@@ -38,6 +38,18 @@ def get_variant_stock(cur, product_id, color_name, size_name):
         return (srow['stock'], None)
     return (0, "Taille introuvable pour ce produit")
 
+def _sync_product_total_stock(cur, product_id):
+    cur.execute("""UPDATE products SET stock = (
+                       SELECT COALESCE(SUM(vs.stock),0) FROM variant_sizes vs
+                       JOIN product_variants pv ON vs.variant_id = pv.id
+                       WHERE pv.product_id = %s) WHERE id = %s""", (product_id, product_id))
+    cur.execute("""UPDATE inventory SET quantity = (
+                       SELECT COALESCE(SUM(vs.stock),0) FROM variant_sizes vs
+                       JOIN product_variants pv ON vs.variant_id = pv.id
+                       WHERE pv.product_id = %s), updated_at = CURRENT_TIMESTAMP
+                   WHERE product_id = %s""", (product_id, product_id))
+
+
 def deduct_order_stock(cur, product_id, color_name, size_name, quantity):
     vid, _ = _find_variant(cur, product_id, color_name)
     if vid:
@@ -52,6 +64,7 @@ def deduct_order_stock(cur, product_id, color_name, size_name, quantity):
                     (quantity, vid, size_name, quantity))
         cur.execute("UPDATE product_variants SET stock = (SELECT COALESCE(SUM(stock),0) FROM variant_sizes WHERE variant_id=%s) WHERE id=%s",
                     (vid, vid))
+        _sync_product_total_stock(cur, product_id)
         log_stock_change(cur, product_id, -quantity, before, f"Order deduction ({color_name}/{size_name})", vid, color_name, size_name)
         return (True, None)
     cur.execute("SELECT stock FROM product_sizes WHERE product_id=%s AND size=%s", (product_id, size_name))
@@ -77,6 +90,7 @@ def restore_order_stock(cur, product_id, color_name, size_name, quantity):
         cur.execute("UPDATE variant_sizes SET stock = stock + %s WHERE variant_id=%s AND size_name=%s", (quantity, vid, size_name))
         cur.execute("UPDATE product_variants SET stock = (SELECT COALESCE(SUM(stock),0) FROM variant_sizes WHERE variant_id=%s) WHERE id=%s",
                     (vid, vid))
+        _sync_product_total_stock(cur, product_id)
         log_stock_change(cur, product_id, quantity, before, f"Restock ({color_name}/{size_name})", vid, color_name, size_name)
         return (True, None)
     cur.execute("SELECT stock FROM product_sizes WHERE product_id=%s AND size=%s", (product_id, size_name))

@@ -25,7 +25,7 @@ def _get_build_version():
         pass
     return 'dev'
 
-from database import get_db, init_db, seed_db, log_stock_change, deduct_order_stock, restore_order_stock
+from database import get_db, init_db, seed_db, log_stock_change, deduct_order_stock, restore_order_stock, _sync_product_total_stock
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(BASE_DIR)))
 from config.security import (
@@ -1277,6 +1277,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 cur.execute("UPDATE variant_sizes SET stock=%s WHERE variant_id=%s AND size_name=%s", (new_qty, variant_id, size_name))
                 cur.execute("UPDATE product_variants SET stock = (SELECT COALESCE(SUM(stock),0) FROM variant_sizes WHERE variant_id=%s) WHERE id=%s", (variant_id, variant_id))
                 log_stock_change(cur, pid, change, before_qty, reason, variant_id, None, size_name)
+                _sync_product_total_stock(cur, pid)
             else:
                 cur.execute("SELECT quantity FROM inventory WHERE product_id=%s", (pid,))
                 before = cur.fetchone()
@@ -1349,7 +1350,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             if pv_row:
                 pid = pv_row['product_id']
                 log_stock_change(cur, pid, stock - before, before, reason, int(vid), None, size)
-                cur.execute("UPDATE inventory SET quantity = (SELECT COALESCE(SUM(stock),0) FROM variant_sizes vs JOIN product_variants pv ON vs.variant_id=pv.id WHERE pv.product_id=%s), updated_at = CURRENT_TIMESTAMP WHERE product_id=%s", (pid, pid))
+                _sync_product_total_stock(cur, pid)
             db.commit()
             send_json(self, {'message': 'Variant size stock updated', 'before': before, 'after': stock})
             return True
