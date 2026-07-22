@@ -199,6 +199,29 @@
             </div>
         </div>
     </div>
+
+    <div class="card" style="margin-top:24px;">
+        <div class="card-header">
+            <h2><i class="fas fa-exclamation-triangle" style="color:var(--warning, #f39c12);margin-right:8px;"></i>Low Stock Alerts</h2>
+            <a href="inventory.html" class="btn btn-outline btn-sm">View All</a>
+        </div>
+        <div class="card-body" style="padding:0;">
+            <div class="table-container">
+                <table id="stock-alerts-table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Color</th>
+                            <th>Size</th>
+                            <th>Stock</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stock-alerts-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </main>
 
 <script>
@@ -215,5 +238,32 @@
 })();
 </script>
 <script src="js/admin.js"></script>
+<script>
+(function() {
+    fetch('/api/inventory/alerts', { credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var alerts = data.alerts || [];
+            var tbody = document.getElementById('stock-alerts-tbody');
+            if (!tbody) return;
+            if (alerts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">No low stock alerts</td></tr>';
+                return;
+            }
+            tbody.innerHTML = alerts.map(function(a) {
+                var statusCls = a.stock === 0 ? 'out' : 'low';
+                var statusText = a.stock === 0 ? 'Out of Stock' : 'Low (' + a.stock + ')';
+                return '<tr>' +
+                    '<td>' + (a.product_name || '') + '</td>' +
+                    '<td><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:' + (a.color_hex || '#ccc') + ';vertical-align:middle;margin-right:4px;"></span>' + (a.color_name || '') + '</td>' +
+                    '<td>' + (a.size_name || '') + '</td>' +
+                    '<td><strong>' + a.stock + '</strong></td>' +
+                    '<td><span class="stock-badge ' + statusCls + '">' + statusText + '</span></td>' +
+                    '</tr>';
+            }).join('');
+        })
+        .catch(function() {});
+})();
+</script>
 </body>
 </html>

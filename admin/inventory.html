@@ -31,6 +31,38 @@
         window.__adminSettings = s;
     }).catch(function(){});
     </script>
+    <style>
+        .inv-matrix { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        .inv-matrix th, .inv-matrix td { padding: 6px 10px; text-align: center; border: 1px solid var(--border); font-size: 0.85rem; }
+        .inv-matrix th { background: var(--bg-secondary); font-weight: 600; color: var(--text-secondary); }
+        .inv-matrix td.stock-cell { font-weight: 600; cursor: pointer; transition: background 0.15s; }
+        .inv-matrix td.stock-cell:hover { background: var(--primary); color: #fff; border-radius: 4px; }
+        .stock-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .stock-badge.in { background: #d4edda; color: #155724; }
+        .stock-badge.low { background: #fff3cd; color: #856404; }
+        .stock-badge.out { background: #f8d7da; color: #721c24; }
+        .product-row { cursor: pointer; transition: background 0.15s; }
+        .product-row:hover { background: var(--bg-secondary); }
+        .product-row.expanded { background: var(--bg-secondary); }
+        .variant-detail { display: none; background: var(--bg-primary); border-top: 1px solid var(--border); }
+        .variant-detail.show { display: table-row; }
+        .variant-color-label { display: flex; align-items: center; gap: 6px; font-weight: 500; }
+        .color-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--border); flex-shrink: 0; }
+        .inv-search { position: relative; }
+        .inv-search input { padding-left: 32px; }
+        .inv-search i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem; }
+        .expand-icon { transition: transform 0.2s; display: inline-block; }
+        .expand-icon.rotated { transform: rotate(90deg); }
+        .quick-adjust-inline { display: inline-flex; align-items: center; gap: 4px; }
+        .quick-adjust-inline button { width: 24px; height: 24px; border: 1px solid var(--border); background: #fff; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; }
+        .quick-adjust-inline button:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .quick-adjust-inline input { width: 50px; text-align: center; border: 1px solid var(--border); border-radius: 4px; padding: 2px 4px; font-size: 0.85rem; }
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+            .inv-matrix { font-size: 0.8rem; }
+            .inv-matrix th, .inv-matrix td { padding: 4px 6px; }
+        }
+    </style>
 </head>
 <body>
 
@@ -67,7 +99,7 @@
         </a>
         <div class="sidebar-section-label">System</div>
         <a href="settings.html">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             Paramètres
         </a>
         <a href="/gestion/logout" class="logout" style="margin-top:auto;">
@@ -108,9 +140,13 @@
     <div class="page-header">
         <div>
             <h1>Inventory</h1>
-            <p>Manage stock levels and warehouse</p>
+            <p>Manage stock levels by Color x Size variant</p>
         </div>
         <div style="display:flex;gap:8px;">
+            <div class="inv-search">
+                <i class="fas fa-search"></i>
+                <input type="text" id="inv-search" class="form-control" placeholder="Search product or SKU..." style="padding-left:32px;width:220px;">
+            </div>
             <select id="inv-category-filter" class="form-control" style="width:auto;padding:6px 12px;font-size:0.85rem;">
                 <option value="">All Categories</option>
             </select>
@@ -118,67 +154,73 @@
         </div>
     </div>
 
-    <div class="stats-grid stats-grid-4">
-        <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-boxes"></i></div><div class="stat-info"><h3 id="inv-total">0</h3><p>Total Products</p></div></div>
+    <div class="stats-grid stats-grid-4" style="grid-template-columns: repeat(5, 1fr);">
+        <div class="stat-card"><div class="stat-icon blue"><i class="fas fa-layer-group"></i></div><div class="stat-info"><h3 id="inv-total-skus">0</h3><p>Total SKUs</p></div></div>
         <div class="stat-card"><div class="stat-icon green"><i class="fas fa-check-circle"></i></div><div class="stat-info"><h3 id="inv-in">0</h3><p>In Stock</p></div></div>
-        <div class="stat-card"><div class="stat-icon yellow"><i class="fas fa-exclamation-triangle"></i></div><div class="stat-info"><h3 id="inv-low">0</h3><p>Low Stock</p></div></div>
+        <div class="stat-card"><div class="stat-icon yellow"><i class="fas fa-exclamation-triangle"></i></div><div class="stat-info"><h3 id="inv-low">0</h3><p>Low Stock (≤5)</p></div></div>
         <div class="stat-card"><div class="stat-icon red"><i class="fas fa-times-circle"></i></div><div class="stat-info"><h3 id="inv-out">0</h3><p>Out of Stock</p></div></div>
+        <div class="stat-card"><div class="stat-icon purple"><i class="fas fa-cubes"></i></div><div class="stat-info"><h3 id="inv-total-units">0</h3><p>Total Units</p></div></div>
     </div>
 
-    <div class="card">
+    <div class="card" style="margin-bottom:0;">
         <div class="card-body" style="padding:0;">
             <div class="inv-status-tabs">
-                <button class="inv-tab active" data-status="all">All</button>
-                <button class="inv-tab" data-status="in">In Stock</button>
-                <button class="inv-tab" data-status="low">Low Stock</button>
+                <button class="inv-tab active" data-status="all">All Products</button>
                 <button class="inv-tab" data-status="out">Out of Stock</button>
+                <button class="inv-tab" data-status="low">Low Stock</button>
             </div>
             <div class="table-container">
                 <table id="inventory-table">
                     <thead>
                         <tr>
+                            <th style="width:30px;"></th>
                             <th>Product</th>
-                            <th>SKU</th>
                             <th>Category</th>
-                            <th>Stock Level</th>
+                            <th>Colors</th>
+                            <th>Total Stock</th>
                             <th>Status</th>
                             <th style="text-align:right;">Actions</th>
                         </tr>
                     </thead>
-                    <tbody></tbody>
+                    <tbody id="inventory-tbody"></tbody>
                 </table>
             </div>
         </div>
     </div>
 </main>
 
-<div class="modal-overlay" id="stock-update-modal">
+<div class="modal-overlay" id="variant-adjust-modal">
     <div class="modal" style="max-width:420px;">
         <div class="modal-header">
-            <h2>Update Stock</h2>
-            <button class="modal-close">&times;</button>
+            <h2>Adjust Stock</h2>
+            <button class="modal-close" onclick="closeVariantModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <input type="hidden" id="sum-product-id">
             <div style="margin-bottom:12px;">
-                <strong id="sum-product-name"></strong>
-                <p style="font-size:0.85rem;color:var(--text-muted);margin:4px 0 0;">Current Stock: <span id="sum-current-qty">0</span></p>
+                <div id="vam-product-name" style="font-weight:600;"></div>
+                <div id="vam-variant-info" style="font-size:0.85rem;color:var(--text-muted);margin-top:2px;"></div>
+                <p style="font-size:0.85rem;color:var(--text-muted);margin:4px 0 0;">Current Stock: <strong id="vam-current-qty">0</strong></p>
+            </div>
+            <input type="hidden" id="vam-variant-id">
+            <input type="hidden" id="vam-size-name">
+            <input type="hidden" id="vam-product-id">
+            <div class="form-group">
+                <label>Set Absolute Quantity</label>
+                <input type="number" id="vam-qty" class="form-control" placeholder="e.g. 25" min="0">
             </div>
             <div class="form-group">
-                <label>Adjustment</label>
-                <div style="display:flex;gap:8px;">
-                    <button class="btn btn-outline btn-sm" id="sum-dec-btn"><i class="fas fa-minus"></i></button>
-                    <input type="number" id="sum-qty" class="form-control" value="1" min="1" style="text-align:center;width:80px;">
-                    <button class="btn btn-outline btn-sm" id="sum-inc-btn"><i class="fas fa-plus"></i></button>
+                <label>Or Adjust By</label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button class="btn btn-outline btn-sm" onclick="vamAdjust(-1)"><i class="fas fa-minus"></i></button>
+                    <button class="btn btn-outline btn-sm" onclick="vamAdjust(-5)">-5</button>
+                    <input type="number" id="vam-change" class="form-control" value="0" style="text-align:center;width:70px;">
+                    <button class="btn btn-outline btn-sm" onclick="vamAdjust(5)">+5</button>
+                    <button class="btn btn-outline btn-sm" onclick="vamAdjust(1)"><i class="fas fa-plus"></i></button>
                 </div>
             </div>
             <div class="form-group">
-                <label>Set Absolute Quantity</label>
-                <input type="number" id="sum-absolute" class="form-control" placeholder="e.g. 25" min="0">
-            </div>
-            <div class="form-group">
                 <label>Reason</label>
-                <select id="sum-reason" class="form-control">
+                <select id="vam-reason" class="form-control">
                     <option value="Manual adjustment">Manual adjustment</option>
                     <option value="Stock count correction">Stock count correction</option>
                     <option value="New shipment received">New shipment received</option>
@@ -188,8 +230,8 @@
                 </select>
             </div>
             <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
-                <button class="btn btn-outline" onclick="closeStockModal()">Cancel</button>
-                <button class="btn btn-primary" id="sum-save-btn">Update Stock</button>
+                <button class="btn btn-outline" onclick="closeVariantModal()">Cancel</button>
+                <button class="btn btn-primary" id="vam-save-btn" onclick="saveVariantAdjust()">Update Stock</button>
             </div>
         </div>
     </div>
@@ -199,10 +241,10 @@
     <div class="modal modal-lg">
         <div class="modal-header">
             <h2>Stock History — <span id="shm-product-name"></span></h2>
-            <button class="modal-close">&times;</button>
+            <button class="modal-close" onclick="closeHistoryModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <div class="table-container">
+            <div class="table-container" style="max-height:400px;overflow-y:auto;">
                 <table id="history-table">
                     <thead>
                         <tr>
@@ -210,10 +252,12 @@
                             <th>Change</th>
                             <th>Before</th>
                             <th>After</th>
+                            <th>Color</th>
+                            <th>Size</th>
                             <th>Reason</th>
                         </tr>
                     </thead>
-                    <tbody></tbody>
+                    <tbody id="history-tbody"></tbody>
                 </table>
             </div>
         </div>
@@ -234,5 +278,297 @@
 })();
 </script>
 <script src="js/admin.js"></script>
+<script>
+(function() {
+    var allProducts = [];
+    var currentFilter = 'all';
+    var searchQuery = '';
+
+    function api(path) {
+        return fetch('/api' + path, { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); });
+    }
+
+    function stockStatus(q) {
+        if (q === 0) return 'out_of_stock';
+        if (q <= 5) return 'low_stock';
+        return 'in_stock';
+    }
+
+    function stockBadge(q) {
+        var s = stockStatus(q);
+        if (s === 'out_of_stock') return '<span class="stock-badge out">Out</span>';
+        if (s === 'low_stock') return '<span class="stock-badge low">Low (' + q + ')</span>';
+        return '<span class="stock-badge in">In Stock (' + q + ')</span>';
+    }
+
+    function loadCategories() {
+        api('/categories').then(function(data) {
+            var cats = data.categories || data || [];
+            var sel = document.getElementById('inv-category-filter');
+            cats.forEach(function(c) {
+                var o = document.createElement('option');
+                o.value = c.id;
+                o.textContent = c.name;
+                sel.appendChild(o);
+            });
+        });
+    }
+
+    function loadInventory() {
+        var catId = document.getElementById('inv-category-filter').value;
+        var url = '/inventory?status=all';
+        api(url).then(function(data) {
+            allProducts = (data.items || []).map(function(item) {
+                item.stock_status = stockStatus(item.quantity || 0);
+                return item;
+            });
+            if (catId) {
+                allProducts = allProducts.filter(function(p) { return String(p.category_id) === catId; });
+            }
+            renderInventory();
+        });
+    }
+
+    function renderInventory() {
+        var tbody = document.getElementById('inventory-tbody');
+        var filtered = allProducts;
+
+        if (currentFilter === 'out') {
+            filtered = filtered.filter(function(p) { return p.stock_status === 'out_of_stock'; });
+        } else if (currentFilter === 'low') {
+            filtered = filtered.filter(function(p) { return p.stock_status === 'low_stock'; });
+        }
+
+        if (searchQuery) {
+            var q = searchQuery.toLowerCase();
+            filtered = filtered.filter(function(p) {
+                return (p.product_name || '').toLowerCase().indexOf(q) !== -1 ||
+                       (p.sku || '').toLowerCase().indexOf(q) !== -1;
+            });
+        }
+
+        var totalSkus = 0, inCount = 0, lowCount = 0, outCount = 0, totalUnits = 0;
+        allProducts.forEach(function(p) {
+            totalSkus++;
+            totalUnits += (p.quantity || 0);
+            if (p.stock_status === 'out_of_stock') outCount++;
+            else if (p.stock_status === 'low_stock') lowCount++;
+            else inCount++;
+        });
+
+        document.getElementById('inv-total-skus').textContent = totalSkus;
+        document.getElementById('inv-in').textContent = inCount;
+        document.getElementById('inv-low').textContent = lowCount;
+        document.getElementById('inv-out').textContent = outCount;
+        document.getElementById('inv-total-units').textContent = totalUnits;
+
+        tbody.innerHTML = '';
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted);">No products found</td></tr>';
+            return;
+        }
+
+        filtered.forEach(function(p) {
+            var statusBadge = stockBadge(p.quantity || 0);
+            var img = p.product_image || '';
+            var imgHtml = img ? '<img src="' + img + '" style="width:36px;height:36px;border-radius:6px;object-fit:cover;">' : '<div style="width:36px;height:36px;border-radius:6px;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;"><i class="fas fa-image" style="color:var(--text-muted);font-size:0.8rem;"></i></div>';
+
+            var tr = document.createElement('tr');
+            tr.className = 'product-row';
+            tr.setAttribute('data-pid', p.product_id);
+            tr.innerHTML = '<td style="text-align:center;"><i class="fas fa-chevron-right expand-icon" id="exp-' + p.product_id + '"></i></td>' +
+                '<td><div style="display:flex;align-items:center;gap:10px;">' + imgHtml + '<span>' + (p.product_name || '') + '</span></div></td>' +
+                '<td>' + (p.category_name || '—') + '</td>' +
+                '<td>—</td>' +
+                '<td><strong>' + (p.quantity || 0) + '</strong></td>' +
+                '<td>' + statusBadge + '</td>' +
+                '<td style="text-align:right;"><button class="btn btn-outline btn-sm" onclick="openHistory(' + p.product_id + ', \'' + (p.product_name || '').replace(/'/g, "\\'") + '\')"><i class="fas fa-history"></i></button></td>';
+            tr.addEventListener('click', function(e) {
+                if (e.target.closest('button')) return;
+                toggleVariants(p.product_id);
+            });
+            tbody.appendChild(tr);
+
+            var detailRow = document.createElement('tr');
+            detailRow.className = 'variant-detail';
+            detailRow.id = 'detail-' + p.product_id;
+            detailRow.innerHTML = '<td colspan="7"><div style="padding:12px 20px;"><em style="color:var(--text-muted);">Loading variants...</em></div></td>';
+            tbody.appendChild(detailRow);
+        });
+    }
+
+    function toggleVariants(pid) {
+        var detail = document.getElementById('detail-' + pid);
+        var icon = document.getElementById('exp-' + pid);
+        if (!detail) return;
+
+        if (detail.classList.contains('show')) {
+            detail.classList.remove('show');
+            if (icon) icon.classList.remove('rotated');
+            return;
+        }
+
+        detail.classList.add('show');
+        if (icon) icon.classList.add('rotated');
+
+        var prod = allProducts.find(function(p) { return String(p.product_id) === String(pid); });
+        var prodName = prod ? (prod.product_name || '') : '';
+
+        api('/inventory/variants/' + pid).then(function(variants) {
+            if (!variants || variants.length === 0) {
+                detail.innerHTML = '<td colspan="7"><div style="padding:12px 20px;color:var(--text-muted);">No variants configured</div></td>';
+                return;
+            }
+
+            var sizes = [];
+            variants.forEach(function(v) {
+                (v.sizes || []).forEach(function(s) {
+                    if (sizes.indexOf(s.size_name) === -1) sizes.push(s.size_name);
+                });
+            });
+
+            var html = '<td colspan="7" style="padding:0;"><div style="padding:12px 20px;">';
+            html += '<table class="inv-matrix"><thead><tr><th style="text-align:left;">Color</th>';
+            sizes.forEach(function(sz) { html += '<th>' + sz + '</th>'; });
+            html += '<th>Total</th></tr></thead><tbody>';
+
+            variants.forEach(function(v) {
+                html += '<tr><td style="text-align:left;"><div class="variant-color-label">';
+                html += '<span class="color-dot" style="background:' + (v.color_hex || '#ccc') + ';"></span>';
+                html += '<span>' + (v.color_name || '') + '</span></div></td>';
+                var rowTotal = 0;
+                sizes.forEach(function(sz) {
+                    var vs = (v.sizes || []).find(function(s) { return s.size_name === sz; });
+                    var stock = vs ? vs.stock : 0;
+                    rowTotal += stock;
+                    var cls = stock === 0 ? 'out' : (stock <= 5 ? 'low' : 'in');
+                    html += '<td class="stock-cell stock-' + cls + '" onclick="openVariantAdjust(' + v.id + ', ' + pid + ', \'' + (v.color_name || '').replace(/'/g, "\\'") + '\', \'' + sz + '\', ' + stock + ', \'' + (v.color_hex || '#ccc') + '\', \'' + prodName.replace(/'/g, "\\'") + '\')">' + stock + '</td>';
+                });
+                var totalCls = rowTotal === 0 ? 'out' : (rowTotal <= 5 ? 'low' : 'in');
+                html += '<td class="stock-cell stock-' + totalCls + '" style="font-weight:700;">' + rowTotal + '</td>';
+                html += '</tr>';
+            });
+
+            html += '</tbody></table></div></td>';
+            detail.innerHTML = html;
+        });
+    }
+
+    window.openVariantAdjust = function(vid, pid, colorName, sizeName, stock, colorHex, productName) {
+        document.getElementById('vam-variant-id').value = vid;
+        document.getElementById('vam-size-name').value = sizeName;
+        document.getElementById('vam-product-id').value = pid;
+        document.getElementById('vam-product-name').textContent = productName;
+        document.getElementById('vam-variant-info').innerHTML = '<span class="color-dot" style="background:' + colorHex + ';display:inline-block;vertical-align:middle;"></span> ' + colorName + ' / ' + sizeName;
+        document.getElementById('vam-current-qty').textContent = stock;
+        document.getElementById('vam-qty').value = stock;
+        document.getElementById('vam-change').value = 0;
+        document.getElementById('variant-adjust-modal').classList.add('active');
+    };
+
+    window.vamAdjust = function(delta) {
+        var el = document.getElementById('vam-change');
+        el.value = parseInt(el.value || 0) + delta;
+    };
+
+    window.closeVariantModal = function() {
+        document.getElementById('variant-adjust-modal').classList.remove('active');
+    };
+
+    window.saveVariantAdjust = function() {
+        var vid = document.getElementById('vam-variant-id').value;
+        var sizeName = document.getElementById('vam-size-name').value;
+        var pid = document.getElementById('vam-product-id').value;
+        var absQty = document.getElementById('vam-qty').value;
+        var changeVal = parseInt(document.getElementById('vam-change').value || 0);
+        var reason = document.getElementById('vam-reason').value;
+
+        var body;
+        if (absQty !== '' && changeVal === 0) {
+            body = { stock: parseInt(absQty), reason: reason };
+            fetch('/api/inventory/variants/' + vid + '/sizes/' + encodeURIComponent(sizeName), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify(body)
+            }).then(function(r) { return r.json(); }).then(function() {
+                closeVariantModal();
+                loadInventory();
+            });
+        } else if (changeVal !== 0) {
+            body = { change: changeVal, reason: reason, variant_id: parseInt(vid), size_name: sizeName };
+            fetch('/api/inventory/' + pid + '/adjust', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify(body)
+            }).then(function(r) { return r.json(); }).then(function() {
+                closeVariantModal();
+                loadInventory();
+            });
+        } else {
+            closeVariantModal();
+        }
+    };
+
+    window.openHistory = function(pid, name) {
+        document.getElementById('shm-product-name').textContent = name;
+        document.getElementById('history-tbody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>';
+        document.getElementById('stock-history-modal').classList.add('active');
+        api('/inventory/' + pid + '/history').then(function(rows) {
+            var tbody = document.getElementById('history-tbody');
+            if (!rows || rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);">No history</td></tr>';
+                return;
+            }
+            tbody.innerHTML = rows.map(function(r) {
+                var change = r.stock_change || 0;
+                var cls = change > 0 ? 'color:green' : (change < 0 ? 'color:red' : '');
+                var sign = change > 0 ? '+' : '';
+                var date = r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR', {day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+                var color = r.color_name || '—';
+                var size = r.size_name || '—';
+                return '<tr><td>' + date + '</td><td style="' + cls + ';font-weight:600;">' + sign + change + '</td><td>' + (r.quantity_before || 0) + '</td><td>' + (r.quantity_after || 0) + '</td><td>' + color + '</td><td>' + size + '</td><td>' + (r.reason || '') + '</td></tr>';
+            }).join('');
+        });
+    };
+
+    window.closeHistoryModal = function() {
+        document.getElementById('stock-history-modal').classList.remove('active');
+    };
+
+    window.exportInventory = function() {
+        if (allProducts.length === 0) return;
+        var csv = 'Product,Category,SKU,Quantity,Status\n';
+        allProducts.forEach(function(p) {
+            csv += '"' + (p.product_name || '').replace(/"/g, '""') + '","' + (p.category_name || '') + '","' + (p.sku || '') + '",' + (p.quantity || 0) + ',' + p.stock_status + '\n';
+        });
+        var blob = new Blob([csv], { type: 'text/csv' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'inventory-' + new Date().toISOString().slice(0, 10) + '.csv';
+        a.click();
+    };
+
+    document.querySelectorAll('.inv-tab').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.inv-tab').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            currentFilter = btn.getAttribute('data-status');
+            renderInventory();
+        });
+    });
+
+    document.getElementById('inv-category-filter').addEventListener('change', loadInventory);
+    document.getElementById('inv-search').addEventListener('input', function(e) {
+        searchQuery = e.target.value;
+        renderInventory();
+    });
+
+    loadCategories();
+    loadInventory();
+})();
+</script>
 </body>
 </html>

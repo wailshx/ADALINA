@@ -5,11 +5,11 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config.database import get_db
 
-def log_stock_change(cur, product_id, stock_change, quantity_before, reason=''):
+def log_stock_change(cur, product_id, stock_change, quantity_before, reason='', variant_id=None, color_name=None, size_name=None):
     quantity_after = quantity_before + stock_change
-    cur.execute("""INSERT INTO stock_history (product_id, stock_change, quantity_before, quantity_after, reason)
-                   VALUES (%s, %s, %s, %s, %s)""",
-                (product_id, stock_change, quantity_before, quantity_after, reason))
+    cur.execute("""INSERT INTO stock_history (product_id, stock_change, quantity_before, quantity_after, reason, variant_id, color_name, size_name)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                (product_id, stock_change, quantity_before, quantity_after, reason, variant_id, color_name, size_name))
 
 def _find_variant(cur, product_id, color_name):
     cur.execute("SELECT id FROM product_variants WHERE product_id=%s AND color_name=%s LIMIT 1", (product_id, color_name))
@@ -52,7 +52,7 @@ def deduct_order_stock(cur, product_id, color_name, size_name, quantity):
                     (quantity, vid, size_name, quantity))
         cur.execute("UPDATE product_variants SET stock = (SELECT COALESCE(SUM(stock),0) FROM variant_sizes WHERE variant_id=%s) WHERE id=%s",
                     (vid, vid))
-        log_stock_change(cur, product_id, -quantity, before, f"Order deduction (variant {vid}, {color_name}/{size_name})")
+        log_stock_change(cur, product_id, -quantity, before, f"Order deduction ({color_name}/{size_name})", vid, color_name, size_name)
         return (True, None)
     cur.execute("SELECT stock FROM product_sizes WHERE product_id=%s AND size=%s", (product_id, size_name))
     srow = cur.fetchone()
@@ -63,7 +63,7 @@ def deduct_order_stock(cur, product_id, color_name, size_name, quantity):
         return (False, f"Stock insuffisant pour cette taille ({before} restant(s))")
     cur.execute("UPDATE product_sizes SET stock = stock - %s WHERE product_id=%s AND size=%s AND stock >= %s",
                 (quantity, product_id, size_name, quantity))
-    log_stock_change(cur, product_id, -quantity, before, f"Order deduction (legacy, {size_name})")
+    log_stock_change(cur, product_id, -quantity, before, f"Order deduction ({size_name})")
     return (True, None)
 
 def restore_order_stock(cur, product_id, color_name, size_name, quantity):
@@ -77,7 +77,7 @@ def restore_order_stock(cur, product_id, color_name, size_name, quantity):
         cur.execute("UPDATE variant_sizes SET stock = stock + %s WHERE variant_id=%s AND size_name=%s", (quantity, vid, size_name))
         cur.execute("UPDATE product_variants SET stock = (SELECT COALESCE(SUM(stock),0) FROM variant_sizes WHERE variant_id=%s) WHERE id=%s",
                     (vid, vid))
-        log_stock_change(cur, product_id, quantity, before, f"Restock (cancel order, variant {vid}, {color_name}/{size_name})")
+        log_stock_change(cur, product_id, quantity, before, f"Restock ({color_name}/{size_name})", vid, color_name, size_name)
         return (True, None)
     cur.execute("SELECT stock FROM product_sizes WHERE product_id=%s AND size=%s", (product_id, size_name))
     srow = cur.fetchone()
@@ -85,7 +85,7 @@ def restore_order_stock(cur, product_id, color_name, size_name, quantity):
         return (False, "Taille introuvable pour ce produit")
     before = srow['stock']
     cur.execute("UPDATE product_sizes SET stock = stock + %s WHERE product_id=%s AND size=%s", (quantity, product_id, size_name))
-    log_stock_change(cur, product_id, quantity, before, f"Restock (cancel order, legacy, {size_name})")
+    log_stock_change(cur, product_id, quantity, before, f"Restock ({size_name})")
     return (True, None)
 
 def _tables_exist(conn):
@@ -132,6 +132,17 @@ def _run_migrations(conn):
             )""",
         ]
         for sql in migrations:
+            try:
+                cur.execute(sql)
+            except Exception:
+                pass
+        variant_stock_history_migrations = [
+            "ALTER TABLE stock_history ADD COLUMN IF NOT EXISTS variant_id INTEGER",
+            "ALTER TABLE stock_history ADD COLUMN IF NOT EXISTS color_name TEXT",
+            "ALTER TABLE stock_history ADD COLUMN IF NOT EXISTS size_name TEXT",
+            "CREATE INDEX IF NOT EXISTS idx_stock_history_variant ON stock_history(variant_id)",
+        ]
+        for sql in variant_stock_history_migrations:
             try:
                 cur.execute(sql)
             except Exception:

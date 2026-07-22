@@ -1037,6 +1037,49 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             send_json(self, item)
             return True
 
+        if path.startswith('/api/inventory/variants/'):
+            pid = path.split('/')[-1]
+            cur.execute("SELECT id, color_name, color_hex, sku, stock FROM product_variants WHERE product_id=%s ORDER BY id", (pid,))
+            variants = rows_to_list(cur.fetchall())
+            if not variants:
+                send_json(self, [])
+                return True
+            variant_ids = [v['id'] for v in variants]
+            placeholders = ','.join(['%s'] * len(variant_ids))
+            cur.execute(f"SELECT variant_id, size_name, stock, COALESCE(sku, '') AS sku FROM variant_sizes WHERE variant_id=ANY(%s) ORDER BY id", (variant_ids,))
+            vs_rows = cur.fetchall()
+            vs_map = {}
+            for vs in vs_rows:
+                vid = vs['variant_id']
+                if vid not in vs_map:
+                    vs_map[vid] = []
+                vs_map[vid].append({'size_name': vs['size_name'], 'stock': vs['stock'] or 0, 'sku': vs['sku']})
+            for v in variants:
+                v['sizes'] = vs_map.get(v['id'], [])
+            send_json(self, variants)
+            return True
+
+        if path == '/api/inventory/alerts':
+            cur.execute("""
+                SELECT vs.id AS vs_id, vs.variant_id, vs.size_name, vs.stock, vs.sku,
+                       pv.color_name, pv.color_hex,
+                       p.id AS product_id, p.name AS product_name, p.image AS product_image
+                FROM variant_sizes vs
+                JOIN product_variants pv ON vs.variant_id = pv.id
+                JOIN products p ON pv.product_id = p.id
+                WHERE p.status = 'active' AND vs.stock <= 5
+                ORDER BY vs.stock ASC
+                LIMIT 20
+            """)
+            rows = rows_to_list(cur.fetchall())
+            for r in rows:
+                if r['stock'] == 0:
+                    r['status'] = 'out_of_stock'
+                elif r['stock'] <= 5:
+                    r['status'] = 'low_stock'
+            send_json(self, {'alerts': rows})
+            return True
+
         if path == '/api/collections/all':
             cur.execute("SELECT * FROM collections ORDER BY id")
             collections = rows_to_list(cur.fetchall())
@@ -1221,12 +1264,26 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             pid = path.split('/')[-2]
             change = data.get('change', 0)
             reason = data.get('reason', '')
-            cur.execute("SELECT quantity FROM inventory WHERE product_id=%s", (pid,))
-            before = cur.fetchone()
-            before_qty = before['quantity'] if before else 0
-            cur.execute("UPDATE inventory SET quantity = quantity + %s, updated_at = CURRENT_TIMESTAMP WHERE product_id=%s", (change, pid))
-            cur.execute("UPDATE products SET stock = (SELECT quantity FROM inventory WHERE product_id=%s) WHERE id=%s", (pid, pid))
-            log_stock_change(cur, pid, change, before_qty, reason)
+            variant_id = data.get('variant_id')
+            size_name = data.get('size_name')
+            if variant_id and size_name:
+                cur.execute("SELECT stock FROM variant_sizes WHERE variant_id=%s AND size_name=%s", (variant_id, size_name))
+                row = cur.fetchone()
+                if not row:
+                    send_json(self, {'error': 'Variant size not found'}, 404)
+                    return True
+                before_qty = row['stock']
+                new_qty = max(0, before_qty + change)
+                cur.execute("UPDATE variant_sizes SET stock=%s WHERE variant_id=%s AND size_name=%s", (new_qty, variant_id, size_name))
+                cur.execute("UPDATE product_variants SET stock = (SELECT COALESCE(SUM(stock),0) FROM variant_sizes WHERE variant_id=%s) WHERE id=%s", (variant_id, variant_id))
+                log_stock_change(cur, pid, change, before_qty, reason, variant_id, None, size_name)
+            else:
+                cur.execute("SELECT quantity FROM inventory WHERE product_id=%s", (pid,))
+                before = cur.fetchone()
+                before_qty = before['quantity'] if before else 0
+                cur.execute("UPDATE inventory SET quantity = quantity + %s, updated_at = CURRENT_TIMESTAMP WHERE product_id=%s", (change, pid))
+                cur.execute("UPDATE products SET stock = (SELECT quantity FROM inventory WHERE product_id=%s) WHERE id=%s", (pid, pid))
+                log_stock_change(cur, pid, change, before_qty, reason)
             db.commit()
             send_json(self, {'message': 'Inventory adjusted'})
             return True
@@ -1271,6 +1328,30 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     send_json(self, {'message': 'Main image updated', 'images': images})
                     return True
             send_json(self, {'error': 'Image not found'}, 404)
+            return True
+
+        if path.startswith('/api/inventory/variants/') and '/sizes/' in path:
+            parts = path.split('/')
+            vid = parts[-3]
+            size = parts[-1]
+            stock = data.get('stock', 0)
+            reason = data.get('reason', 'Manual adjustment')
+            cur.execute("SELECT stock FROM variant_sizes WHERE variant_id=%s AND size_name=%s", (vid, size))
+            row = cur.fetchone()
+            if not row:
+                send_json(self, {'error': 'Variant size not found'}, 404)
+                return True
+            before = row['stock']
+            cur.execute("UPDATE variant_sizes SET stock=%s WHERE variant_id=%s AND size_name=%s", (stock, vid, size))
+            cur.execute("UPDATE product_variants SET stock = (SELECT COALESCE(SUM(stock),0) FROM variant_sizes WHERE variant_id=%s) WHERE id=%s", (vid, vid))
+            cur.execute("SELECT product_id FROM product_variants WHERE id=%s", (vid,))
+            pv_row = cur.fetchone()
+            if pv_row:
+                pid = pv_row['product_id']
+                log_stock_change(cur, pid, stock - before, before, reason, int(vid), None, size)
+                cur.execute("UPDATE inventory SET quantity = (SELECT COALESCE(SUM(stock),0) FROM variant_sizes vs JOIN product_variants pv ON vs.variant_id=pv.id WHERE pv.product_id=%s), updated_at = CURRENT_TIMESTAMP WHERE product_id=%s", (pid, pid))
+            db.commit()
+            send_json(self, {'message': 'Variant size stock updated', 'before': before, 'after': stock})
             return True
 
         if path.startswith('/api/products/'):
