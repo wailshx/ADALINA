@@ -288,11 +288,6 @@
     var currentFilter = 'all';
     var searchQuery = '';
 
-    function api(path) {
-        return fetch('/api' + path, { credentials: 'same-origin' })
-            .then(function(r) { return r.json(); });
-    }
-
     function stockStatus(q) {
         if (q === 0) return 'out_of_stock';
         if (q <= 5) return 'low_stock';
@@ -307,7 +302,7 @@
     }
 
     function loadCategories() {
-        api('/categories').then(function(data) {
+        api('GET', '/categories').then(function(data) {
             var cats = data.categories || data || [];
             var sel = document.getElementById('inv-category-filter');
             cats.forEach(function(c) {
@@ -322,7 +317,7 @@
     function loadInventory() {
         var catId = document.getElementById('inv-category-filter').value;
         var url = '/inventory?status=all';
-        api(url).then(function(data) {
+        api('GET', url).then(function(data) {
             allProducts = (data.items || []).map(function(item) {
                 item.stock_status = stockStatus(item.quantity || 0);
                 return item;
@@ -419,7 +414,7 @@
         var prod = allProducts.find(function(p) { return String(p.product_id) === String(pid); });
         var prodName = prod ? (prod.product_name || '') : '';
 
-        api('/inventory/variants/' + pid).then(function(variants) {
+        api('GET', '/inventory/variants/' + pid).then(function(variants) {
             if (!variants || variants.length === 0) {
                 detail.innerHTML = '<td colspan="7"><div style="padding:12px 20px;color:var(--text-muted);">No variants configured</div></td>';
                 return;
@@ -488,26 +483,17 @@
         var changeVal = parseInt(document.getElementById('vam-change').value || 0);
         var reason = document.getElementById('vam-reason').value;
 
-        var body;
         if (absQty !== '' && changeVal === 0) {
-            body = { stock: parseInt(absQty), reason: reason };
-            fetch('/api/inventory/variants/' + vid + '/sizes/' + encodeURIComponent(sizeName), {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify(body)
-            }).then(function(r) { return r.json(); }).then(function() {
+            var body = { stock: parseInt(absQty), reason: reason };
+            api('PUT', '/inventory/variants/' + vid + '/sizes/' + encodeURIComponent(sizeName), body).then(function(res) {
+                if (res && res.error) { alert('Error: ' + res.error); return; }
                 closeVariantModal();
                 loadInventory();
             });
         } else if (changeVal !== 0) {
-            body = { change: changeVal, reason: reason, variant_id: parseInt(vid), size_name: sizeName };
-            fetch('/api/inventory/' + pid + '/adjust', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify(body)
-            }).then(function(r) { return r.json(); }).then(function() {
+            var body = { change: changeVal, reason: reason, variant_id: parseInt(vid), size_name: sizeName };
+            api('POST', '/inventory/' + pid + '/adjust', body).then(function(res) {
+                if (res && res.error) { alert('Error: ' + res.error); return; }
                 closeVariantModal();
                 loadInventory();
             });
@@ -520,7 +506,7 @@
         document.getElementById('shm-product-name').textContent = name;
         document.getElementById('history-tbody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);">Loading...</td></tr>';
         document.getElementById('stock-history-modal').classList.add('active');
-        api('/inventory/' + pid + '/history').then(function(rows) {
+        api('GET', '/inventory/' + pid + '/history').then(function(rows) {
             var tbody = document.getElementById('history-tbody');
             if (!rows || rows.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);">No history</td></tr>';

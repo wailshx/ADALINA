@@ -29,11 +29,11 @@ def log_stock_change(cur, product_id, stock_change, quantity_before, reason='', 
                     (product_id, stock_change, quantity_before, quantity_after, reason))
 
 def _find_variant(cur, product_id, color_name):
-    cur.execute("SELECT id FROM product_variants WHERE product_id=%s AND color_name=%s LIMIT 1", (product_id, color_name))
-    row = cur.fetchone()
-    if row:
-        return (row['id'], None)
     if color_name:
+        cur.execute("SELECT id FROM product_variants WHERE product_id=%s AND LOWER(TRIM(color_name))=LOWER(TRIM(%s)) LIMIT 1", (product_id, color_name))
+        row = cur.fetchone()
+        if row:
+            return (row['id'], None)
         return (None, None)
     cur.execute("SELECT id FROM product_variants WHERE product_id=%s LIMIT 1", (product_id,))
     row = cur.fetchone()
@@ -54,6 +54,12 @@ def get_variant_stock(cur, product_id, color_name, size_name):
     if srow:
         return (srow['stock'], None)
     return (0, "Taille introuvable pour ce produit")
+
+def check_order_stock(cur, product_id, color_name, size_name, quantity):
+    available, err = get_variant_stock(cur, product_id, color_name, size_name)
+    if available >= quantity:
+        return True, None
+    return False, f"Stock insuffisant: {color_name or ''} {size_name or ''} ({available} restant(s))"
 
 def _sync_product_total_stock(cur, product_id):
     cur.execute("""UPDATE products SET stock = (

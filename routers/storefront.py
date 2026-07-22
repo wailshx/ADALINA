@@ -11,6 +11,7 @@ from config.database import get_public_db
 from config.security import RateLimiter, get_client_ip, escape_html
 
 from shared import _cache, format_product, batch_format_products, _process_order_background
+from admin.database import get_variant_stock
 
 logger = logging.getLogger('adalina')
 
@@ -627,6 +628,30 @@ async def create_order(request: Request, background_tasks: BackgroundTasks):
             return _json_response({'error': 'Numéro de téléphone invalide'}, status=400)
 
         order_number = 'ADL-' + datetime.datetime.now().strftime('%Y%m%d-') + str(random.randint(1000, 9999))
+
+        db_check = None
+        try:
+            db_check = get_public_db()
+            cur_check = db_check.cursor()
+            for item in items:
+                pid = item.get('product_id')
+                qty = item.get('quantity') or 1
+                color = item.get('color') or item.get('selectedColor') or ''
+                size = item.get('size') or item.get('selectedSize') or ''
+                if pid:
+                    avail, _ = get_variant_stock(cur_check, pid, color, size)
+                    if avail < qty:
+                        name = item.get('name', 'produit')
+                        return _json_response({'error': f'\U0001f6ab Rupture de stock: {name} ({color}/{size})'}, status=400)
+        except Exception as stock_chk_err:
+            logger.warning(f'Stock pre-check failed: {stock_chk_err}')
+        finally:
+            if db_check:
+                try:
+                    db_check.close()
+                except Exception:
+                    pass
+
         background_tasks.add_task(_process_order_background, order_number, items, customer_name, customer_phone, wilaya, data)
         logger.info(f'POST /api/orders: queued background task for {order_number}')
 

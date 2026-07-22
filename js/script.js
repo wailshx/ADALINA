@@ -245,8 +245,6 @@ function renderProductCard(product) {
         stockBadgeHtml = '<div class="stock-badge stock-low">' + i18n.t('stock.low').replace('{n}', totalStock) + '</div>';
     } else if (totalStock === 0) {
         stockBadgeHtml = '<div class="stock-badge stock-out">' + i18n.t('stock.out') + '</div>';
-    } else if (totalStock > 5) {
-        stockBadgeHtml = '<div class="stock-badge stock-in">' + i18n.t('qv.inStock') + '</div>';
     }
 
     var sizesHtml = '';
@@ -1287,12 +1285,9 @@ function qvUpdateStockDisplay() {
     } else if (hasVariants && (!curColor || !curSize)) {
         el.innerHTML = '<span class="stock-badge in-stock">' + i18n.t('qv.selectSizeAndColor') + '</span>';
         qvDisableButtons(false);
-    } else if (product.stock > 0) {
-        el.innerHTML = '<span class="stock-badge in-stock">' + i18n.t('qv.inStock') + '</span>';
-        qvDisableButtons(false);
     } else {
-        el.innerHTML = '<span class="stock-badge out-of-stock">' + i18n.t('stock.out') + '</span>';
-        qvDisableButtons(true);
+        el.innerHTML = '';
+        qvDisableButtons(false);
     }
 }
 
@@ -1837,6 +1832,22 @@ function placeOrder(e) {
         return;
     }
 
+    var stockBlocked = cart.some(function(item) {
+        var p = products.find(function(pr) { return pr.id === item.id; });
+        if (!p) return false;
+        var color = item.selectedColor || '';
+        var size = item.selectedSize || '';
+        var variants = p.variants || [];
+        if (variants.length > 0 && color && size) {
+            var vs = getVariantStock(p, color, size);
+            if (vs < item.quantity) { alert('\U0001f6ab ' + i18n.t('stock.out') + ': ' + item.name + ' (' + color + '/' + size + ')'); return true; }
+        } else if (variants.length === 0 && (p.stock || 0) < item.quantity) {
+            alert('\U0001f6ab ' + i18n.t('stock.out') + ': ' + item.name); return true;
+        }
+        return false;
+    });
+    if (stockBlocked) return;
+
     var orderItems = cart.map(function (item) {
         return { product_id: item.id, name: item.name, price: item.price, quantity: item.quantity, size: item.selectedSize || '', color: item.selectedColor || '' };
     });
@@ -1988,9 +1999,9 @@ function getColorTotalStock(product, cname) {
 }
 
 function stockLabel(stock) {
-    if (stock > 5) return '<span class="stock-badge in-stock">' + i18n.t('qv.inStock') + '</span>';
-    if (stock > 0) return '<span class="stock-badge low-stock">' + i18n.t('stock.low').replace('{n}', stock) + '</span>';
-    return '<span class="stock-badge out-of-stock">' + i18n.t('stock.out') + '</span>';
+    if (stock > 0 && stock <= 5) return '<span class="stock-badge low-stock">' + i18n.t('stock.low').replace('{n}', stock) + '</span>';
+    if (stock === 0) return '<span class="stock-badge out-of-stock">' + i18n.t('stock.out') + '</span>';
+    return '';
 }
 
 function displayProduct(product) {
@@ -2231,10 +2242,8 @@ function updateProductStockDisplay() {
             info.innerHTML = stockLabel(curStock) + ' <span class="stock-qty">' + i18n.t('qv.disponible').replace('{n}', curStock) + '</span>';
         } else if (hasVariants) {
             info.innerHTML = '<span class="stock-badge in-stock">' + i18n.t('qv.selectSizeAndColor') + '</span>';
-        } else if (product.stock > 0) {
-            info.innerHTML = '<span class="stock-badge in-stock">' + i18n.t('qv.inStock') + '</span>';
         } else {
-            info.innerHTML = '<span class="stock-badge out-of-stock">' + i18n.t('stock.out') + '</span>';
+            info.innerHTML = '';
         }
     }
 
