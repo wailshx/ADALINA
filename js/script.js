@@ -1259,14 +1259,16 @@ function qvSelectSize(btn, size) {
 function qvDisableButtons(disabled) {
     var modal = document.getElementById('quick-view-modal');
     if (!modal) return;
-    var btns = modal.querySelectorAll('.qv-btn-primary, .qv-btn-dark');
-    btns.forEach(function(btn) {
-        btn.disabled = disabled;
-    });
     var addBtn = modal.querySelector('.qv-btn-primary');
-    if (addBtn) addBtn.innerHTML = disabled ? '🚫 ' + i18n.t('stock.out') : i18n.t('qv.addToCart');
+    if (addBtn) {
+        addBtn.disabled = disabled;
+        addBtn.innerHTML = disabled ? i18n.t('product.unavailable') : i18n.t('qv.addToCart');
+    }
     var buyBtn = modal.querySelector('.qv-btn-dark');
-    if (buyBtn) buyBtn.innerHTML = disabled ? '🚫 ' + i18n.t('stock.out') : i18n.t('product.buyNow');
+    if (buyBtn) {
+        buyBtn.style.display = disabled ? 'none' : '';
+        buyBtn.disabled = false;
+    }
 }
 
 function qvUpdateStockDisplay() {
@@ -1280,14 +1282,33 @@ function qvUpdateStockDisplay() {
     if (!el) return;
     if (curColor && curSize && hasVariants) {
         var vstock = getVariantStock(product, curColor, curSize);
-        el.innerHTML = stockLabel(vstock) + ' <span class="stock-qty">' + i18n.t('qv.disponible').replace('{n}', vstock) + '</span>';
-        qvDisableButtons(vstock === 0);
+        if (vstock === 0) {
+            el.innerHTML = '<div class="stock-badge stock-out" style="font-size:0.85rem;padding:4px 12px;">' + i18n.t('stock.out') + '</div>';
+            qvDisableButtons(true);
+        } else if (vstock <= 5) {
+            el.innerHTML = stockLabel(vstock) + ' <span class="stock-qty">' + i18n.t('qv.disponible').replace('{n}', vstock) + '</span>';
+            qvDisableButtons(false);
+        } else {
+            el.innerHTML = '<span class="stock-qty">' + i18n.t('qv.disponible').replace('{n}', vstock) + '</span>';
+            qvDisableButtons(false);
+        }
     } else if (hasVariants && (!curColor || !curSize)) {
-        el.innerHTML = '<span class="stock-badge in-stock">' + i18n.t('qv.selectSizeAndColor') + '</span>';
-        qvDisableButtons(false);
+        var totalStock = getColorTotalStock(product, curColor || '');
+        if (totalStock === 0 && curColor) {
+            el.innerHTML = '<div class="stock-badge stock-out" style="font-size:0.85rem;padding:4px 12px;">' + i18n.t('stock.out') + '</div>';
+            qvDisableButtons(true);
+        } else {
+            el.innerHTML = '<span class="stock-badge in-stock">' + i18n.t('qv.selectSizeAndColor') + '</span>';
+            qvDisableButtons(false);
+        }
     } else {
-        el.innerHTML = '';
-        qvDisableButtons(false);
+        if (!hasVariants && (product.stock || 0) === 0) {
+            el.innerHTML = '<div class="stock-badge stock-out" style="font-size:0.85rem;padding:4px 12px;">' + i18n.t('stock.out') + '</div>';
+            qvDisableButtons(true);
+        } else {
+            el.innerHTML = '';
+            qvDisableButtons(false);
+        }
     }
 }
 
@@ -1346,6 +1367,14 @@ function qvAddToCart() {
 function qvBuyNow() {
     if (!_qv.product) return;
     if (!qvValidateSelection()) return;
+    var p = _qv.product;
+    var hasVariants = (p.variants || []).length > 0;
+    if (hasVariants && _qv.selectedColor && _qv.selectedSize) {
+        var vs = getVariantStock(p, _qv.selectedColor, _qv.selectedSize);
+        if (vs === 0) return;
+    } else if (!hasVariants && (p.stock || 0) === 0) {
+        return;
+    }
     if (_qv.modifyCartKey) {
         var idx = findCartItemByKey(_qv.modifyCartKey);
         if (idx !== -1) cart.splice(idx, 1);
@@ -2067,8 +2096,8 @@ function displayProduct(product) {
                     </div>
                 </div>
 
-                <button class="pp-btn pp-btn-primary" onclick="addCurrentToCart()" id="pp-add-to-cart-btn"${comboOutOfStock ? ' disabled' : ''}>${comboOutOfStock ? '🚫 ' + i18n.t('stock.out') : i18n.t('qv.addToCart')}</button>
-                <button class="pp-btn pp-btn-dark" onclick="ppBuyNow()" id="pp-buy-now-btn"${comboOutOfStock ? ' disabled' : ''}>${comboOutOfStock ? '🚫 ' + i18n.t('stock.out') : i18n.t('product.buyNow')}</button>
+                <button class="pp-btn pp-btn-primary" onclick="addCurrentToCart()" id="pp-add-to-cart-btn"${comboOutOfStock ? ' disabled' : ''}>${comboOutOfStock ? i18n.t('product.unavailable') : i18n.t('qv.addToCart')}</button>
+                <button class="pp-btn pp-btn-dark" onclick="ppBuyNow()" id="pp-buy-now-btn"${comboOutOfStock ? ' style="display:none"' : ''}>${i18n.t('product.buyNow')}</button>
 
                 <button class="pp-btn pp-btn-outline" onclick="addCurrentToWishlist()"><svg width="18" height="18" viewBox="0 0 24 24" fill="${isInWishlist ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg><span id="pp-wishlist-text">${isInWishlist ? i18n.t('product.wishlistIn') : i18n.t('qv.wishlist')}</span></button>
 
@@ -2264,11 +2293,10 @@ function updateProductStockDisplay() {
     var buyBtn = document.getElementById('pp-buy-now-btn');
     if (addBtn) {
         addBtn.disabled = comboOut;
-        addBtn.innerHTML = comboOut ? '🚫 ' + i18n.t('stock.out') : i18n.t('qv.addToCart');
+        addBtn.innerHTML = comboOut ? i18n.t('product.unavailable') : i18n.t('qv.addToCart');
     }
     if (buyBtn) {
-        buyBtn.disabled = comboOut;
-        buyBtn.innerHTML = comboOut ? '🚫 ' + i18n.t('stock.out') : i18n.t('product.buyNow');
+        buyBtn.style.display = comboOut ? 'none' : '';
     }
 }
 
@@ -2378,6 +2406,17 @@ function addCurrentToWishlist() {
 
 function ppBuyNow() {
     if (addCurrentToCart() === false) return;
+    var product = products.find(function(p) { return p.id === productPageState.productId; });
+    if (!product) return;
+    var variants = product.variants || [];
+    var curColor = productPageState.selectedColor;
+    var curSize = productPageState.selectedSize;
+    if (variants.length > 0 && curColor && curSize) {
+        var vs = getVariantStock(product, curColor, curSize);
+        if (vs === 0) return;
+    } else if (variants.length === 0 && (product.stock || 0) === 0) {
+        return;
+    }
     window.location.href = 'checkout.html';
 }
 
