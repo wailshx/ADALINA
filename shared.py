@@ -97,6 +97,9 @@ def _ensure_columns():
         cur.execute("ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS wilaya TEXT DEFAULT ''")
         cur.execute("ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS min_days INTEGER DEFAULT 2")
         cur.execute("ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS max_days INTEGER DEFAULT 5")
+        cur.execute("ALTER TABLE stock_history ADD COLUMN IF NOT EXISTS variant_id INTEGER")
+        cur.execute("ALTER TABLE stock_history ADD COLUMN IF NOT EXISTS color_name TEXT")
+        cur.execute("ALTER TABLE stock_history ADD COLUMN IF NOT EXISTS size_name TEXT")
         cur.execute("""CREATE TABLE IF NOT EXISTS wishlists (
             id SERIAL PRIMARY KEY,
             hash TEXT UNIQUE NOT NULL,

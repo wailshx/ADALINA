@@ -5,11 +5,28 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config.database import get_db
 
+_stock_history_variant_cols = None
+
+def _stock_history_has_variant_cols(cur):
+    global _stock_history_variant_cols
+    if _stock_history_variant_cols is None:
+        try:
+            cur.execute("SELECT COUNT(*) AS c FROM information_schema.columns WHERE table_name='stock_history' AND column_name='variant_id'")
+            _stock_history_variant_cols = (cur.fetchone()['c'] or 0) > 0
+        except Exception:
+            _stock_history_variant_cols = False
+    return _stock_history_variant_cols
+
 def log_stock_change(cur, product_id, stock_change, quantity_before, reason='', variant_id=None, color_name=None, size_name=None):
     quantity_after = quantity_before + stock_change
-    cur.execute("""INSERT INTO stock_history (product_id, stock_change, quantity_before, quantity_after, reason, variant_id, color_name, size_name)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
-                (product_id, stock_change, quantity_before, quantity_after, reason, variant_id, color_name, size_name))
+    if _stock_history_has_variant_cols(cur):
+        cur.execute("""INSERT INTO stock_history (product_id, stock_change, quantity_before, quantity_after, reason, variant_id, color_name, size_name)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (product_id, stock_change, quantity_before, quantity_after, reason, variant_id, color_name, size_name))
+    else:
+        cur.execute("""INSERT INTO stock_history (product_id, stock_change, quantity_before, quantity_after, reason)
+                       VALUES (%s, %s, %s, %s, %s)""",
+                    (product_id, stock_change, quantity_before, quantity_after, reason))
 
 def _find_variant(cur, product_id, color_name):
     cur.execute("SELECT id FROM product_variants WHERE product_id=%s AND color_name=%s LIMIT 1", (product_id, color_name))
@@ -69,14 +86,26 @@ def deduct_order_stock(cur, product_id, color_name, size_name, quantity):
         return (True, None)
     cur.execute("SELECT stock FROM product_sizes WHERE product_id=%s AND size=%s", (product_id, size_name))
     srow = cur.fetchone()
-    if not srow:
-        return (False, "Taille introuvable pour ce produit")
-    before = srow['stock']
+    if srow and (srow['stock'] or 0) >= quantity:
+        before = srow['stock']
+        cur.execute("UPDATE product_sizes SET stock = stock - %s WHERE product_id=%s AND size=%s AND stock >= %s",
+                    (quantity, product_id, size_name, quantity))
+        cur.execute("UPDATE products SET stock = GREATEST(0, COALESCE(stock,0) - %s) WHERE id=%s", (quantity, product_id))
+        cur.execute("UPDATE inventory SET quantity = GREATEST(0, quantity - %s), updated_at = CURRENT_TIMESTAMP WHERE product_id=%s", (quantity, product_id))
+        log_stock_change(cur, product_id, -quantity, before, f"Order deduction ({size_name})")
+        return (True, None)
+    cur.execute("SELECT stock FROM products WHERE id=%s", (product_id,))
+    prow = cur.fetchone()
+    if not prow:
+        return (False, "Produit introuvable")
+    before = prow['stock'] or 0
     if before < quantity:
-        return (False, f"Stock insuffisant pour cette taille ({before} restant(s))")
-    cur.execute("UPDATE product_sizes SET stock = stock - %s WHERE product_id=%s AND size=%s AND stock >= %s",
-                (quantity, product_id, size_name, quantity))
-    log_stock_change(cur, product_id, -quantity, before, f"Order deduction ({size_name})")
+        return (False, f"Stock insuffisant ({before} restant(s))")
+    cur.execute("UPDATE products SET stock = stock - %s WHERE id=%s AND stock >= %s", (quantity, product_id, quantity))
+    cur.execute("UPDATE inventory SET quantity = GREATEST(0, quantity - %s), updated_at = CURRENT_TIMESTAMP WHERE product_id=%s", (quantity, product_id))
+    if srow:
+        cur.execute("UPDATE product_sizes SET stock = GREATEST(0, stock - %s) WHERE product_id=%s AND size=%s", (quantity, product_id, size_name))
+    log_stock_change(cur, product_id, -quantity, before, f"Order deduction ({size_name or 'standard'})")
     return (True, None)
 
 def restore_order_stock(cur, product_id, color_name, size_name, quantity):
@@ -95,11 +124,16 @@ def restore_order_stock(cur, product_id, color_name, size_name, quantity):
         return (True, None)
     cur.execute("SELECT stock FROM product_sizes WHERE product_id=%s AND size=%s", (product_id, size_name))
     srow = cur.fetchone()
-    if not srow:
-        return (False, "Taille introuvable pour ce produit")
-    before = srow['stock']
-    cur.execute("UPDATE product_sizes SET stock = stock + %s WHERE product_id=%s AND size=%s", (quantity, product_id, size_name))
-    log_stock_change(cur, product_id, quantity, before, f"Restock ({size_name})")
+    if srow:
+        before = srow['stock'] or 0
+        cur.execute("UPDATE product_sizes SET stock = stock + %s WHERE product_id=%s AND size=%s", (quantity, product_id, size_name))
+    else:
+        cur.execute("SELECT stock FROM products WHERE id=%s", (product_id,))
+        prow = cur.fetchone()
+        before = (prow['stock'] or 0) if prow else 0
+    cur.execute("UPDATE products SET stock = COALESCE(stock,0) + %s WHERE id=%s", (quantity, product_id))
+    cur.execute("UPDATE inventory SET quantity = quantity + %s, updated_at = CURRENT_TIMESTAMP WHERE product_id=%s", (quantity, product_id))
+    log_stock_change(cur, product_id, quantity, before, f"Restock ({size_name or 'standard'})")
     return (True, None)
 
 def _tables_exist(conn):
