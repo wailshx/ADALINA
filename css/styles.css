@@ -465,8 +465,10 @@ button {
 }
 
 .btn-hero-shop {
-    display: inline-block;
-    padding: 16px 52px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 40px;
     background-color: var(--secondary);
     color: #fff;
     text-decoration: none;
@@ -476,7 +478,7 @@ button {
     text-transform: uppercase;
     border: none;
     cursor: pointer;
-    transition: all var(--transition-smooth);
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
     align-self: flex-start;
     position: relative;
     overflow: hidden;
@@ -493,14 +495,32 @@ button {
     transition: left 0.5s ease;
 }
 
+.btn-hero-arrow {
+    display: inline-block;
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease;
+    opacity: 0.5;
+    font-size: 1.1em;
+}
+
 .btn-hero-shop:hover {
     background-color: #000;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    padding-right: 48px;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+}
+
+.btn-hero-shop:hover .btn-hero-arrow {
+    transform: translateX(4px);
+    opacity: 1;
 }
 
 .btn-hero-shop:hover::after {
     left: 100%;
+}
+
+.btn-hero-shop:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
 }
 
 /* Announcement Bar — Luxury */
@@ -795,14 +815,19 @@ button {
 
 @media (max-width: 1200px) {
     .products-grid { grid-template-columns: repeat(3, 1fr); }
+    .skeleton-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 768px) {
     .products-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+    .skeleton-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+    .skeleton-scroll-row { gap: 12px; }
+    .skeleton-scroll-row .skeleton-card { flex: 0 0 160px; }
 }
 
 @media (max-width: 480px) {
     .products-grid { grid-template-columns: 1fr; }
+    .skeleton-grid { grid-template-columns: 1fr; }
 }
 
 .product-card {
@@ -1129,6 +1154,54 @@ button {
     color: #dc2626;
     text-decoration: line-through;
     opacity: 0.7;
+}
+
+.product-card .stock-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    margin-bottom: 6px;
+    font-family: 'Manrope', sans-serif;
+}
+
+.stock-badge.stock-in {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.stock-badge.stock-low {
+    background: #fff8e1;
+    color: #e65100;
+}
+
+.stock-badge.stock-out {
+    background: #fce4ec;
+    color: #c62828;
+}
+
+.stock-badge.stock-coming-soon {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.out-of-stock-card .product-image {
+    opacity: 0.55;
+}
+
+.out-of-stock-card .product-image img {
+    filter: grayscale(20%);
+}
+
+.btn-overlay-disabled {
+    background: rgba(100,100,100,0.4) !important;
+    color: rgba(255,255,255,0.7) !important;
+    border-color: rgba(255,255,255,0.3) !important;
+    cursor: not-allowed !important;
+    pointer-events: none;
 }
 
 .product-price {
@@ -4462,21 +4535,64 @@ input[type="checkbox"] {
 .shop-loading {
     display: flex;
     justify-content: center;
-    align-items: center;
-    padding: 4rem 0;
+    align-items: flex-start;
+    padding: 0;
 }
 
-.shop-spinner {
-    width: 32px;
-    height: 32px;
-    border: 2.5px solid var(--border);
-    border-top-color: var(--secondary);
-    border-radius: 50%;
-    animation: shopSpin 0.7s linear infinite;
+.skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    width: 100%;
 }
 
-@keyframes shopSpin {
-    to { transform: rotate(360deg); }
+.skeleton-card {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.skeleton-img {
+    width: 100%;
+    aspect-ratio: 3/4;
+    background: linear-gradient(110deg, #e8e8e8 30%, #f5f5f5 50%, #e8e8e8 70%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+}
+
+.skeleton-text {
+    height: 14px;
+    margin-top: 10px;
+    border-radius: 4px;
+    background: linear-gradient(110deg, #e8e8e8 30%, #f5f5f5 50%, #e8e8e8 70%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s ease-in-out infinite;
+    animation-delay: 0.15s;
+}
+
+.skeleton-text.short {
+    width: 60%;
+    height: 12px;
+    margin-top: 6px;
+}
+
+@keyframes skeletonShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-collection-block {
+    padding: 0 0 1rem;
+}
+
+.skeleton-scroll-row {
+    display: flex;
+    gap: 20px;
+    overflow: hidden;
+}
+
+.skeleton-scroll-row .skeleton-card {
+    flex: 0 0 220px;
 }
 
 .shop-empty {

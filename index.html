@@ -127,7 +127,7 @@
             <div class="hero-split-content">
                 <h1 class="hero-split-title" data-i18n="hero.title">Vêtements prêt-à-porter pour femmes</h1>
                 <p class="hero-split-description" data-i18n="hero.desc">Découvrez notre nouvelle collection où l'élégance intemporelle rencontre le savoir-faire artisanal. Chaque pièce est conçue avec des matériaux d'exception pour sublimer votre beauté naturelle et affirmer votre style avec confiance.</p>
-                <a href="shop.html" class="btn-hero-shop" data-i18n="hero.cta">SHOP NEW</a>
+                <a href="shop.html" class="btn-hero-shop"><span class="btn-hero-text" data-i18n="hero.cta">Découvrir la Collection</span><span class="btn-hero-arrow">→</span></a>
             </div>
         </section>
         
@@ -150,7 +150,12 @@
                     <div class="collection-tabs reveal-up" id="collection-tabs"></div>
                 <div class="scroll-wrapper reveal-up">
                     <button class="scroll-arrow scroll-left" onclick="scrollTrack(this, -1)">&#10094;</button>
-                    <div class="scroll-track" id="collection-products"></div>
+                    <div class="scroll-track" id="collection-products">
+                        <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-text"></div><div class="skeleton-text short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-text"></div><div class="skeleton-text short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-text"></div><div class="skeleton-text short"></div></div>
+                        <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-text"></div><div class="skeleton-text short"></div></div>
+                    </div>
                     <button class="scroll-arrow scroll-right" onclick="scrollTrack(this, 1)">&#10095;</button>
                 </div>
             </div>
@@ -159,7 +164,16 @@
         <section class="collections-section">
             <div class="container">
                 <h2 class="section-title" data-i18n="collections.title">Collections Sélectionnées</h2>
-                <div id="home-collections-grid"></div>
+                <div id="home-collections-grid">
+                    <div class="skeleton-collection-block">
+                        <div class="skeleton-text" style="width:140px;height:18px;margin-bottom:16px"></div>
+                        <div class="skeleton-scroll-row">
+                            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-text"></div><div class="skeleton-text short"></div></div>
+                            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-text"></div><div class="skeleton-text short"></div></div>
+                            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-text"></div><div class="skeleton-text short"></div></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 

@@ -215,6 +215,37 @@ function renderProductCard(product) {
     var imgs = product.images && product.images.length > 0 ? product.images : (product.image ? [product.image] : [PLACEHOLDER_IMG]);
     var second = imgs.length > 1 ? imgs[1] : null;
     var ribbon = productRibbonHtml(product);
+    var comingSoon = product.coming_soon || false;
+
+    var totalStock = 0;
+    if (product.variants && product.variants.length > 0) {
+        product.variants.forEach(function(v) {
+            if (v.sizes && Array.isArray(v.sizes)) {
+                v.sizes.forEach(function(s) { totalStock += (s.stock || 0); });
+            } else {
+                totalStock += (v.stock || 0);
+            }
+        });
+    } else if (product.stock) {
+        totalStock = product.stock;
+    }
+
+    var isOutOfStock = totalStock === 0 && !comingSoon;
+    var cardClasses = 'product-card';
+    if (inCart) cardClasses += ' in-cart';
+    if (isOutOfStock) cardClasses += ' out-of-stock-card';
+
+    var stockBadgeHtml = '';
+    if (comingSoon) {
+        stockBadgeHtml = '<div class="stock-badge stock-coming-soon">' + i18n.t('stock.comingSoon') + '</div>';
+    } else if (totalStock > 0 && totalStock <= 5) {
+        stockBadgeHtml = '<div class="stock-badge stock-low">' + i18n.t('stock.low').replace('{n}', totalStock) + '</div>';
+    } else if (totalStock === 0) {
+        stockBadgeHtml = '<div class="stock-badge stock-out">' + i18n.t('stock.out') + '</div>';
+    } else if (totalStock > 5) {
+        stockBadgeHtml = '<div class="stock-badge stock-in">' + i18n.t('qv.inStock') + '</div>';
+    }
+
     var sizesHtml = '';
     if (product.sizes && product.sizes.length > 0) {
         var available = product.sizes.filter(function(s) { return typeof s === 'object' ? s.stock > 0 : true; });
@@ -225,7 +256,6 @@ function renderProductCard(product) {
                 if (firstName && firstName.indexOf('Taille') === 0) isGroupedTaille = true;
             }
             if (isGroupedTaille) {
-                /* Show Taille group boxes on product card — compact single-line layout */
                 var tailleHtml = '<div class="product-sizes-grouped">' +
                     '<span class="product-sizes-label">Disponible</span>' +
                     '<div class="sz-group-taille-boxes">';
@@ -253,26 +283,8 @@ function renderProductCard(product) {
     var priceHtml = product.sale_price
         ? '<span class="original-price">' + formatPriceDA(product.price) + '</span><span class="sale-price">' + formatPriceDA(product.sale_price) + '</span>'
         : '<span class="current-price">' + formatPriceDA(product.price) + '</span>';
-    var stockLabelHtml = '';
-    var totalStock = 0;
-    if (product.variants && product.variants.length > 0) {
-        product.variants.forEach(function(v) {
-            if (v.sizes && Array.isArray(v.sizes)) {
-                v.sizes.forEach(function(s) { totalStock += (s.stock || 0); });
-            } else {
-                totalStock += (v.stock || 0);
-            }
-        });
-    } else if (product.stock) {
-        totalStock = product.stock;
-    }
-    if (totalStock > 0 && totalStock <= 5) {
-        stockLabelHtml = '<div class="stock-indicator low">' + i18n.t('stock.low').replace('{n}', totalStock) + '</div>';
-    } else if (totalStock === 0) {
-        stockLabelHtml = '<div class="stock-indicator out">' + i18n.t('stock.out') + '</div>';
-    }
-    var inCart = pid && cart.some(function(item) { return item.id === pid; });
-    return '<div class="product-card' + (inCart ? ' in-cart' : '') + '" data-product-id="' + pid + '">' +
+    var inCartCheck = pid && cart.some(function(item) { return item.id === pid; });
+    return '<div class="' + cardClasses + '" data-product-id="' + pid + '">' +
         '<div class="product-image">' +
             '<img src="' + cloudinaryThumb(imgs[0], 400) + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy" decoding="async" width="400" height="533" onerror="onImgError(this)">' +
             (second ? '<img src="' + cloudinaryThumb(second, 400) + '" alt="' + esc(product.name) + '" class="img-secondary" loading="lazy" decoding="async" width="400" height="533" onerror="onImgError(this)">' : '') +
@@ -284,13 +296,16 @@ function renderProductCard(product) {
             '</button>' +
             '<div class="product-overlay">' +
                 '<button class="btn-overlay" onclick="quickView(' + pid + ')">Aperçu rapide</button>' +
-                '<button class="btn-overlay btn-overlay-primary" onclick="addToCartOrQuickView(' + pid + ')">' + i18n.t('product.addCart') + '</button>' +
+                (isOutOfStock
+                    ? '<button class="btn-overlay btn-overlay-disabled" disabled>' + i18n.t('product.unavailable') + '</button>'
+                    : '<button class="btn-overlay btn-overlay-primary" onclick="addToCartOrQuickView(' + pid + ')">' + i18n.t('product.addCart') + '</button>'
+                ) +
             '</div>' +
         '</div>' +
         '<div class="product-info">' +
             '<h3 class="product-title"><a href="product.html?id=' + pid + '">' + esc(product.name) + '</a></h3>' +
             sizesHtml +
-            stockLabelHtml + '<div class="product-price">' + priceHtml + '</div>' +
+            stockBadgeHtml + '<div class="product-price">' + priceHtml + '</div>' +
         '</div>' +
     '</div>';
 }
