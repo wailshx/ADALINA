@@ -231,6 +231,7 @@ function renderProductCard(product) {
     }
 
     var isOutOfStock = totalStock === 0 && !comingSoon;
+    var inCart = pid && cart.some(function(item) { return item.id === pid; });
     var cardClasses = 'product-card';
     if (inCart) cardClasses += ' in-cart';
     if (isOutOfStock) cardClasses += ' out-of-stock-card';
@@ -283,7 +284,6 @@ function renderProductCard(product) {
     var priceHtml = product.sale_price
         ? '<span class="original-price">' + formatPriceDA(product.price) + '</span><span class="sale-price">' + formatPriceDA(product.sale_price) + '</span>'
         : '<span class="current-price">' + formatPriceDA(product.price) + '</span>';
-    var inCartCheck = pid && cart.some(function(item) { return item.id === pid; });
     return '<div class="' + cardClasses + '" data-product-id="' + pid + '">' +
         '<div class="product-image">' +
             '<img src="' + cloudinaryThumb(imgs[0], 400) + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy" decoding="async" width="400" height="533" onerror="onImgError(this)">' +
