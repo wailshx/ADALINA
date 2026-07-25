@@ -1643,6 +1643,94 @@ function getOrderDeliveryFee(wilayaId, communeName, mode) {
     return base;
 }
 
+function expandCheckoutSection(sectionId) {
+    var section = document.getElementById(sectionId);
+    if (!section) return;
+    section.classList.remove('is-collapsed');
+    var firstInput = section.querySelector('.floating-input:not(select):not([disabled]), .floating-select:not([disabled])');
+    if (firstInput) setTimeout(function() { firstInput.focus(); }, 100);
+}
+
+function collapseCheckoutSection(sectionId) {
+    var section = document.getElementById(sectionId);
+    if (!section) return;
+    updateCheckoutSectionSummary(sectionId);
+    section.classList.add('is-collapsed');
+}
+
+function updateCheckoutSectionSummary(sectionId) {
+    var section = document.getElementById(sectionId);
+    if (!section) return;
+    var summaryEl = section.querySelector('.checkout-section-summary .summary-text');
+    if (!summaryEl) return;
+    if (sectionId === 'cs-info') {
+        var name = (document.getElementById('co-full-name') || {}).value || '';
+        var phone = (document.getElementById('co-phone') || {}).value || '';
+        name = name.trim();
+        phone = phone.trim();
+        if (name || phone) {
+            summaryEl.textContent = name + (phone ? ' — ' + phone : '');
+        } else {
+            summaryEl.textContent = '';
+        }
+    } else if (sectionId === 'cs-address') {
+        var wilayaSel = document.getElementById('co-wilaya');
+        var muniSel = document.getElementById('co-municipality');
+        var modeSel = document.getElementById('co-delivery-mode');
+        var wilayaText = (wilayaSel && wilayaSel.selectedIndex > 0) ? wilayaSel.options[wilayaSel.selectedIndex].text : '';
+        var muniText = (muniSel && muniSel.selectedIndex > 0) ? muniSel.options[muniSel.selectedIndex].text : '';
+        var modeText = '';
+        if (modeSel && modeSel.value) {
+            modeText = modeSel.value === 'domicile' ? '🏠 التوصيل للمنزل' : '📦 التوصيل للمكتب';
+        }
+        var parts = [wilayaText, muniText, modeText].filter(Boolean);
+        summaryEl.textContent = parts.join(' — ');
+    }
+}
+
+function setupAccordionAutoCollapse() {
+    var nameInput = document.getElementById('co-full-name');
+    var phoneInput = document.getElementById('co-phone');
+    var infoSection = document.getElementById('cs-info');
+    if (nameInput && phoneInput && infoSection) {
+        var checkInfo = function() {
+            var name = nameInput.value.trim();
+            var phone = phoneInput.value.trim();
+            if (name && phone && phone.replace(/\D/g, '').length >= 9) {
+                if (!infoSection.classList.contains('is-collapsed')) {
+                    collapseCheckoutSection('cs-info');
+                }
+            }
+            updateCheckoutSectionSummary('cs-info');
+        };
+        nameInput.addEventListener('blur', checkInfo);
+        phoneInput.addEventListener('blur', checkInfo);
+    }
+
+    var wilayaSel = document.getElementById('co-wilaya');
+    var muniSel = document.getElementById('co-municipality');
+    var modeSel = document.getElementById('co-delivery-mode');
+    var addrSection = document.getElementById('cs-address');
+    if (wilayaSel && muniSel && modeSel && addrSection) {
+        var checkAddr = function() {
+            var wilayaOk = wilayaSel.value !== '';
+            var muniOk = muniSel.value !== '';
+            var modeOk = modeSel.value !== '';
+            if (wilayaOk && muniOk && modeOk) {
+                if (!addrSection.classList.contains('is-collapsed')) {
+                    collapseCheckoutSection('cs-address');
+                }
+            }
+            updateCheckoutSectionSummary('cs-address');
+        };
+        muniSel.addEventListener('change', checkAddr);
+        modeSel.addEventListener('change', checkAddr);
+        wilayaSel.addEventListener('change', function() {
+            updateCheckoutSectionSummary('cs-address');
+        });
+    }
+}
+
 function renderCheckout() {
     var wilayaSel = document.getElementById('co-wilaya');
     if (wilayaSel) {
@@ -1699,6 +1787,11 @@ function renderCheckout() {
         deliveryModeSel.addEventListener('input', onModeChange);
         deliveryModeSel.addEventListener('blur', function() { updateSelectFloat(this); });
     }
+
+    /* auto-collapse sections when all fields filled */
+    setupAccordionAutoCollapse();
+    updateCheckoutSectionSummary('cs-info');
+    updateCheckoutSectionSummary('cs-address');
 
     /* floating label toggle for all text inputs */
     document.querySelectorAll('.floating-input:not(select)').forEach(function(inp) {

@@ -92,22 +92,35 @@
                 <h1 class="page-title">الدفع</h1>
                 <div class="checkout-layout">
                     <div class="checkout-form">
-                        <div class="checkout-section">
+                        <div class="checkout-section" id="cs-info">
                             <h3 class="checkout-section-title">معلوماتك</h3>
-                            <div class="floating-group">
-                                <input type="text" id="co-full-name" class="floating-input" autocomplete="name">
-                                <label for="co-full-name" class="floating-label">الاسم الكامل <span class="required-star">*</span></label>
+                            <div class="checkout-section-summary" onclick="expandCheckoutSection('cs-info')">
+                                <span class="summary-icon">✓</span>
+                                <span class="summary-text" id="cs-info-summary"></span>
+                                <span class="summary-edit">تعديل</span>
                             </div>
-                            <div class="floating-group">
-                                <input type="tel" id="co-phone" class="floating-input" autocomplete="tel" inputmode="numeric" pattern="[0-9 ]+" oninput="formatPhoneInput(this)">
-                                <label for="co-phone" class="floating-label">رقم الهاتف <span class="required-star">*</span></label>
-                                <span class="input-hint">مثال: 0555 12 34 56</span>
-                                <span class="input-error" id="co-phone-error"></span>
+                            <div class="checkout-section-fields">
+                                <div class="floating-group">
+                                    <input type="text" id="co-full-name" class="floating-input" autocomplete="name">
+                                    <label for="co-full-name" class="floating-label">الاسم الكامل <span class="required-star">*</span></label>
+                                </div>
+                                <div class="floating-group">
+                                    <input type="tel" id="co-phone" class="floating-input" autocomplete="tel" inputmode="numeric" pattern="[0-9 ]+" oninput="formatPhoneInput(this)">
+                                    <label for="co-phone" class="floating-label">رقم الهاتف <span class="required-star">*</span></label>
+                                    <span class="input-hint">مثال: 0555 12 34 56</span>
+                                    <span class="input-error" id="co-phone-error"></span>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="checkout-section">
+                        <div class="checkout-section" id="cs-address">
                             <h3 class="checkout-section-title">عنوان التوصيل</h3>
+                            <div class="checkout-section-summary" onclick="expandCheckoutSection('cs-address')">
+                                <span class="summary-icon">✓</span>
+                                <span class="summary-text" id="cs-address-summary"></span>
+                                <span class="summary-edit">تعديل</span>
+                            </div>
+                            <div class="checkout-section-fields">
                             <div class="floating-group select-group">
                                 <div class="select-wrap">
                                     <select id="co-wilaya" class="floating-input floating-select">
@@ -140,6 +153,7 @@
                                     <svg class="select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
                                 </div>
                                 <label for="co-delivery-mode" class="floating-label">طريقة التوصيل <span class="required-star">*</span></label>
+                            </div>
                             </div>
                         </div>
 

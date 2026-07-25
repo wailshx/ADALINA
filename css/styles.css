@@ -3659,6 +3659,7 @@ input[type="checkbox"] {
 
 .checkout-section {
     margin-bottom: 2rem;
+    overflow: hidden;
 }
 
 .checkout-section:last-of-type {
@@ -3675,6 +3676,65 @@ input[type="checkbox"] {
     border-bottom: 1px solid var(--border-light);
     letter-spacing: 0.05em;
     text-transform: uppercase;
+}
+
+.checkout-section.is-collapsed .checkout-section-fields {
+    display: none;
+}
+
+.checkout-section-summary {
+    display: none;
+    cursor: pointer;
+    padding: 0.9rem 1rem;
+    background: var(--bg-secondary, #faf8f5);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    font-size: 0.88rem;
+    color: var(--text);
+    gap: 0.6rem;
+    align-items: center;
+    line-height: 1.5;
+    transition: background 0.2s ease;
+}
+
+.checkout-section-summary:hover {
+    background: var(--bg-tertiary, #f3f0ec);
+}
+
+.checkout-section.is-collapsed .checkout-section-summary {
+    display: flex;
+}
+
+.checkout-section-summary .summary-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    font-size: 0.65rem;
+}
+
+.checkout-section-summary .summary-text {
+    flex: 1;
+}
+
+.checkout-section-summary .summary-edit {
+    flex-shrink: 0;
+    font-size: 0.78rem;
+    color: var(--primary);
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.checkout-section.is-collapsed .checkout-section-title {
+    margin-bottom: 0.6rem;
+    border-bottom: none;
+    padding-bottom: 0;
 }
 
 .floating-group {
