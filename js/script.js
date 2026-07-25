@@ -1610,8 +1610,27 @@ function loadDeliveryPrices() {
         if (data) _deliveryPrices = data;
     }).catch(function() { _deliveryPrices = {}; });
     fetch('/api/public/commune-delivery-prices').then(function(r) { return r.json(); }).then(function(data) {
-        if (data) _communeDeliveryPrices = data;
-    }).catch(function() { _communeDeliveryPrices = {}; });
+        if (data && Object.keys(data).length > 0) {
+            _communeDeliveryPrices = data;
+        } else {
+            _retryCommunePrices(0);
+        }
+        if (document.querySelector('.checkout-form')) updateCheckoutSummary();
+    }).catch(function() { _retryCommunePrices(0); });
+}
+
+function _retryCommunePrices(attempt) {
+    if (attempt > 2) return;
+    setTimeout(function() {
+        fetch('/api/public/commune-delivery-prices').then(function(r) { return r.json(); }).then(function(data) {
+            if (data && Object.keys(data).length > 0) {
+                _communeDeliveryPrices = data;
+                if (document.querySelector('.checkout-form')) updateCheckoutSummary();
+            } else {
+                _retryCommunePrices(attempt + 1);
+            }
+        }).catch(function() { _retryCommunePrices(attempt + 1); });
+    }, 1500 * (attempt + 1));
 }
 
 function getDeliveryPrice(wilayaId) {
@@ -1846,8 +1865,9 @@ function validatePhone(inp) {
     if (!inp) return false;
     var err = document.getElementById('co-phone-error');
     var val = inp.value.trim();
+    var isAr = i18n.getLang() === 'ar';
     if (!val) {
-        if (err) err.textContent = i18n.t('checkout.phoneRequired');
+        if (err) err.textContent = isAr ? 'رقم الهاتف مطلوب.' : i18n.t('checkout.phoneRequired');
         inp.classList.add('error');
         return false;
     }
@@ -1855,7 +1875,7 @@ function validatePhone(inp) {
     if (cleaned.startsWith('+213')) cleaned = cleaned.substring(4);
     else if (cleaned.startsWith('213')) cleaned = cleaned.substring(3);
     if (!/^[0-9]{9,10}$/.test(cleaned)) {
-        if (err) err.textContent = i18n.t('checkout.phoneInvalid');
+        if (err) err.textContent = isAr ? 'رقم غير صالح. مثال: 0555 12 34 56' : i18n.t('checkout.phoneInvalid');
         inp.classList.add('error');
         return false;
     }
@@ -1937,7 +1957,8 @@ function updateCheckoutSummary() {
     var muniSel = document.getElementById('co-municipality');
     var modeSel = document.getElementById('co-delivery-mode');
     var wilayaId = wilayaSel ? parseInt(wilayaSel.value) : 0;
-    var communeName = muniSel && muniSel.selectedIndex > 0 ? muniSel.options[muniSel.selectedIndex].text : '';
+    var communeName = muniSel && muniSel.selectedIndex > 0 ? (muniSel.value || muniSel.options[muniSel.selectedIndex].text) : '';
+    communeName = (communeName || '').trim();
     var mode = modeSel ? modeSel.value : '';
     var baseFee = getDeliveryPrice(wilayaId);
     var communeSurcharge = (mode === 'domicile') ? getCommuneDomicilePrice(wilayaId, communeName) : 0;

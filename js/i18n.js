@@ -458,7 +458,7 @@
         var existing = (document.documentElement.lang || '').toLowerCase();
         var existingDir = (document.documentElement.dir || '').toLowerCase();
         var lang = (existing === 'ar' || existingDir === 'rtl') ? 'ar' : 'fr';
-        var dir = (lang === 'ar') ? 'rtl' : 'ltr';
+        var dir = existingDir || ((lang === 'ar') ? 'rtl' : 'ltr');
         document.documentElement.lang = lang;
         document.documentElement.dir = dir;
         applyTranslations(lang);
