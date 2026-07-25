@@ -1536,82 +1536,110 @@ var algerianWilayas = [
 ];
 
 /* Sample municipalities per wilaya — extended for production */
-var algerianMunicipalities = {
-    1:  ['Adrar', 'Reggane', 'Timoktene', 'Tsabit', 'Zaouiet Kounta', 'Fenoughil'],
-    2:  ['Chlef', 'Tenes', 'Ain Merane', 'Ouled Fares', 'Boukadir', 'Chettia', 'Sobha', 'Beni Rached'],
-    3:  ['Laghouat', 'Aflou', 'Ksar El Boukhari', 'Brida', 'Sidi Makhlouf'],
-    4:  ['Oum El Bouaghi', 'Ain Beida', 'Ain M\'lila', 'Ksar Sbahi', 'Fkirina'],
-    5:  ['Batna', 'N\'Gaous', 'Merouana', 'Barika', 'Arris', 'Tazoult', 'Ain Touta', 'Bouzina'],
-    6:  ['Béjaïa', 'Akbou', 'Amizour', 'Kherrata', 'Sidi Aich', 'Adekar', 'Tichy', 'Oued Ghir'],
-    7:  ['Biskra', 'El Kantara', 'Tolga', 'Ourlal', 'Sidi Okba', 'Foughala'],
-    8:  ['Béchar', 'Kenadsa', 'Taghit', 'Beni Ounif', 'Abadla'],
-    9:  ['Blida', 'Boufarik', 'El Affroun', 'Mouzaia', 'Meftah', 'Oued Alleug', 'Chebli', 'Bouinan'],
-    10: ['Bouira', 'Lakhdaria', 'M\'Chedallah', 'Sour El Ghozlane', 'Kadiria', 'Bechloul'],
-    11: ['Tamanrasset', 'Abalessa', 'In Amguel', 'Tazrouk'],
-    12: ['Tébessa', 'Cheria', 'El Aouinet', 'El Haria', 'Ouenza', 'Bir Mokkadem'],
-    13: ['Tlemcen', 'Maghnia', 'Ghazaouet', 'Remchi', 'Sebdou', 'Mansourah', 'Chetouane'],
-    14: ['Tiaret', 'Sougueur', 'Frenda', 'Mahdia', 'Dahmouni', 'Oued Lili'],
-    15: ['Tizi Ouzou', 'Azazga', 'Boghni', 'Larbaa Nath Irathen', 'Draa El Mizan', 'Beni Yenni', "M'kira"],
-    16: ['Alger Centre', 'Bab El Oued', 'Kouba', 'El Harrach', 'Birkhadem', 'Dar El Beida',
-        'Cheraga', 'Hussein Dey', 'Hydra', 'Ben Aknoun', 'Bologhine', 'Oued Koriche',
-        'Staoueli', 'Zeralda', 'Rouiba', 'Reghaia', 'Baraki', 'Sidi M\'Hamed'],
-    17: ['Djelfa', 'Ain Oussera', 'Messaad', 'El Idrissia', 'Hassi Bahbah', 'Ain El Ibel'],
-    18: ['Jijel', 'El Milia', 'Taher', 'Chekfa', 'Sidi Abdelaziz', 'Emir Abdelkader'],
-    19: ['Sétif', 'El Eulma', 'Ain Oulmene', 'Bougaa', 'Salah Bey', 'Ain Azel', 'Guidjel'],
-    20: ['Saïda', 'Ouled Brahim', 'Youb', 'Ain El Hadjar', 'Sidi Boubekeur'],
-    21: ['Skikda', 'El Harrouch', 'Azzaba', 'Tamalous', 'Collo', 'Beni Zid'],
-    22: ['Sidi Bel Abbès', 'Sidi Lahcene', 'Telagh', 'Tenira', 'Merine', 'Oued Sefioun'],
-    23: ['Annaba', 'El Bouni', 'El Hadjar', 'Seraidi', 'Berrahal', 'Chetaibi'],
-    24: ['Guelma', 'Oued Zenati', 'Bouchegouf', 'Hammam Debagh', 'Guelaat Bou Sbaa'],
-    25: ['Constantine', 'El Khroub', 'Ain Abid', 'Hamma Bouziane', 'Zighoud Youcef', 'Didouche Mourad'],
-    26: ['Médéa', 'Berrouaghia', 'Ksar El Boukhari', 'Tablat', 'Souaghi', 'Ouzera', 'Beni Slimane'],
-    27: ['Mostaganem', 'Ain Tedles', 'Sidi Ali', 'Hassi Mameche', 'Nekmaria', 'Ouled Malah'],
-    28: ['Bordj Bou Arreridj', 'Ras El Oued', 'Bordj Ghedir', 'Ain Taghrout', 'El Achir', 'El Main'],
-    29: ['Mascara', 'Sig', 'Mohammedia', 'Oued El Abtal', 'Ghriss', 'Bou Hanifia'],
-    30: ['Ouargla', 'Hassi Messaoud', 'Rouissat', 'El Borma', 'N\'Goussa'],
-    31: ['Oran', 'Es Senia', 'Bir El Djir', 'Arzew', 'Boutlelis', 'Oued Tlélat', 'Gdyel', 'Misserghin'],
-    32: ['El Bayadh', 'Brezina', 'Bougtob', 'Chellala', 'El Abiodh Sidi Cheikh'],
-    33: ['Illizi', 'Djanet (Illizi)', 'Debdeb', 'Bordj Omar Driss'],
-    34: ['Bordj Bou Arreridj', 'Ras El Oued', 'Bordj Zemoura', 'El Ach', 'Djaafra'],
-    35: ['Boumerdès', 'Boudouaou', 'Dellys', 'Thenia', 'Bordj Menaiel', 'Khemis El Khechna', 'Ouled Moussa', 'Corso'],
-    36: ['El Tarf', 'Besbes', 'Drean', 'Ben Mehidi', 'El Kala', 'Bouteldja'],
-    37: ['Tindouf', 'Oum El Assel'],
-    38: ['Tissemsilt', 'Bordj Emir Khaled', 'Lardjem', 'Theniet El Had', 'Sidi Slimane'],
-    39: ['El Oued', 'Guemar', 'Debila', 'Robbah', 'Bayadha', 'Douar El Ma', 'El Mghair'],
-    40: ['Khenchela', 'Kaïs', 'Ain Touila', 'El Hamma', 'Chechar', 'Ouled Rechache'],
-    41: ['Souk Ahras', 'Sedrata', 'Mechroha', 'Limouna', 'Ouled Driss', 'Tiffech'],
-    42: ['Tipaza', 'Cherchell', 'Hadera', 'Bou Ismail', 'Sidi Amar', 'Gouraya', 'Nador', 'Fouka', 'Kolea'],
-    43: ['Mila', 'Ferdjioua', 'Chelghoum Laid', 'Tadjenanet', 'Grarem Gouga', 'Telerghma'],
-    44: ['Aïn Defla', 'Khemis Miliana', 'El Abadia', 'Rouina', 'Miliana', 'Boumedfaa'],
-    45: ['Naâma', 'Mecheria', 'Ain Sefra', 'Moghrar', 'Asla', 'Djeniene Bou Rezg'],
-    46: ['Aïn Témouchent', 'Beni Saf', 'El Amria', 'Hammam Bou Hadjar', 'Oulhaça El Gheraba'],
-    47: ['Ghardaïa', 'Ghardaïa', 'El Meniaa', 'Dhayet Ben Dhahoua', 'Mansoura', 'Béni Isguen'],
-    48: ['Relizane', 'Oued Rhiou', 'Mazouna', 'Sidi M\'Hamed Benaouda', 'Jdiouia', 'Mendes', 'Zemmoura'],
-    49: ['Timimoun', 'Timimoun', 'Ouled Said', 'Charouine'],
-    50: ['Bordj Badji Mokhtar', 'Bordj Badji Mokhtar', 'Timiaouine'],
-    51: ['Ouled Djellal', 'Ouled Djellal', 'Sidi Khaled', 'Besbes', 'Doucen', 'Lichana'],
-    52: ['Béni Abbès', 'Béni Abbès', 'Tamtert', 'Kerzaz', 'El Ouata'],
-    53: ['In Salah', 'In Salah', 'Foggaret Ezzoua', 'Ain Salah'],
-    54: ['In Guezzam', 'In Guezzam', 'Tin Zouatine'],
-    55: ['Touggourt', 'Touggourt', 'Témacine', 'El Alia', 'Sidi Slimane', 'MNaguer', 'Tamacine', 'Benaceur'],
-    56: ['Djanet', 'Djanet', 'Bordj El Haouas'],
-    57: ['El M\'Ghair', 'El M\'Ghair', 'Djamaa', 'Sidi Amrane', 'M\'Rara', 'Tendla'],
-    58: ['El Meniaa', 'El Meniaa', 'Hassi Fehal', 'Bel Bahri', 'Hassi Gara']
-};
+var algerianMunicipalities = window.algeriaCommunesFR || {};
+if (!algerianMunicipalities || Object.keys(algerianMunicipalities).length === 0) {
+    algerianMunicipalities = {
+        1:  ['Adrar', 'Reggane', 'Timoktene', 'Tsabit', 'Zaouiet Kounta', 'Fenoughil'],
+        2:  ['Chlef', 'Tenes', 'Ain Merane', 'Ouled Fares', 'Boukadir', 'Chettia', 'Sobha', 'Beni Rached'],
+        3:  ['Laghouat', 'Aflou', 'Ksar El Boukhari', 'Brida', 'Sidi Makhlouf'],
+        4:  ['Oum El Bouaghi', 'Ain Beida', 'Ain M\'lila', 'Ksar Sbahi', 'Fkirina'],
+        5:  ['Batna', 'N\'Gaous', 'Merouana', 'Barika', 'Arris', 'Tazoult', 'Ain Touta', 'Bouzina'],
+        6:  ['Béjaïa', 'Akbou', 'Amizour', 'Kherrata', 'Sidi Aich', 'Adekar', 'Tichy', 'Oued Ghir'],
+        7:  ['Biskra', 'El Kantara', 'Tolga', 'Ourlal', 'Sidi Okba', 'Foughala'],
+        8:  ['Béchar', 'Kenadsa', 'Taghit', 'Beni Ounif', 'Abadla'],
+        9:  ['Blida', 'Boufarik', 'El Affroun', 'Mouzaia', 'Meftah', 'Oued Alleug', 'Chebli', 'Bouinan'],
+        10: ['Bouira', 'Lakhdaria', 'M\'Chedallah', 'Sour El Ghozlane', 'Kadiria', 'Bechloul'],
+        11: ['Tamanrasset', 'Abalessa', 'In Amguel', 'Tazrouk'],
+        12: ['Tébessa', 'Cheria', 'El Aouinet', 'El Haria', 'Ouenza', 'Bir Mokkadem'],
+        13: ['Tlemcen', 'Maghnia', 'Ghazaouet', 'Remchi', 'Sebdou', 'Mansourah', 'Chetouane'],
+        14: ['Tiaret', 'Sougueur', 'Frenda', 'Mahdia', 'Dahmouni', 'Oued Lili'],
+        15: ['Tizi Ouzou', 'Azazga', 'Boghni', 'Larbaa Nath Irathen', 'Draa El Mizan', 'Beni Yenni', "M'kira"],
+        16: ['Alger Centre', 'Bab El Oued', 'Kouba', 'El Harrach', 'Birkhadem', 'Dar El Beida', 'Cheraga', 'Hussein Dey', 'Hydra', 'Ben Aknoun', 'Bologhine', 'Oued Koriche', 'Staoueli', 'Zeralda', 'Rouiba', 'Reghaia', 'Baraki', 'Sidi M\'Hamed'],
+        17: ['Djelfa', 'Ain Oussera', 'Messaad', 'El Idrissia', 'Hassi Bahbah', 'Ain El Ibel'],
+        18: ['Jijel', 'El Milia', 'Taher', 'Chekfa', 'Sidi Abdelaziz', 'Emir Abdelkader'],
+        19: ['Sétif', 'El Eulma', 'Ain Oulmene', 'Bougaa', 'Salah Bey', 'Ain Azel', 'Guidjel'],
+        20: ['Saïda', 'Ouled Brahim', 'Youb', 'Ain El Hadjar', 'Sidi Boubekeur'],
+        21: ['Skikda', 'El Harrouch', 'Azzaba', 'Tamalous', 'Collo', 'Beni Zid'],
+        22: ['Sidi Bel Abbès', 'Sidi Lahcene', 'Telagh', 'Tenira', 'Merine', 'Oued Sefioun'],
+        23: ['Annaba', 'El Bouni', 'El Hadjar', 'Seraidi', 'Berrahal', 'Chetaibi'],
+        24: ['Guelma', 'Oued Zenati', 'Bouchegouf', 'Hammam Debagh', 'Guelaat Bou Sbaa'],
+        25: ['Constantine', 'El Khroub', 'Ain Abid', 'Hamma Bouziane', 'Zighoud Youcef', 'Didouche Mourad'],
+        26: ['Médéa', 'Berrouaghia', 'Ksar El Boukhari', 'Tablat', 'Souaghi', 'Ouzera', 'Beni Slimane'],
+        27: ['Mostaganem', 'Ain Tedles', 'Sidi Ali', 'Hassi Mameche', 'Nekmaria', 'Ouled Malah'],
+        28: ['Bordj Bou Arreridj', 'Ras El Oued', 'Bordj Ghedir', 'Ain Taghrout', 'El Achir', 'El Main'],
+        29: ['Mascara', 'Sig', 'Mohammedia', 'Oued El Abtal', 'Ghriss', 'Bou Hanifia'],
+        30: ['Ouargla', 'Hassi Messaoud', 'Rouissat', 'El Borma', 'N\'Goussa'],
+        31: ['Oran', 'Es Senia', 'Bir El Djir', 'Arzew', 'Boutlelis', 'Oued Tlélat', 'Gdyel', 'Misserghin'],
+        32: ['El Bayadh', 'Brezina', 'Bougtob', 'Chellala', 'El Abiodh Sidi Cheikh'],
+        33: ['Illizi', 'Djanet', 'Debdeb', 'Bordj Omar Driss'],
+        34: ['Bordj Bou Arreridj', 'Ras El Oued', 'Bordj Zemoura', 'El Ach', 'Djaafra'],
+        35: ['Boumerdès', 'Boudouaou', 'Dellys', 'Thenia', 'Bordj Menaiel', 'Khemis El Khechna', 'Ouled Moussa', 'Corso'],
+        36: ['El Tarf', 'Besbes', 'Drean', 'Ben Mehidi', 'El Kala', 'Bouteldja'],
+        37: ['Tindouf', 'Oum El Assel'],
+        38: ['Tissemsilt', 'Bordj Emir Khaled', 'Lardjem', 'Theniet El Had', 'Sidi Slimane'],
+        39: ['El Oued', 'Guemar', 'Debila', 'Robbah', 'Bayadha', 'Douar El Ma', 'El Mghair'],
+        40: ['Khenchela', 'Kaïs', 'Ain Touila', 'El Hamma', 'Chechar', 'Ouled Rechache'],
+        41: ['Souk Ahras', 'Sedrata', 'Mechroha', 'Limouna', 'Ouled Driss', 'Tiffech'],
+        42: ['Tipaza', 'Cherchell', 'Hadera', 'Bou Ismail', 'Sidi Amar', 'Gouraya', 'Nador', 'Fouka', 'Kolea'],
+        43: ['Mila', 'Ferdjioua', 'Chelghoum Laid', 'Tadjenanet', 'Grarem Gouga', 'Telerghma'],
+        44: ['Aïn Defla', 'Khemis Miliana', 'El Abadia', 'Rouina', 'Miliana', 'Boumedfaa'],
+        45: ['Naâma', 'Mecheria', 'Ain Sefra', 'Moghrar', 'Asla', 'Djeniene Bou Rezg'],
+        46: ['Aïn Témouchent', 'Beni Saf', 'El Amria', 'Hammam Bou Hadjar', 'Oulhaça El Gheraba'],
+        47: ['Ghardaïa', 'Ghardaïa', 'El Meniaa', 'Dhayet Ben Dhahoua', 'Mansoura', 'Béni Isguen'],
+        48: ['Relizane', 'Oued Rhiou', 'Mazouna', 'Sidi M\'Hamed Benaouda', 'Jdiouia', 'Mendes', 'Zemmoura'],
+        49: ['Timimoun', 'Timimoun', 'Ouled Said', 'Charouine'],
+        50: ['Bordj Badji Mokhtar', 'Bordj Badji Mokhtar', 'Timiaouine'],
+        51: ['Ouled Djellal', 'Ouled Djellal', 'Sidi Khaled', 'Besbes', 'Doucen', 'Lichana'],
+        52: ['Béni Abbès', 'Béni Abbès', 'Tamtert', 'Kerzaz', 'El Ouata'],
+        53: ['In Salah', 'In Salah', 'Foggaret Ezzoua', 'Ain Salah'],
+        54: ['In Guezzam', 'In Guezzam', 'Tin Zouatine'],
+        55: ['Touggourt', 'Touggourt', 'Témacine', 'El Alia', 'Sidi Slimane', 'MNaguer', 'Tamacine', 'Benaceur'],
+        56: ['Djanet', 'Djanet', 'Bordj El Haouas'],
+        57: ['El M\'Ghair', 'El M\'Ghair', 'Djamaa', 'Sidi Amrane', 'M\'Rara', 'Tendla'],
+        58: ['El Meniaa', 'El Meniaa', 'Hassi Fehal', 'Bel Bahri', 'Hassi Gara']
+    };
+}
 
 /* Delivery prices — cached from API */
 var _deliveryPrices = {};
+var _communeDeliveryPrices = {};
 
 function loadDeliveryPrices() {
     fetch('/api/public/delivery-prices').then(function(r) { return r.json(); }).then(function(data) {
         if (data) _deliveryPrices = data;
     }).catch(function() { _deliveryPrices = {}; });
+    fetch('/api/public/commune-delivery-prices').then(function(r) { return r.json(); }).then(function(data) {
+        if (data) _communeDeliveryPrices = data;
+    }).catch(function() { _communeDeliveryPrices = {}; });
 }
 
 function getDeliveryPrice(wilayaId) {
     if (!wilayaId) return 0;
     var price = _deliveryPrices[String(wilayaId)];
     return price !== undefined ? Number(price) : 0;
+}
+
+function getCommuneDomicilePrice(wilayaId, communeName) {
+    if (!wilayaId || !communeName) return 0;
+    var wilayaPrices = _communeDeliveryPrices[String(wilayaId)];
+    if (!wilayaPrices) return 0;
+    var name = (communeName || '').trim();
+    if (wilayaPrices[name] !== undefined) return Number(wilayaPrices[name]);
+    var nameLower = name.toLowerCase();
+    var keys = Object.keys(wilayaPrices);
+    for (var i = 0; i < keys.length; i++) {
+        if (keys[i].toLowerCase() === nameLower) return Number(wilayaPrices[keys[i]]);
+    }
+    return 0;
+}
+
+function getOrderDeliveryFee(wilayaId, communeName, mode) {
+    var base = getDeliveryPrice(wilayaId);
+    if (mode === 'domicile') {
+        var surcharge = getCommuneDomicilePrice(wilayaId, communeName);
+        return base + surcharge;
+    }
+    return base;
 }
 
 function renderCheckout() {
@@ -1654,12 +1682,15 @@ function renderCheckout() {
     }
 
     var muniSel = document.getElementById('co-municipality');
-    if (muniSel) updateSelectFloat(muniSel);
+    if (muniSel) {
+        updateSelectFloat(muniSel);
+        muniSel.onchange = function() { updateSelectFloat(this); updateCheckoutSummary(); };
+    }
 
     var deliveryModeSel = document.getElementById('co-delivery-mode');
     if (deliveryModeSel) {
         updateSelectFloat(deliveryModeSel);
-        deliveryModeSel.onchange = function() { updateSelectFloat(this); };
+        deliveryModeSel.onchange = function() { updateSelectFloat(this); updateCheckoutSummary(); };
     }
 
     /* floating label toggle for all text inputs */
@@ -1696,18 +1727,18 @@ function renderCheckout() {
 function updateTextFloat(inp) {
     if (!inp) return;
     if (inp.value.trim()) {
-        inp.setAttribute('placeholder', ' ');
+        inp.classList.add('has-value');
     } else {
-        inp.removeAttribute('placeholder');
+        inp.classList.remove('has-value');
     }
 }
 
 function updateSelectFloat(sel) {
     if (!sel) return;
     if (sel.value) {
-        sel.setAttribute('placeholder', ' ');
+        sel.classList.add('has-value');
     } else {
-        sel.removeAttribute('placeholder');
+        sel.classList.remove('has-value');
     }
 }
 
@@ -1802,13 +1833,17 @@ function updateCheckoutSummary() {
         '</div>';
     }).join('');
 
-    /* Look up delivery price for selected wilaya */
+    /* Look up delivery price for selected wilaya + commune + mode */
     var wilayaSel = document.getElementById('co-wilaya');
+    var muniSel = document.getElementById('co-municipality');
+    var modeSel = document.getElementById('co-delivery-mode');
     var wilayaId = wilayaSel ? parseInt(wilayaSel.value) : 0;
-    var delivery = getDeliveryPrice(wilayaId);
+    var communeName = muniSel && muniSel.selectedIndex > 0 ? muniSel.options[muniSel.selectedIndex].text : '';
+    var mode = modeSel ? modeSel.value : '';
+    var delivery = getOrderDeliveryFee(wilayaId, communeName, mode);
     var total = subtotal + delivery;
 
-    /* Show delivery line with wilaya name */
+    /* Show delivery line with wilaya + commune + mode */
     var wilayaName = '';
     if (wilayaId && algerianWilayas) {
         var found = algerianWilayas.find(function(w) { return w.id === wilayaId; });
@@ -1816,10 +1851,12 @@ function updateCheckoutSummary() {
     }
     var dlText = (i18n.getLang() === 'ar') ? 'التوصيل' : i18n.t('checkout.deliveryLabel');
     var freeText = (i18n.getLang() === 'ar') ? 'مجاني' : i18n.t('checkout.free');
-    var deliveryLabel = wilayaName ? dlText + ' \u2014 ' + wilayaName : dlText;
+    var domicileText = (i18n.getLang() === 'ar') ? ' (للمنزل)' : ' (domicile)';
+    var modeLabel = mode === 'domicile' ? domicileText : '';
+    var locationLabel = wilayaName ? dlText + ' \u2014 ' + wilayaName + modeLabel : dlText + modeLabel;
     var deliveryLine = deliveryEl.parentNode;
     var labelSpan = deliveryLine.querySelector('span:first-child');
-    if (labelSpan) labelSpan.textContent = deliveryLabel;
+    if (labelSpan) labelSpan.textContent = locationLabel;
 
     subtotalEl.textContent = formatPriceDA(subtotal);
     deliveryEl.textContent = delivery > 0 ? formatPriceDA(delivery) : freeText;
@@ -1881,8 +1918,8 @@ function placeOrder(e) {
         return { product_id: item.id, name: item.name, price: item.price, quantity: item.quantity, size: item.selectedSize || '', color: item.selectedColor || '' };
     });
     var wilayaId = parseInt(wilayaSel.value) || 0;
-    var deliveryFee = getDeliveryPrice(wilayaId);
-    var subtotal = cart.reduce(function (sum, item) { return sum + item.price * item.quantity; }, 0);
+    var deliveryFee = getOrderDeliveryFee(wilayaId, municipality, deliveryMode);
+    var subtotal = cart.reduce(function (sum, item) { return sum + item.price * item.quantity }, 0);
     var total = subtotal + deliveryFee;
     var shippingAddr = municipality + ', ' + wilaya;
 

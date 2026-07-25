@@ -201,6 +201,19 @@ def _run_migrations(conn):
                 cur.execute(sql)
             except Exception:
                 pass
+        try:
+            cur.execute("""CREATE TABLE IF NOT EXISTS commune_delivery_prices (
+                id SERIAL PRIMARY KEY,
+                wilaya_id INTEGER NOT NULL,
+                commune_name TEXT NOT NULL,
+                domicile_price DOUBLE PRECISION NOT NULL DEFAULT 0,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (wilaya_id, commune_name)
+            )""")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_wilaya ON commune_delivery_prices(wilaya_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_lookup ON commune_delivery_prices(wilaya_id, commune_name)")
+        except Exception:
+            pass
         idx_migrations = [
             "CREATE INDEX IF NOT EXISTS idx_products_category_status ON products(category_id, status)",
             "CREATE INDEX IF NOT EXISTS idx_products_status_created ON products(status, created_at DESC)",

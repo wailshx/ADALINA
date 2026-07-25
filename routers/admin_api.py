@@ -2029,6 +2029,63 @@ def update_delivery_prices(request: Request, data: dict = Body(...), session_tok
             pass
 
 
+@router.get('/commune-delivery-prices')
+def list_commune_delivery_prices(wilaya_id: int = Query(0), session_token: str = Depends(require_admin_auth)):
+    db = get_db()
+    cur = db.cursor()
+    try:
+        if wilaya_id > 0:
+            cur.execute("SELECT wilaya_id, commune_name, domicile_price FROM commune_delivery_prices WHERE wilaya_id=%s ORDER BY commune_name", (wilaya_id,))
+        else:
+            cur.execute("SELECT wilaya_id, commune_name, domicile_price FROM commune_delivery_prices ORDER BY wilaya_id, commune_name")
+        rows = cur.fetchall()
+        return rows_to_list(rows)
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+@router.put('/commune-delivery-prices')
+def update_commune_delivery_prices(request: Request, data: dict = Body(...), session_token: str = Depends(require_admin_auth)):
+    validate_admin_csrf(request)
+    db = get_db()
+    cur = db.cursor()
+    try:
+        wilaya_id = int(data.get('wilaya_id', 0))
+        prices = data.get('prices', {})
+        if not isinstance(prices, dict):
+            return _json_response({'error': 'prices must be an object {commune_name: price}'}, 400)
+        saved = 0
+        for commune_name, price in prices.items():
+            if not isinstance(commune_name, str) or not commune_name.strip():
+                continue
+            p = float(price) if price else 0
+            cur.execute("""INSERT INTO commune_delivery_prices (wilaya_id, commune_name, domicile_price, updated_at)
+                           VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+                           ON CONFLICT (wilaya_id, commune_name)
+                           DO UPDATE SET domicile_price = EXCLUDED.domicile_price, updated_at = CURRENT_TIMESTAMP""",
+                        (wilaya_id, commune_name.strip(), p))
+            saved += 1
+        db.commit()
+        _signal_cache_invalidate()
+        return {'message': 'Commune delivery prices saved', 'saved': saved}
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
 @router.put('/settings')
 def update_settings(request: Request, data: dict = Body(...), session_token: str = Depends(require_admin_auth)):
     validate_admin_csrf(request)

@@ -3713,20 +3713,22 @@ input[type="checkbox"] {
 
 .floating-label {
     position: absolute;
-    left: 1rem;
+    inset-inline-start: 1rem;
     top: 50%;
     transform: translateY(-50%);
     font-size: 0.95rem;
     color: var(--text-light);
     font-family: var(--font-body, 'Manrope', sans-serif);
     pointer-events: none;
-    transition: all 0.2s ease;
+    transition: top 0.2s ease, transform 0.2s ease, color 0.2s ease;
     background: white;
     padding: 0 0.25rem;
     line-height: 1;
-    transform-origin: left center;
+    transform-origin: inset-inline-start center;
+    z-index: 1;
 }
 
+.floating-input.has-value ~ .floating-label,
 .floating-input:focus ~ .floating-label,
 .floating-input:not(:placeholder-shown) ~ .floating-label {
     top: 0.35rem;
@@ -3772,7 +3774,7 @@ input[type="checkbox"] {
 
 .floating-select {
     cursor: pointer;
-    padding-right: 2.2rem;
+    padding-inline-end: 2.2rem;
     background: white;
 }
 
@@ -3784,7 +3786,7 @@ input[type="checkbox"] {
 
 .select-arrow {
     position: absolute;
-    right: 0.85rem;
+    inset-inline-end: 0.85rem;
     top: 50%;
     transform: translateY(-50%);
     pointer-events: none;

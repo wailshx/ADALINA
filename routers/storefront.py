@@ -555,6 +555,35 @@ def get_delivery_times():
                 pass
 
 
+@router.get('/api/public/commune-delivery-prices')
+def get_commune_delivery_prices(wilaya_id: int = Query(0)):
+    db = None
+    try:
+        db = get_public_db()
+        cur = db.cursor()
+        if wilaya_id > 0:
+            cur.execute("SELECT wilaya_id, commune_name, domicile_price FROM commune_delivery_prices WHERE wilaya_id=%s", (wilaya_id,))
+        else:
+            cur.execute("SELECT wilaya_id, commune_name, domicile_price FROM commune_delivery_prices")
+        rows = cur.fetchall()
+        result = {}
+        for r in rows:
+            wid = str(r['wilaya_id'])
+            if wid not in result:
+                result[wid] = {}
+            result[wid][r['commune_name']] = float(r['domicile_price'] or 0)
+        return _json_response(result, max_age=300)
+    except Exception as e:
+        logger.exception('[Storefront] Error loading commune delivery prices')
+        return _json_response({}, status=500)
+    finally:
+        if db:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+
 @router.get('/api/wishlist/{wl_hash}')
 def get_shared_wishlist(wl_hash: str):
     db = None
