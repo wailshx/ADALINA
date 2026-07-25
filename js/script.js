@@ -1775,7 +1775,7 @@ function updateMunicipalities(wilayaId) {
     if (!muniSel) return;
     var communes = algerianMunicipalities[wilayaId];
     if (communes && communes.length > 0) {
-        var selectCommune = (i18n.getLang() === 'ar') ? 'اختر ولاية أولاً' : i18n.t('checkout.selectCommune');
+        var selectCommune = (i18n.getLang() === 'ar') ? 'اختر البلدية' : i18n.t('checkout.selectCommune');
         muniSel.innerHTML = '<option value="">' + selectCommune + '</option>' +
             communes.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
         muniSel.disabled = false;
@@ -3103,6 +3103,28 @@ window.decreaseQty = decreaseQty;
 window.increaseQty = increaseQty;
 window.updateCartItem = updateCartItem;
 window.formatPhoneInput = formatPhoneInput;
+
+(function setupLangObserver() {
+    if (typeof document === 'undefined') return;
+    var currentLang = document.documentElement.lang || '';
+    var currentDir = document.documentElement.dir || '';
+    try {
+        var mo = new MutationObserver(function() {
+            var newLang = document.documentElement.lang || '';
+            var newDir = document.documentElement.dir || '';
+            if (newLang === currentLang && newDir === currentDir) return;
+            currentLang = newLang;
+            currentDir = newDir;
+            try { localStorage.setItem('adalina-lang', newLang); } catch (e) {}
+            try { if (typeof i18n !== 'undefined' && i18n.applyTranslations) i18n.applyTranslations(newLang); } catch (e) {}
+            try {
+                var wilaya = document.getElementById('co-wilaya');
+                if (wilaya && typeof window.renderCheckout === 'function') window.renderCheckout();
+            } catch (e) {}
+        });
+        mo.observe(document.documentElement, { attributes: true, attributeFilter: ['lang', 'dir'] });
+    } catch (e) {}
+})();
 
 function showToast(msg) {
     var toast = document.createElement('div');

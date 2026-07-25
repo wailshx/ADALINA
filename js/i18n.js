@@ -400,6 +400,13 @@
     var dict = { fr: FR, ar: AR };
 
     function getLang() {
+        var stored = '';
+        try { stored = localStorage.getItem('adalina-lang') || ''; } catch (e) {}
+        var htmlLang = (document.documentElement && document.documentElement.lang) || '';
+        var htmlDir = (document.documentElement && document.documentElement.dir) || '';
+        if (stored === 'ar' || stored === 'fr') return stored;
+        if (htmlLang === 'ar' || htmlDir === 'rtl') return 'ar';
+        if (htmlLang === 'fr' || htmlDir === 'ltr') return 'fr';
         return 'fr';
     }
 
@@ -447,10 +454,13 @@
     function toggleLang() {}
 
     function init() {
-        localStorage.removeItem('adalina-lang');
-        var lang = 'fr';
+        try { localStorage.removeItem('adalina-lang'); } catch (e) {}
+        var existing = (document.documentElement.lang || '').toLowerCase();
+        var existingDir = (document.documentElement.dir || '').toLowerCase();
+        var lang = (existing === 'ar' || existingDir === 'rtl') ? 'ar' : 'fr';
+        var dir = (lang === 'ar') ? 'rtl' : 'ltr';
         document.documentElement.lang = lang;
-        document.documentElement.dir = 'ltr';
+        document.documentElement.dir = dir;
         applyTranslations(lang);
         updateLangToggle(lang);
         updateWhatsAppTooltip();
