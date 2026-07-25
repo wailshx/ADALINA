@@ -7,7 +7,7 @@ import time
 
 from fastapi import APIRouter, Request, Query, BackgroundTasks
 from starlette.responses import JSONResponse as _StarletteJSONResponse
-from config.database import get_public_db
+from config.database import get_public_db, get_db
 from config.security import RateLimiter, get_client_ip, escape_html
 
 from shared import _cache, format_product, batch_format_products, _process_order_background
@@ -559,11 +559,11 @@ def get_delivery_times():
 def get_commune_delivery_prices(wilaya_id: int = Query(0)):
     db = None
     try:
-        db = get_public_db()
+        db = get_db()
         cur = db.cursor()
         cur.execute("""SELECT to_regclass('public.commune_delivery_prices')""")
         exists_row = cur.fetchone()
-        if not exists_row or exists_row[0] is None:
+        if not exists_row or (hasattr(exists_row, 'get') and exists_row.get('to_regclass') is None) or exists_row[0] is None:
             logger.warning('[Storefront] commune_delivery_prices table missing, attempting self-healing create')
             try:
                 cur.execute("""CREATE TABLE IF NOT EXISTS commune_delivery_prices (
@@ -577,6 +577,7 @@ def get_commune_delivery_prices(wilaya_id: int = Query(0)):
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_wilaya ON commune_delivery_prices(wilaya_id)")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_lookup ON commune_delivery_prices(wilaya_id, commune_name)")
                 db.commit()
+                logger.info('[Storefront] commune_delivery_prices self-healed')
             except Exception as create_err:
                 logger.error('[Storefront] self-healing create failed: %s', create_err)
         if wilaya_id > 0:
