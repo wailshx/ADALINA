@@ -1684,13 +1684,19 @@ function renderCheckout() {
     var muniSel = document.getElementById('co-municipality');
     if (muniSel) {
         updateSelectFloat(muniSel);
-        muniSel.onchange = function() { updateSelectFloat(this); updateCheckoutSummary(); };
+        var onMuniChange = function() { updateSelectFloat(this); updateCheckoutSummary(); };
+        muniSel.onchange = onMuniChange;
+        muniSel.addEventListener('input', onMuniChange);
+        muniSel.addEventListener('blur', function() { updateSelectFloat(this); });
     }
 
     var deliveryModeSel = document.getElementById('co-delivery-mode');
     if (deliveryModeSel) {
         updateSelectFloat(deliveryModeSel);
-        deliveryModeSel.onchange = function() { updateSelectFloat(this); updateCheckoutSummary(); };
+        var onModeChange = function() { updateSelectFloat(this); updateCheckoutSummary(); };
+        deliveryModeSel.onchange = onModeChange;
+        deliveryModeSel.addEventListener('input', onModeChange);
+        deliveryModeSel.addEventListener('blur', function() { updateSelectFloat(this); });
     }
 
     /* floating label toggle for all text inputs */
@@ -1773,13 +1779,12 @@ function updateMunicipalities(wilayaId) {
         muniSel.innerHTML = '<option value="">' + selectCommune + '</option>' +
             communes.map(function (c) { return '<option value="' + c + '">' + c + '</option>'; }).join('');
         muniSel.disabled = false;
-        updateSelectFloat(muniSel);
     } else {
         var noCommune = (i18n.getLang() === 'ar') ? 'لا توجد بلدية' : i18n.t('checkout.noCommune');
         muniSel.innerHTML = '<option value="">' + noCommune + '</option>';
         muniSel.disabled = true;
-        updateSelectFloat(muniSel);
     }
+    updateSelectFloat(muniSel);
 }
 
 function formatPhoneInput(input) {

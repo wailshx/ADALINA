@@ -414,6 +414,10 @@
                 <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                 Livraison
             </button>
+            <button class="settings-tab" data-tab="communes">
+                <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Prix par commune
+            </button>
             <button class="settings-tab" data-tab="seo">
                 <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 SEO
@@ -571,30 +575,6 @@
                 </div>
             </div>
             <div class="settings-card">
-                <div class="card-header"><h2>Supplément livraison à domicile (par commune)</h2></div>
-                <div class="card-body">
-                    <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:12px;">Ce supplément s'ajoute au prix de la wilaya lorsque le client choisit la livraison à domicile. Laissez 0 DA pour ne facturer que le prix de la wilaya.</p>
-                    <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
-                        <select id="commune-wilaya-select" class="form-control" style="max-width:280px;font-size:0.85rem;"></select>
-                        <input type="text" id="commune-filter" class="form-control" placeholder="Filtrer les communes..." style="max-width:220px;font-size:0.85rem;">
-                        <span style="font-size:0.8rem;color:var(--text-muted);" id="commune-count"></span>
-                        <button type="button" class="btn btn-primary btn-sm" id="commune-save-btn" onclick="saveCommunePrices()" style="margin-left:auto;"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Enregistrer les communes</button>
-                    </div>
-                    <div style="max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;">
-                        <table class="dp-table" style="width:100%;border-collapse:collapse;font-size:0.82rem;">
-                            <thead style="position:sticky;top:0;background:var(--card-bg,#fff);z-index:1;">
-                                <tr>
-                                    <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);width:50px;">N°</th>
-                                    <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Commune</th>
-                                    <th style="padding:8px 12px;text-align:right;border-bottom:1px solid var(--border);width:160px;">Supplément domicile (DA)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="commune-prices-tbody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <div class="settings-card">
                 <div class="card-header"><h2>Frais de livraison</h2></div>
                 <div class="card-body">
                     <div class="settings-grid">
@@ -611,6 +591,46 @@
                             <input type="number" class="form-control" data-setting="delivery_fee" step="0.01">
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane" id="tab-communes">
+            <div class="settings-card">
+                <div class="card-header">
+                    <h2>Prix de livraison à domicile — par commune</h2>
+                </div>
+                <div class="card-body">
+                    <div style="background:#f4f6fb;border:1px solid #e3e6ee;border-radius:8px;padding:14px 16px;margin-bottom:16px;font-size:0.85rem;color:var(--text-secondary);">
+                        <strong>Comment ça marche :</strong>
+                        <ol style="margin:6px 0 0 18px;padding:0;line-height:1.55;">
+                            <li>Choisissez une wilaya dans la liste ci-dessous (ex.&nbsp;: Chlef).</li>
+                            <li>Toutes les communes de cette wilaya s'affichent dans le tableau.</li>
+                            <li>Saisissez le supplément de livraison à domicile (en DA) pour chaque commune, ou laissez 0 DA pour ne facturer que le prix de la wilaya.</li>
+                            <li>Cliquez sur <strong>« Enregistrer les prix »</strong> pour sauvegarder toutes les modifications de cette wilaya.</li>
+                            <li>Répétez l'opération pour chaque autre wilaya si nécessaire.</li>
+                        </ol>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap;padding:12px;background:var(--bg-secondary,#f9fafb);border-radius:8px;">
+                        <label style="font-weight:600;font-size:0.88rem;min-width:auto;margin:0;">Wilaya :</label>
+                        <select id="commune-wilaya-select" class="form-control" style="max-width:300px;font-size:0.88rem;padding:8px 12px;"></select>
+                        <input type="text" id="commune-filter" class="form-control" placeholder="Filtrer les communes..." style="max-width:220px;font-size:0.85rem;padding:8px 12px;">
+                        <span style="font-size:0.8rem;color:var(--text-muted);" id="commune-count"></span>
+                        <button type="button" class="btn btn-primary" id="commune-save-btn" onclick="saveCommunePrices()" style="margin-left:auto;"><svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px;margin-right:6px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Enregistrer les prix</button>
+                    </div>
+                    <div style="max-height:480px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+                        <table class="dp-table" style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+                            <thead style="position:sticky;top:0;background:var(--card-bg,#fff);z-index:1;box-shadow:0 1px 0 var(--border);">
+                                <tr>
+                                    <th style="padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);width:60px;">N°</th>
+                                    <th style="padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);">Commune</th>
+                                    <th style="padding:10px 14px;text-align:right;border-bottom:1px solid var(--border);width:180px;">Supplément à domicile (DA)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="commune-prices-tbody"></tbody>
+                        </table>
+                    </div>
+                    <div id="saveMsg" class="hidden save-msg" style="margin-top:12px;padding:10px 14px;background:#d4edda;color:#155724;border-radius:6px;font-size:0.85rem;"></div>
                 </div>
             </div>
         </div>
@@ -899,20 +919,17 @@ document.addEventListener('DOMContentLoaded', function() {
         filterInput.addEventListener('input', renderWilayaTable);
     }
     loadWilayaPrices();
-    var tabDelivery = document.getElementById('tab-delivery');
-    if (tabDelivery) {
-        var observer = new MutationObserver(function(){});
-        observer.observe(tabDelivery, {attributes:true, attributeFilter:['class']});
-        var communeSel = document.getElementById('commune-wilaya-select');
-        if (communeSel) {
-            communeSel.addEventListener('change', function() {
-                _currentCommuneWilaya = parseInt(this.value) || 0;
-                loadCommunePrices();
-            });
-            var communeFilter = document.getElementById('commune-filter');
-            if (communeFilter) communeFilter.addEventListener('input', renderCommuneTable);
-        }
+
+    var communeSel = document.getElementById('commune-wilaya-select');
+    if (communeSel) {
+        communeSel.addEventListener('change', function() {
+            _currentCommuneWilaya = parseInt(this.value) || 0;
+            loadCommunePrices();
+        });
+        var communeFilter = document.getElementById('commune-filter');
+        if (communeFilter) communeFilter.addEventListener('input', renderCommuneTable);
         loadCommunesForWilayaSelect();
+        renderCommuneTable();
     }
 });
 

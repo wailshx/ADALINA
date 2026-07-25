@@ -561,6 +561,24 @@ def get_commune_delivery_prices(wilaya_id: int = Query(0)):
     try:
         db = get_public_db()
         cur = db.cursor()
+        cur.execute("""SELECT to_regclass('public.commune_delivery_prices')""")
+        exists_row = cur.fetchone()
+        if not exists_row or exists_row[0] is None:
+            logger.warning('[Storefront] commune_delivery_prices table missing, attempting self-healing create')
+            try:
+                cur.execute("""CREATE TABLE IF NOT EXISTS commune_delivery_prices (
+                    id SERIAL PRIMARY KEY,
+                    wilaya_id INTEGER NOT NULL,
+                    commune_name TEXT NOT NULL,
+                    domicile_price DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE (wilaya_id, commune_name)
+                )""")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_wilaya ON commune_delivery_prices(wilaya_id)")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_lookup ON commune_delivery_prices(wilaya_id, commune_name)")
+                db.commit()
+            except Exception as create_err:
+                logger.error('[Storefront] self-healing create failed: %s', create_err)
         if wilaya_id > 0:
             cur.execute("SELECT wilaya_id, commune_name, domicile_price FROM commune_delivery_prices WHERE wilaya_id=%s", (wilaya_id,))
         else:
