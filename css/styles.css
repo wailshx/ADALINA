@@ -3714,18 +3714,18 @@ input[type="checkbox"] {
 .floating-label {
     position: absolute;
     inset-inline-start: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 1.05rem;
+    transform: translateY(0);
     font-size: 0.95rem;
     color: var(--text-light);
     font-family: var(--font-body, 'Manrope', sans-serif);
     pointer-events: none;
-    transition: top 0.18s ease, transform 0.18s ease, color 0.18s ease;
+    transition: top 0.18s ease, transform 0.18s ease, color 0.18s ease, font-size 0.18s ease, background 0.18s ease;
     background: white;
     padding: 0 0.25rem;
     line-height: 1;
-    transform-origin: inset-inline-start center;
-    z-index: 1;
+    transform-origin: inset-inline-start top;
+    z-index: 2;
     white-space: nowrap;
     max-width: calc(100% - 1.5rem);
     overflow: hidden;
@@ -3734,13 +3734,22 @@ input[type="checkbox"] {
 
 .floating-input.has-value ~ .floating-label,
 .floating-input:focus ~ .floating-label {
-    top: 0.35rem;
-    transform: translateY(0) scale(0.8);
+    top: 0.1rem;
+    transform: translateY(0) scale(0.78);
     color: var(--text-light);
+    background: white;
+    font-size: 0.75rem;
+    box-shadow: 0 1px 0 0 white, 0 -1px 0 0 white;
+    padding-inline: 0.3rem;
+    z-index: 3;
 }
 
 .floating-input:focus ~ .floating-label {
     color: var(--primary);
+}
+
+.floating-input.has-value:not(:focus) ~ .floating-label {
+    color: var(--text);
 }
 
 .required-star {
@@ -3753,7 +3762,7 @@ input[type="checkbox"] {
     font-size: 0.75rem;
     color: var(--text-light);
     margin-top: 0.3rem;
-    padding-left: 0.25rem;
+    padding-inline-start: 0.25rem;
 }
 
 .input-error {
@@ -3761,7 +3770,7 @@ input[type="checkbox"] {
     font-size: 0.75rem;
     color: #d32f2f;
     margin-top: 0.2rem;
-    padding-left: 0.25rem;
+    padding-inline-start: 0.25rem;
     min-height: 0;
     transition: min-height 0.2s;
 }

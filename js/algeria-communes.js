@@ -2,10 +2,11 @@
  * 58 wilayas, ~1541 communes (post-2019 redistricting per Décret exécutif 21-198).
  * Exposes:
  *   window.algeriaWilayasList   — array of {id, name, name_ar}
- *   window.algeriaCommunes       — { wilaya_id: [{name, name_ar}, ...], ... }
- *   window.algeriaCommunesFR     — { wilaya_id: [name, ...] }
- *   window.algeriaCommunesAR     — { wilaya_id: [name_ar, ...] }
+ *   window.algeriaCommunes       — { wilaya_id: [name, ...], ... }  (FR names, flat array)
+ *   window.algeriaCommunesFR     — { wilaya_id: [name, ...] }         (alias of algeriaCommunes)
+ *   window.algeriaCommunesAR     — reserved for future Arabic list
  *   window.algeriaCommunesCount  — { wilaya_id: N, ... }
+ *   window.algeriaCommunesTotal  — grand total
  */
 (function() {
     'use strict';

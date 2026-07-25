@@ -917,16 +917,38 @@ function saveWilayaPrices() {
 function initCommunePanel() {
     var communeSel = document.getElementById('commune-wilaya-select');
     if (!communeSel) return;
-    if (communeSel.dataset.bound === '1') return;
-    communeSel.dataset.bound = '1';
-    communeSel.addEventListener('change', function() {
-        _currentCommuneWilaya = parseInt(this.value) || 0;
-        loadCommunePrices();
-    });
+    if (communeSel.dataset.bound !== '1') {
+        communeSel.dataset.bound = '1';
+        var onWilayaChange = function() {
+            _currentCommuneWilaya = parseInt(this.value) || 0;
+            loadCommunePrices();
+        };
+        communeSel.addEventListener('change', onWilayaChange);
+        communeSel.addEventListener('input', onWilayaChange);
+    }
     var communeFilter = document.getElementById('commune-filter');
-    if (communeFilter) communeFilter.addEventListener('input', renderCommuneTable);
+    if (communeFilter && communeFilter.dataset.bound !== '1') {
+        communeFilter.dataset.bound = '1';
+        communeFilter.addEventListener('input', renderCommuneTable);
+    }
     loadCommunesForWilayaSelect();
     renderCommuneTable();
+    var dataReady = !!(window.algeriaCommunes && Object.keys(window.algeriaCommunes).length);
+    if (!dataReady) {
+        var retries = 0;
+        var retryTimer = setInterval(function() {
+            retries++;
+            if (window.algeriaCommunes && Object.keys(window.algeriaCommunes).length) {
+                clearInterval(retryTimer);
+                loadCommunesForWilayaSelect();
+                renderCommuneTable();
+                console.log('[communes] data ready after retry', retries);
+            } else if (retries > 20) {
+                clearInterval(retryTimer);
+                console.warn('[communes] data still not loaded after 20 retries');
+            }
+        }, 250);
+    }
     console.log('[communes] panel ready — wilayas loaded:', window.algeriaWilayasList ? window.algeriaWilayasList.length : 0,
                 'communes dataset:', window.algeriaCommunes ? Object.keys(window.algeriaCommunes).length : 0);
 }
@@ -958,10 +980,11 @@ var _currentCommuneWilaya = 0;
 var _communesByWilaya = {};
 
 function loadCommunesForWilayaSelect() {
-    var data = window.algeriaCommunes || {};
+    var data = window.algeriaCommunesFR || window.algeriaCommunes || {};
     _communesByWilaya = {};
     for (var id in data) {
-        _communesByWilaya[id] = data[id].map(function(c){ return c.name; });
+        var arr = data[id];
+        _communesByWilaya[id] = Array.isArray(arr) ? arr : Object.keys(arr).map(function(k){ return arr[k]; });
     }
     var sel = document.getElementById('commune-wilaya-select');
     if (!sel) return;
@@ -975,7 +998,8 @@ function loadCommunesForWilayaSelect() {
         wCount++;
     });
     sel.innerHTML = html;
-    console.log('[communes] wilaya dropdown populated with', wCount, 'options; communes data for', Object.keys(_communesByWilaya).length, 'wilayas');
+    var sample = _communesByWilaya['2'] || _communesByWilaya[2] || [];
+    console.log('[communes] dropdown populated with', wCount, 'options; dataset for', Object.keys(_communesByWilaya).length, 'wilayas; Chlef sample:', sample.slice(0, 3));
 }
 
 function loadCommunePrices() {
