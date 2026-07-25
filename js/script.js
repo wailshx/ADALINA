@@ -89,9 +89,10 @@ let _initialized = false;
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function formatPriceDA(price) {
-    if (price == null || isNaN(price)) return '0 DA';
+    if (price == null || isNaN(price)) return '<bdi dir="ltr">0 DA</bdi>';
     var num = Math.round(Number(price));
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' DA';
+    var formatted = num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    return '<bdi dir="ltr">' + formatted + ' DA</bdi>';
 }
 
 function buildGroupedSizesHtml(availSizes, product, curColor, curSize, hasVariants, btnClass, wrapClass, clickHandlerAttr, sizeSystem) {
@@ -847,9 +848,9 @@ function renderCartPage() {
     var subtotalEl = document.getElementById('cart-subtotal');
     var totalEl = document.getElementById('cart-total');
     var taxEl = document.getElementById('cart-tax');
-    if (subtotalEl) subtotalEl.textContent = formatPriceDA(subtotal);
-    if (taxEl) taxEl.textContent = formatPriceDA(Math.round(subtotal * 0.08));
-    if (totalEl) totalEl.textContent = formatPriceDA(total);
+    if (subtotalEl) subtotalEl.innerHTML = formatPriceDA(subtotal);
+    if (taxEl) taxEl.innerHTML = formatPriceDA(Math.round(subtotal * 0.08));
+    if (totalEl) totalEl.innerHTML = formatPriceDA(total);
 }
 
 function openSearchModal() {
@@ -1845,7 +1846,9 @@ function updateCheckoutSummary() {
     var wilayaId = wilayaSel ? parseInt(wilayaSel.value) : 0;
     var communeName = muniSel && muniSel.selectedIndex > 0 ? muniSel.options[muniSel.selectedIndex].text : '';
     var mode = modeSel ? modeSel.value : '';
-    var delivery = getOrderDeliveryFee(wilayaId, communeName, mode);
+    var baseFee = getDeliveryPrice(wilayaId);
+    var communeSurcharge = (mode === 'domicile') ? getCommuneDomicilePrice(wilayaId, communeName) : 0;
+    var delivery = baseFee + communeSurcharge;
     var total = subtotal + delivery;
 
     /* Show delivery line with wilaya + commune + mode */
@@ -1854,18 +1857,47 @@ function updateCheckoutSummary() {
         var found = algerianWilayas.find(function(w) { return w.id === wilayaId; });
         if (found) wilayaName = found.name;
     }
-    var dlText = (i18n.getLang() === 'ar') ? 'التوصيل' : i18n.t('checkout.deliveryLabel');
-    var freeText = (i18n.getLang() === 'ar') ? 'مجاني' : i18n.t('checkout.free');
-    var domicileText = (i18n.getLang() === 'ar') ? ' (للمنزل)' : ' (domicile)';
+    var isAr = i18n.getLang() === 'ar';
+    var dlText = isAr ? 'التوصيل' : i18n.t('checkout.deliveryLabel');
+    var freeText = isAr ? 'مجاني' : i18n.t('checkout.free');
+    var domicileText = isAr ? ' (للمنزل)' : ' (domicile)';
+    var wilayaLabelText = isAr ? 'سعر الولاية' : 'Prix wilaya';
+    var communeLabelText = isAr ? 'سعر البلدية (للمنزل)' : 'Supplément commune (domicile)';
     var modeLabel = mode === 'domicile' ? domicileText : '';
     var locationLabel = wilayaName ? dlText + ' \u2014 ' + wilayaName + modeLabel : dlText + modeLabel;
     var deliveryLine = deliveryEl.parentNode;
     var labelSpan = deliveryLine.querySelector('span:first-child');
     if (labelSpan) labelSpan.textContent = locationLabel;
 
-    subtotalEl.textContent = formatPriceDA(subtotal);
-    deliveryEl.textContent = delivery > 0 ? formatPriceDA(delivery) : freeText;
-    totalEl.textContent = formatPriceDA(total);
+    var wilayaLine = document.getElementById('co-wilaya-line');
+    var wilayaFeeEl = document.getElementById('co-wilaya-fee');
+    var wilayaLabelEl = document.getElementById('co-wilaya-label');
+    if (wilayaLine && wilayaFeeEl) {
+        if (wilayaId && baseFee > 0) {
+            wilayaLine.style.display = '';
+            if (wilayaLabelEl) wilayaLabelEl.textContent = wilayaLabelText + (wilayaName ? ' \u2014 ' + wilayaName : '');
+            wilayaFeeEl.innerHTML = formatPriceDA(baseFee);
+        } else {
+            wilayaLine.style.display = 'none';
+        }
+    }
+
+    var communeLine = document.getElementById('co-commune-line');
+    var communeFeeEl = document.getElementById('co-commune-fee');
+    var communeLabelEl = document.getElementById('co-commune-label');
+    if (communeLine && communeFeeEl) {
+        if (mode === 'domicile' && wilayaId && communeName) {
+            communeLine.style.display = '';
+            if (communeLabelEl) communeLabelEl.textContent = communeLabelText + (communeName ? ' \u2014 ' + communeName : '');
+            communeFeeEl.innerHTML = communeSurcharge > 0 ? formatPriceDA(communeSurcharge) : '<bdi dir="ltr">' + (isAr ? 'مجاني' : 'Gratuit') + '</bdi>';
+        } else {
+            communeLine.style.display = 'none';
+        }
+    }
+
+    subtotalEl.innerHTML = formatPriceDA(subtotal);
+    deliveryEl.innerHTML = delivery > 0 ? formatPriceDA(delivery) : ('<bdi dir="ltr">' + freeText + '</bdi>');
+    totalEl.innerHTML = formatPriceDA(total);
 }
 
 function placeOrder(e) {
@@ -1954,13 +1986,44 @@ function placeOrder(e) {
         return res.json();
     }).then(function (data) {
         var refNumber = data.order_number || orderNumber;
+        var isAr = i18n.getLang() === 'ar';
+        var baseFee = getDeliveryPrice(wilayaId);
+        var communeSurcharge = deliveryMode === 'domicile' ? getCommuneDomicilePrice(wilayaId, municipality) : 0;
+
         document.getElementById('confirmation-order-number').textContent = '#' + refNumber;
-        document.getElementById('conf-pb-subtotal').textContent = formatPriceDA(subtotal);
+        document.getElementById('conf-pb-subtotal').innerHTML = formatPriceDA(subtotal);
+
+        var confWilayaLine = document.getElementById('conf-pb-wilaya-line');
+        var confWilayaFee = document.getElementById('conf-pb-wilaya-fee');
+        var confWilayaLabel = document.getElementById('conf-pb-wilaya-label');
+        if (confWilayaLine && confWilayaFee) {
+            if (wilayaId && baseFee > 0) {
+                confWilayaLine.style.display = '';
+                if (confWilayaLabel) confWilayaLabel.textContent = (isAr ? 'سعر الولاية' : 'Prix wilaya') + (wilaya ? ' \u2014 ' + wilaya : '');
+                confWilayaFee.innerHTML = formatPriceDA(baseFee);
+            } else {
+                confWilayaLine.style.display = 'none';
+            }
+        }
+
+        var confCommuneLine = document.getElementById('conf-pb-commune-line');
+        var confCommuneFee = document.getElementById('conf-pb-commune-fee');
+        var confCommuneLabel = document.getElementById('conf-pb-commune-label');
+        if (confCommuneLine && confCommuneFee) {
+            if (deliveryMode === 'domicile' && wilayaId && municipality) {
+                confCommuneLine.style.display = '';
+                if (confCommuneLabel) confCommuneLabel.textContent = (isAr ? 'سعر البلدية (للمنزل)' : 'Supplément commune (domicile)') + (municipality ? ' \u2014 ' + municipality : '');
+                confCommuneFee.innerHTML = communeSurcharge > 0 ? formatPriceDA(communeSurcharge) : '<bdi dir="ltr">' + (isAr ? 'مجاني' : 'Gratuit') + '</bdi>';
+            } else {
+                confCommuneLine.style.display = 'none';
+            }
+        }
+
         document.getElementById('conf-pb-delivery-label').textContent = i18n.t('checkout.deliveryLabel') + (wilaya ? ' \u2014 ' + wilaya : '');
-        document.getElementById('conf-pb-delivery').textContent = deliveryFee > 0 ? formatPriceDA(deliveryFee) : i18n.t('checkout.free');
+        document.getElementById('conf-pb-delivery').innerHTML = deliveryFee > 0 ? formatPriceDA(deliveryFee) : ('<bdi dir="ltr">' + i18n.t('checkout.free') + '</bdi>');
         var deliveryModeText = deliveryMode === 'bureau' ? 'التوصيل للمكتب 📦' : 'التوصيل للمنزل 🏠';
         document.getElementById('conf-pb-delivery-mode').textContent = deliveryModeText;
-        document.getElementById('conf-pb-total').textContent = formatPriceDA(total);
+        document.getElementById('conf-pb-total').innerHTML = formatPriceDA(total);
         document.getElementById('confirmation-details').textContent = i18n.t('checkout.advisorWillCall') + phone + '.';
         document.getElementById('order-confirmation-modal').classList.add('active');
         cart = [];
