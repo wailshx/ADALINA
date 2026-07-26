@@ -574,7 +574,8 @@ def get_commune_delivery_prices(wilaya_id: int = Query(0)):
         cur = db.cursor()
         cur.execute("""SELECT to_regclass('public.commune_delivery_prices')""")
         exists_row = cur.fetchone()
-        if not exists_row or (hasattr(exists_row, 'get') and exists_row.get('to_regclass') is None) or exists_row[0] is None:
+        table_oid = exists_row.get('to_regclass') if hasattr(exists_row, 'get') else (exists_row[0] if exists_row else None)
+        if table_oid is None:
             logger.warning('[Storefront] commune_delivery_prices table missing, attempting self-healing create')
             try:
                 cur.execute("""CREATE TABLE IF NOT EXISTS commune_delivery_prices (
