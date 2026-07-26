@@ -1825,8 +1825,11 @@ window.viewOrder = async function (id) {
         if (Array.isArray(hRes)) history = hRes;
     } catch (e) {}
 
+    /* Load commune prices for surcharge calculation */
+    await new Promise(function(resolve) { _loadCommunePrices(function() { resolve(); }); });
+
     /* Mark as read */
-    api('PUT', '/notifications/read/' + id);
+    api('PUT', '/notifications/read/' + o.id);
 
     /* Show detail view, hide list */
     document.getElementById('orders-list-view').style.display = 'none';

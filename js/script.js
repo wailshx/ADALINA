@@ -2002,10 +2002,9 @@ function updateCheckoutSummary() {
     var wilayaLabelText = isAr ? 'سعر الولاية' : 'Prix wilaya';
     var communeLabelText = isAr ? 'سعر البلدية (للمنزل)' : 'Supplément commune (domicile)';
     var modeLabel = mode === 'domicile' ? domicileText : '';
-    var locationLabel = wilayaName ? dlText + ' \u2014 ' + wilayaName + modeLabel : dlText + modeLabel;
     var deliveryLine = deliveryEl.parentNode;
     var labelSpan = deliveryLine.querySelector('span:first-child');
-    if (labelSpan) labelSpan.textContent = locationLabel;
+    if (labelSpan) labelSpan.textContent = dlText + modeLabel;
 
     var wilayaLine = document.getElementById('co-wilaya-line');
     var wilayaFeeEl = document.getElementById('co-wilaya-fee');

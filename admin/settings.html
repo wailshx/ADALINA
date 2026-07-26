@@ -400,30 +400,30 @@
         </div>
     </div>
 
-    <form id="settings-form">
-        <div class="settings-tabs">
-            <button type="button" class="settings-tab active" data-tab="general">
-                <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                Général
-            </button>
-            <button type="button" class="settings-tab" data-tab="social">
-                <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                Réseaux sociaux
-            </button>
-            <button type="button" class="settings-tab" data-tab="delivery">
-                <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-                Livraison
-            </button>
-            <button type="button" class="settings-tab" data-tab="communes">
-                <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                Prix par commune
-            </button>
-            <button type="button" class="settings-tab" data-tab="seo">
-                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                SEO
-            </button>
-        </div>
+    <div class="settings-tabs" id="settings-tabs-bar">
+        <button type="button" class="settings-tab active" data-tab="general">
+            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Général
+        </button>
+        <button type="button" class="settings-tab" data-tab="social">
+            <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            Réseaux sociaux
+        </button>
+        <button type="button" class="settings-tab" data-tab="delivery">
+            <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            Livraison
+        </button>
+        <button type="button" class="settings-tab" data-tab="communes">
+            <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Prix par commune
+        </button>
+        <button type="button" class="settings-tab" data-tab="seo">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            SEO
+        </button>
+    </div>
 
+    <form id="settings-form">
         <div class="tab-pane active" id="tab-general">
             <div class="settings-card">
                 <div class="card-header"><h2>Informations générales</h2></div>
@@ -741,15 +741,26 @@
 <script src="js/admin.js"></script>
 <script src="/js/algeria-communes.js"></script>
 <script>
-/* ── Tab switching ── */
-document.querySelectorAll('.settings-tab').forEach(function(btn) {
-    btn.addEventListener('click', function() {
+/* ── Tab switching (bulletproof — outside form, with onclick fallback) ── */
+(function() {
+    function switchTab(tabName) {
         document.querySelectorAll('.settings-tab').forEach(function(b) { b.classList.remove('active'); });
         document.querySelectorAll('.tab-pane').forEach(function(p) { p.classList.remove('active'); });
-        this.classList.add('active');
-        document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+        var btn = document.querySelector('.settings-tab[data-tab="' + tabName + '"]');
+        var pane = document.getElementById('tab-' + tabName);
+        if (btn) btn.classList.add('active');
+        if (pane) pane.classList.add('active');
+    }
+    document.querySelectorAll('.settings-tab').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            switchTab(this.dataset.tab);
+        });
+        btn.setAttribute('onclick', 'return false;');
     });
-});
+    window.switchSettingsTab = switchTab;
+})();
 
 /* ── Image upload for settings ── */
 window.uploadSettingsImage = async function(evt, key) {
