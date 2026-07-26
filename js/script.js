@@ -1754,7 +1754,19 @@ function setupAccordionAutoCollapse() {
 
 function renderCheckout() {
     var checkoutForm = document.querySelector('.checkout-form');
-    if (checkoutForm) checkoutForm.reset();
+    if (checkoutForm) {
+        var inputs = checkoutForm.querySelectorAll('input:not([type=hidden]), select');
+        inputs.forEach(function(el) {
+            if (el.tagName === 'SELECT') {
+                el.selectedIndex = 0;
+            } else {
+                el.value = '';
+            }
+            el.classList.remove('has-value', 'error');
+        });
+        var errEl = document.getElementById('co-phone-error');
+        if (errEl) errEl.textContent = '';
+    }
 
     var wilayaSel = document.getElementById('co-wilaya');
     if (wilayaSel) {
