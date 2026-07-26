@@ -607,7 +607,7 @@ def get_commune_delivery_prices(wilaya_id: int = Query(0)):
         return _json_response(result, max_age=300)
     except Exception as e:
         logger.exception('[Storefront] Error loading commune delivery prices')
-        return _json_response({}, status=500)
+        return _json_response({'_debug_error': str(e)}, status=500)
     finally:
         if db:
             try:
