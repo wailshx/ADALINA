@@ -620,7 +620,7 @@ function updateCartDisplay() {
             recHtml += '</div></div>';
         }
         container.innerHTML = '<div class="empty-cart"><p>' + i18n.t('cart.empty') + '</p>' + recHtml + '</div>';
-        if (totalEl) totalEl.textContent = '0,00 €';
+        if (totalEl) totalEl.innerHTML = formatPriceDA(0);
         if (header) header.textContent = i18n.t('cart.title');
         const emptyBtn = document.querySelector('.empty-cart-btn');
         if (emptyBtn) emptyBtn.style.display = 'none';
@@ -664,7 +664,7 @@ function updateCartDisplay() {
     });
     container.innerHTML = cartFragments.join('');
     if (header) header.textContent = i18n.t('cart.title') + ' (' + itemCount + ')' ;
-    if (totalEl) totalEl.textContent = formatPriceDA(total);
+    if (totalEl) totalEl.innerHTML = formatPriceDA(total);
     let emptyBtn = document.querySelector('.empty-cart-btn');
     if (!emptyBtn) {
         const footer = document.querySelector('.sidebar-footer');
@@ -843,13 +843,11 @@ function renderCartPage() {
             '<div class="cart-item-total">' + formatPriceDA(itemTotal) + '</div>' +
         '</div>';
     }).join('');
-    var delivery = getDeliveryPrice();
+    var delivery = 0;
     var total = subtotal + delivery;
     var subtotalEl = document.getElementById('cart-subtotal');
     var totalEl = document.getElementById('cart-total');
-    var taxEl = document.getElementById('cart-tax');
     if (subtotalEl) subtotalEl.innerHTML = formatPriceDA(subtotal);
-    if (taxEl) taxEl.innerHTML = formatPriceDA(Math.round(subtotal * 0.08));
     if (totalEl) totalEl.innerHTML = formatPriceDA(total);
 }
 
@@ -1607,30 +1605,34 @@ var _communeDeliveryPrices = {};
 
 function loadDeliveryPrices() {
     fetch('/api/public/delivery-prices').then(function(r) { return r.json(); }).then(function(data) {
-        if (data) _deliveryPrices = data;
+        if (data && typeof data === 'object') _deliveryPrices = data;
     }).catch(function() { _deliveryPrices = {}; });
-    fetch('/api/public/commune-delivery-prices').then(function(r) { return r.json(); }).then(function(data) {
-        if (data && Object.keys(data).length > 0) {
-            _communeDeliveryPrices = data;
-        } else {
-            _retryCommunePrices(0);
-        }
-        if (document.querySelector('.checkout-form')) updateCheckoutSummary();
-    }).catch(function() { _retryCommunePrices(0); });
+    _fetchCommunePrices();
 }
 
-function _retryCommunePrices(attempt) {
-    if (attempt > 2) return;
-    setTimeout(function() {
-        fetch('/api/public/commune-delivery-prices').then(function(r) { return r.json(); }).then(function(data) {
-            if (data && Object.keys(data).length > 0) {
-                _communeDeliveryPrices = data;
-                if (document.querySelector('.checkout-form')) updateCheckoutSummary();
-            } else {
-                _retryCommunePrices(attempt + 1);
-            }
-        }).catch(function() { _retryCommunePrices(attempt + 1); });
-    }, 1500 * (attempt + 1));
+function _fetchCommunePrices(callback) {
+    fetch('/api/public/commune-delivery-prices').then(function(r) { return r.json(); }).then(function(data) {
+        if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+            _communeDeliveryPrices = data;
+        } else {
+            console.warn('[ADALINA] commune-delivery-prices returned empty, will retry on domicile select');
+        }
+        if (callback) callback();
+        if (document.querySelector('.checkout-form')) updateCheckoutSummary();
+    }).catch(function(e) {
+        console.warn('[ADALINA] commune-delivery-prices fetch failed:', e);
+        if (callback) callback();
+    });
+}
+
+function ensureCommunePricesLoaded(cb) {
+    if (_communeDeliveryPrices && Object.keys(_communeDeliveryPrices).length > 0) {
+        if (cb) cb();
+        return;
+    }
+    _fetchCommunePrices(function() {
+        if (cb) cb();
+    });
 }
 
 function getDeliveryPrice(wilayaId) {
@@ -1751,6 +1753,9 @@ function setupAccordionAutoCollapse() {
 }
 
 function renderCheckout() {
+    var checkoutForm = document.querySelector('.checkout-form');
+    if (checkoutForm) checkoutForm.reset();
+
     var wilayaSel = document.getElementById('co-wilaya');
     if (wilayaSel) {
         var selectWilaya = (i18n.getLang() === 'ar') ? 'اختر ولاية' : i18n.t('checkout.selectWilaya');
@@ -1792,9 +1797,8 @@ function renderCheckout() {
     var muniSel = document.getElementById('co-municipality');
     if (muniSel) {
         updateSelectFloat(muniSel);
-        var onMuniChange = function() { updateSelectFloat(this); updateCheckoutSummary(); };
-        muniSel.onchange = onMuniChange;
-        muniSel.addEventListener('input', onMuniChange);
+        muniSel.onchange = function() { updateSelectFloat(this); updateCheckoutSummary(); };
+        muniSel.addEventListener('input', function() { updateSelectFloat(this); updateCheckoutSummary(); });
         muniSel.addEventListener('blur', function() { updateSelectFloat(this); });
     }
 
@@ -1964,6 +1968,12 @@ function updateCheckoutSummary() {
     var communeSurcharge = (mode === 'domicile') ? getCommuneDomicilePrice(wilayaId, communeName) : 0;
     var delivery = baseFee + communeSurcharge;
     var total = subtotal + delivery;
+
+    if (mode === 'domicile' && communeSurcharge === 0 && communeName && wilayaId && Object.keys(_communeDeliveryPrices).length === 0) {
+        _fetchCommunePrices(function() {
+            updateCheckoutSummary();
+        });
+    }
 
     /* Show delivery line with wilaya + commune + mode */
     var wilayaName = '';
