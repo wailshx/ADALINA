@@ -101,13 +101,12 @@
                             </div>
                             <div class="checkout-section-fields">
                                 <div class="floating-group">
-                                    <input type="text" id="co-full-name" class="floating-input" autocomplete="name">
                                     <label for="co-full-name" class="floating-label">الاسم الكامل <span class="required-star">*</span></label>
+                                    <input type="text" id="co-full-name" class="floating-input" placeholder="أدخل اسمك الكامل" autocomplete="name">
                                 </div>
                                 <div class="floating-group">
-                                    <input type="tel" id="co-phone" class="floating-input" autocomplete="tel" inputmode="numeric" pattern="[0-9 ]+" oninput="formatPhoneInput(this)">
                                     <label for="co-phone" class="floating-label">رقم الهاتف <span class="required-star">*</span></label>
-                                    <span class="input-hint">مثال: 0555 12 34 56</span>
+                                    <input type="tel" id="co-phone" class="floating-input" placeholder="0555 12 34 56" autocomplete="tel" inputmode="numeric" pattern="[0-9 ]+" oninput="formatPhoneInput(this)">
                                     <span class="input-error" id="co-phone-error"></span>
                                 </div>
                             </div>
@@ -122,28 +121,29 @@
                             </div>
                             <div class="checkout-section-fields">
                             <div class="floating-group select-group">
+                                <label for="co-wilaya" class="floating-label">الولاية <span class="required-star">*</span></label>
                                 <div class="select-wrap">
                                     <select id="co-wilaya" class="floating-input floating-select" autocomplete="off">
                                         <option value="">اختر ولاية</option>
                                     </select>
                                     <svg class="select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
                                 </div>
-                                <label for="co-wilaya" class="floating-label">الولاية <span class="required-star">*</span></label>
                             </div>
                             <div class="delivery-estimate" id="delivery-estimate" style="display:none; margin-top:0.5rem; font-size:0.82rem; color:var(--text-secondary, #666);">
                                 <i class="fas fa-truck" style="margin-right:4px;"></i>
                                 <span id="delivery-estimate-text"></span>
                             </div>
                             <div class="floating-group select-group">
+                                <label for="co-municipality" class="floating-label">البلدية <span class="required-star">*</span></label>
                                 <div class="select-wrap">
                                     <select id="co-municipality" class="floating-input floating-select" disabled autocomplete="off">
                                         <option value="">اختر الولاية أولاً</option>
                                     </select>
                                     <svg class="select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
                                 </div>
-                                <label for="co-municipality" class="floating-label">البلدية <span class="required-star">*</span></label>
                             </div>
                             <div class="floating-group select-group">
+                                <label for="co-delivery-mode" class="floating-label">طريقة التوصيل <span class="required-star">*</span></label>
                                 <div class="select-wrap">
                                     <select id="co-delivery-mode" class="floating-input floating-select" autocomplete="off">
                                         <option value="">اختر طريقة التوصيل</option>
@@ -152,7 +152,6 @@
                                     </select>
                                     <svg class="select-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
                                 </div>
-                                <label for="co-delivery-mode" class="floating-label">طريقة التوصيل <span class="required-star">*</span></label>
                             </div>
                             </div>
                         </div>
