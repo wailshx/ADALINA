@@ -580,6 +580,11 @@ def get_commune_delivery_prices(wilaya_id: int = Query(0)):
                 logger.info('[Storefront] commune_delivery_prices self-healed')
             except Exception as create_err:
                 logger.error('[Storefront] self-healing create failed: %s', create_err)
+        try:
+            cur.execute("ALTER TABLE commune_delivery_prices DISABLE ROW LEVEL SECURITY")
+            db.commit()
+        except Exception:
+            pass
         if wilaya_id > 0:
             cur.execute("SELECT wilaya_id, commune_name, domicile_price FROM commune_delivery_prices WHERE wilaya_id=%s", (wilaya_id,))
         else:
