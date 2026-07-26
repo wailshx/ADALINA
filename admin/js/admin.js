@@ -372,6 +372,36 @@ function tailleGroupForSize(size) {
     return '';
 }
 
+/* ── Commune delivery price cache ── */
+var _adminCommunePrices = null;
+function _loadCommunePrices(callback) {
+    if (_adminCommunePrices) { callback(_adminCommunePrices); return; }
+    fetch('/api/commune-delivery-prices', { credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(obj) { _adminCommunePrices = obj || {}; callback(_adminCommunePrices); })
+        .catch(function() { _adminCommunePrices = {}; callback(_adminCommunePrices); });
+}
+function _getCommuneSurcharge(order) {
+    if (!order || order.delivery_mode !== 'domicile' || !order.commune || !order.wilaya) return 0;
+    if (!_adminCommunePrices) return 0;
+    var wilayas = window.algeriaWilayasList || [];
+    var wilayaId = 0;
+    for (var i = 0; i < wilayas.length; i++) {
+        if (wilayas[i].name === order.wilaya) { wilayaId = wilayas[i].id || (i + 1); break; }
+    }
+    if (!wilayaId) return 0;
+    var prices = _adminCommunePrices[String(wilayaId)];
+    if (!prices) return 0;
+    var name = order.commune.trim();
+    if (prices[name] !== undefined) return Number(prices[name]);
+    var lower = name.toLowerCase();
+    var keys = Object.keys(prices);
+    for (var j = 0; j < keys.length; j++) {
+        if (keys[j].toLowerCase() === lower) return Number(prices[keys[j]]);
+    }
+    return 0;
+}
+
 /* ── Print Invoice ── */
 function buildInvoiceHTML(order) {
     var s = window.__adminSettings || {};
@@ -410,6 +440,7 @@ function buildInvoiceHTML(order) {
     }, 0);
 
     var deliveryModeLabel = order.delivery_mode === 'bureau' ? 'Au Bureau' : (order.delivery_mode === 'domicile' ? 'À Domicile' : '');
+    var communeSurcharge = _getCommuneSurcharge(order);
 
     return '<div class="rc-receipt">' +
         '<div class="rc-header">' +
@@ -438,7 +469,8 @@ function buildInvoiceHTML(order) {
         itemsHTML +
         '<div class="rc-divider">--------------------------------</div>' +
         '<div class="rc-info rc-bold"><span>Sous-total</span><span>' + formatPriceDA(subtotal) + '</span></div>' +
-        (shippingFee > 0 ? '<div class="rc-info"><span>Livraison</span><span>' + formatPriceDA(shippingFee) + '</span></div>' : '') +
+        (shippingFee > 0 ? '<div class="rc-info"><span>Livraison</span><span>' + formatPriceDA(shippingFee - communeSurcharge) + '</span></div>' : '') +
+        (communeSurcharge > 0 ? '<div class="rc-info"><span>Suppl. commune</span><span>' + formatPriceDA(communeSurcharge) + '</span></div>' : '') +
         '<div class="rc-divider">================================</div>' +
         '<div class="rc-info rc-total"><span>TOTAL</span><span>' + formatPriceDA(order.total) + '</span></div>' +
         '<div class="rc-divider">================================</div>' +
@@ -1711,6 +1743,7 @@ var ordersData = [];
 var ordersFilterStatus = '';
 
 async function initOrders() {
+    _loadCommunePrices(function(){});
     ordersData = await api('GET', '/orders');
     if (!ordersData) { ordersData = []; }
     renderOrdersTable();
@@ -1874,6 +1907,7 @@ window.viewOrder = async function (id) {
                 '<div class="detail-row"><span class="detail-label">Articles</span><span class="detail-value">' + totalItems + '</span></div>' +
                 '<div class="detail-row"><span class="detail-label">Livraison</span><span class="detail-value">' + (o.delivery_fee > 0 ? formatPriceDA(o.delivery_fee) : 'Gratuite') + '</span></div>' +
                 (o.delivery_mode ? '<div class="detail-row"><span class="detail-label">Mode livraison</span><span class="detail-value">' + esc(o.delivery_mode === 'bureau' ? 'AU BUREAU' : 'A DOMICILE') + '</span></div>' : '') +
+                (function(){ var cs = _getCommuneSurcharge(o); return cs > 0 ? '<div class="detail-row"><span class="detail-label">Suppl. commune</span><span class="detail-value">' + formatPriceDA(cs) + '</span></div>' : ''; })() +
                 '<div class="detail-row total-row"><span class="detail-label">Total</span><span class="detail-value total-amount">' + formatPriceDA(o.total) + '</span></div>' +
             '</div>' +
         '</div>' +
@@ -1903,8 +1937,9 @@ window.viewOrder = async function (id) {
         '</div>' +
         '<div class="od-total-bar" style="border-top:none;padding:4px 16px;">' +
             '<span style="font-weight:400;">Livraison</span>' +
-            '<span>' + (o.delivery_fee > 0 ? formatPriceDA(o.delivery_fee) : 'Gratuite') + '</span>' +
+            '<span>' + (o.delivery_fee > 0 ? formatPriceDA(o.delivery_fee - (function(){ var cs = _getCommuneSurcharge(o); return cs; })()) : 'Gratuite') + '</span>' +
         '</div>' +
+        (function(){ var cs = _getCommuneSurcharge(o); return cs > 0 ? '<div class="od-total-bar" style="border-top:none;padding:4px 16px;"><span style="font-weight:400;">Suppl. commune</span><span>' + formatPriceDA(cs) + '</span></div>' : ''; })() +
         '<div class="od-total-bar">' +
             '<span>Total de la commande</span>' +
             '<span class="od-total-amount">' + formatPriceDA(o.total) + '</span>' +
