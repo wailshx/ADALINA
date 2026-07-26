@@ -1611,13 +1611,9 @@ function loadDeliveryPrices() {
 }
 
 function _fetchCommunePrices(callback) {
-    console.log('[DEBUG-COMMUNE] _fetchCommunePrices called, current _communeDeliveryPrices keys:', Object.keys(_communeDeliveryPrices));
-    fetch('/api/public/commune-delivery-prices').then(function(r) { console.log('[DEBUG-COMMUNE] API status:', r.status, 'ok:', r.ok); return r.json(); }).then(function(data) {
-        console.log('[DEBUG-COMMUNE] API response type:', typeof data, 'keys:', data ? Object.keys(data).slice(0, 5) : null, 'total keys:', data ? Object.keys(data).length : 0);
+    fetch('/api/public/commune-delivery-prices').then(function(r) { return r.json(); }).then(function(data) {
         if (data && typeof data === 'object' && Object.keys(data).length > 0) {
             _communeDeliveryPrices = data;
-            var sampleKey = Object.keys(data)[0];
-            console.log('[DEBUG-COMMUNE] Stored. sample key:', sampleKey, 'sub-keys:', Object.keys(data[sampleKey]).slice(0, 3));
         } else {
             console.warn('[ADALINA] commune-delivery-prices returned empty, will retry on domicile select');
         }
@@ -1646,20 +1642,17 @@ function getDeliveryPrice(wilayaId) {
 }
 
 function getCommuneDomicilePrice(wilayaId, communeName) {
-    if (!wilayaId || !communeName) { console.log('[DEBUG-COMMUNE] getCommuneDomicilePrice: bail early, wilayaId=', wilayaId, 'communeName=', JSON.stringify(communeName)); return 0; }
+    if (!wilayaId || !communeName) return 0;
     var key = String(wilayaId);
     var wilayaPrices = _communeDeliveryPrices[key];
-    console.log('[DEBUG-COMMUNE] getCommuneDomicilePrice: wilayaId=', wilayaId, '→ key=', key, '→ wilayaPrices found?', !!wilayaPrices, 'type:', typeof wilayaPrices);
-    if (!wilayaPrices) { console.log('[DEBUG-COMMUNE] NO wilaya data for key "' + key + '"'); console.log('[DEBUG-COMMUNE] Available keys in _communeDeliveryPrices:', Object.keys(_communeDeliveryPrices)); return 0; }
+    if (!wilayaPrices) return 0;
     var name = (communeName || '').trim();
-    console.log('[DEBUG-COMMUNE] Looking up commune "' + name + '" in wilaya sub-map with keys:', Object.keys(wilayaPrices).slice(0, 5), '... total:', Object.keys(wilayaPrices).length);
-    if (wilayaPrices[name] !== undefined) { console.log('[DEBUG-COMMUNE] EXACT match found:', name, '=', wilayaPrices[name]); return Number(wilayaPrices[name]); }
+    if (wilayaPrices[name] !== undefined) return Number(wilayaPrices[name]);
     var nameLower = name.toLowerCase();
     var keys = Object.keys(wilayaPrices);
     for (var i = 0; i < keys.length; i++) {
-        if (keys[i].toLowerCase() === nameLower) { console.log('[DEBUG-COMMUNE] Case-insensitive match found:', keys[i], '=', wilayaPrices[keys[i]]); return Number(wilayaPrices[keys[i]]); }
+        if (keys[i].toLowerCase() === nameLower) return Number(wilayaPrices[keys[i]]);
     }
-    console.log('[DEBUG-COMMUNE] NO match for "' + name + '" (lowercase: "' + nameLower + '")');
     return 0;
 }
 
@@ -1988,8 +1981,6 @@ function updateCheckoutSummary() {
     var communeSurcharge = (mode === 'domicile') ? getCommuneDomicilePrice(wilayaId, communeName) : 0;
     var delivery = baseFee + communeSurcharge;
     var total = subtotal + delivery;
-
-    console.log('[DEBUG-COMMUNE] updateCheckoutSummary: wilayaId=', wilayaId, 'communeName=', JSON.stringify(communeName), 'mode=', mode, 'baseFee=', baseFee, 'communeSurcharge=', communeSurcharge, 'delivery=', delivery, 'total=', total, '_communeDeliveryPrices.keys.length=', Object.keys(_communeDeliveryPrices).length);
 
     if (mode === 'domicile' && communeSurcharge === 0 && communeName && wilayaId && Object.keys(_communeDeliveryPrices).length === 0) {
         _fetchCommunePrices(function() {
