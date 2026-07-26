@@ -236,10 +236,17 @@ async def lifespan(app: FastAPI):
                 cur.execute(f"ALTER TABLE {tbl} DISABLE ROW LEVEL SECURITY")
             except Exception:
                 pass
+            try:
+                cur.execute("SELECT 1 FROM pg_policies WHERE tablename = %s AND schemaname = 'public' LIMIT 1", (tbl,))
+                if not cur.fetchone():
+                    pol = tbl.replace(' ', '_') + '_all_access'
+                    cur.execute(f"CREATE POLICY {pol} ON {tbl} FOR ALL USING (true) WITH CHECK (true)")
+            except Exception:
+                pass
         db.commit()
         cur.close()
         db.close()
-        print('✓ RLS disabled on commune_delivery_prices, wishlists')
+        print('✓ RLS disabled / permissive policies added for commune_delivery_prices, wishlists')
     except Exception as e:
         print(f'! RLS disable warning: {e}')
 

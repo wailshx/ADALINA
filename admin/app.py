@@ -1542,6 +1542,16 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 )""")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_wilaya ON commune_delivery_prices(wilaya_id)")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_lookup ON commune_delivery_prices(wilaya_id, commune_name)")
+                try:
+                    cur.execute("ALTER TABLE commune_delivery_prices DISABLE ROW LEVEL SECURITY")
+                except Exception:
+                    pass
+                try:
+                    cur.execute("SELECT 1 FROM pg_policies WHERE tablename = 'commune_delivery_prices' AND schemaname = 'public' LIMIT 1")
+                    if not cur.fetchone():
+                        cur.execute("CREATE POLICY commune_prices_all_access ON commune_delivery_prices FOR ALL USING (true) WITH CHECK (true)")
+                except Exception:
+                    pass
                 db.commit()
             except Exception:
                 pass

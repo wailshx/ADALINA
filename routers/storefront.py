@@ -23,6 +23,17 @@ _cleanup_counter = 0
 def _rows_to_list(rows):
     return [dict(r) for r in rows]
 
+def _ensure_rls_policy(cur, db, table_name, policy_name):
+    try:
+        cur.execute("SELECT 1 FROM pg_policies WHERE tablename = %s AND schemaname = 'public' LIMIT 1", (table_name,))
+        if cur.fetchone():
+            return
+        cur.execute(f"CREATE POLICY {policy_name} ON {table_name} FOR ALL USING (true) WITH CHECK (true)")
+        db.commit()
+        logger.info('[Storefront] Created permissive RLS policy %s on %s', policy_name, table_name)
+    except Exception:
+        pass
+
 
 def _get_client_ip(request: Request) -> str:
     real_ip = request.headers.get('X-Real-For', '')
@@ -580,11 +591,7 @@ def get_commune_delivery_prices(wilaya_id: int = Query(0)):
                 logger.info('[Storefront] commune_delivery_prices self-healed')
             except Exception as create_err:
                 logger.error('[Storefront] self-healing create failed: %s', create_err)
-        try:
-            cur.execute("ALTER TABLE commune_delivery_prices DISABLE ROW LEVEL SECURITY")
-            db.commit()
-        except Exception:
-            pass
+        _ensure_rls_policy(cur, db, 'commune_delivery_prices', 'commune_prices_all_access')
         if wilaya_id > 0:
             cur.execute("SELECT wilaya_id, commune_name, domicile_price FROM commune_delivery_prices WHERE wilaya_id=%s", (wilaya_id,))
         else:
