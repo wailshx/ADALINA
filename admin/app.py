@@ -869,6 +869,22 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
             send_json(self, result)
             return True
 
+        if path == '/api/commune-delivery-prices':
+            wid = int(query.get('wilaya_id', ['0'])[0])
+            if wid > 0:
+                cur.execute("SELECT wilaya_id, commune_name, domicile_price FROM commune_delivery_prices WHERE wilaya_id=%s ORDER BY commune_name", (wid,))
+            else:
+                cur.execute("SELECT wilaya_id, commune_name, domicile_price FROM commune_delivery_prices ORDER BY wilaya_id, commune_name")
+            rows = cur.fetchall()
+            result = {}
+            for r in rows:
+                k = str(r['wilaya_id'])
+                if k not in result:
+                    result[k] = {}
+                result[k][r['commune_name']] = float(r['domicile_price'] or 0)
+            send_json(self, result)
+            return True
+
         if path == '/api/notifications':
             cur.execute("SELECT COUNT(*) AS cnt FROM orders WHERE is_read IS NULL OR is_read=0")
             unread = cur.fetchone()['cnt']
@@ -1512,6 +1528,31 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                     cur.execute("INSERT INTO delivery_prices (wilaya_id, price) VALUES (%s, %s)", (wid, p))
             db.commit()
             send_json(self, {'message': 'Delivery prices saved'})
+            return True
+
+        if path == '/api/commune-delivery-prices':
+            try:
+                wilaya_id = int(data.get('wilaya_id', 0))
+                prices = data.get('prices', {})
+                if not isinstance(prices, dict):
+                    send_json(self, {'error': 'prices must be an object {commune_name: price}'}, 400)
+                    return True
+                saved = 0
+                for commune_name, price in prices.items():
+                    if not isinstance(commune_name, str) or not commune_name.strip():
+                        continue
+                    p = float(price) if price else 0
+                    cur.execute("SELECT 1 FROM commune_delivery_prices WHERE wilaya_id=%s AND commune_name=%s", (wilaya_id, commune_name.strip()))
+                    if cur.fetchone():
+                        cur.execute("UPDATE commune_delivery_prices SET domicile_price=%s, updated_at=CURRENT_TIMESTAMP WHERE wilaya_id=%s AND commune_name=%s", (p, wilaya_id, commune_name.strip()))
+                    else:
+                        cur.execute("INSERT INTO commune_delivery_prices (wilaya_id, commune_name, domicile_price, updated_at) VALUES (%s, %s, %s, CURRENT_TIMESTAMP)", (wilaya_id, commune_name.strip(), p))
+                    saved += 1
+                db.commit()
+                send_json(self, {'message': 'Commune delivery prices saved', 'saved': saved})
+            except Exception as e:
+                print(f"[Admin] Error saving commune prices: {e}")
+                send_json(self, {'error': str(e)}, 500)
             return True
 
         if path == '/api/settings':
