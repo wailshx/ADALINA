@@ -2081,7 +2081,7 @@ async function updateCustomerStats() {
     document.getElementById('stat-orders').textContent = totalOrders;
     /* avg order value */
     const avg = totalOrders > 0 ? list.reduce(function (sum, c) { return sum + (c.total_spent || 0); }, 0) / totalOrders : 0;
-    document.getElementById('stat-avg').textContent = formatPriceDA(avg);
+    document.getElementById('stat-avg').innerHTML = formatPriceDA(avg);
     document.getElementById('customer-subtitle').textContent = 'View and manage your customer base (' + total + ' total)';
 }
 
@@ -2134,7 +2134,7 @@ async function viewCustomer(id) {
     document.getElementById('detail-status').textContent = c.status || 'active';
     document.getElementById('detail-status').className = 'badge ' + (badge(c.status).match(/badge-\w+/)?.[0] || 'badge-gray');
     document.getElementById('detail-orders-count').textContent = c.orders_count || 0;
-    document.getElementById('detail-spent').textContent = formatPriceDA(c.total_spent);
+    document.getElementById('detail-spent').innerHTML = formatPriceDA(c.total_spent);
     document.getElementById('detail-joined').textContent = c.joined_at ? formatDate(c.joined_at) : '—';
     document.getElementById('detail-avatar').src = avatarUrl(c.name, '6366f1');
 
@@ -2319,10 +2319,10 @@ async function initAnalytics() {
     const s = d.stats || {};
 
     /* Stats */
-    document.getElementById('ana-revenue').textContent = formatPriceDA(s.revenue);
+    document.getElementById('ana-revenue').innerHTML = formatPriceDA(s.revenue);
     document.getElementById('ana-orders').textContent = s.orders || 0;
     document.getElementById('ana-customers').textContent = s.customers || 0;
-    document.getElementById('ana-avg-order').textContent = formatPriceDA(s.avg_order_value);
+    document.getElementById('ana-avg-order').innerHTML = formatPriceDA(s.avg_order_value);
     document.getElementById('ana-subtitle').textContent = 'Track your store\'s performance — ' + (s.products || 0) + ' products, ' + s.orders + ' orders';
 
     /* Monthly Sales Chart */

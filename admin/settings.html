@@ -633,7 +633,7 @@
                             <tbody id="commune-prices-tbody"></tbody>
                         </table>
                     </div>
-                    <div id="saveMsg" class="hidden save-msg" style="margin-top:12px;padding:10px 14px;background:#d4edda;color:#155724;border-radius:6px;font-size:0.85rem;"></div>
+                    <div id="commune-saveMsg" class="hidden save-msg" style="margin-top:12px;padding:10px 14px;background:#d4edda;color:#155724;border-radius:6px;font-size:0.85rem;"></div>
                 </div>
             </div>
         </div>
@@ -1087,7 +1087,7 @@ function saveCommunePrices() {
         if (res && res.error) { alert('Erreur: ' + res.error); return; }
         _communePrices = prices;
         renderCommuneStats();
-        var msg = document.getElementById('saveMsg');
+        var msg = document.getElementById('commune-saveMsg');
         if (msg) {
             msg.textContent = 'Prix des communes enregistrés.';
             msg.className = 'save-msg';

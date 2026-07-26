@@ -466,6 +466,7 @@ function renderWishlistPage() {
                 '<a href="product.html?id=' + p.id + '" class="wpi-name">' + esc(p.name) + '</a>' +
                 '<div class="wpi-price">' + priceHtml + '</div>' +
                 '<div class="wpi-actions">' +
+                    '<button class="btn btn-sm btn-primary" onclick="addToCartFromWishlist(' + p.id + ')" style="margin-right:6px;">' + i18n.t('qv.addToCart') + '</button>' +
                     '<button class="btn btn-outline btn-sm" onclick="removeFromWishlist(' + p.id + ')">Supprimer</button>' +
                 '</div>' +
             '</div>' +
@@ -1007,7 +1008,7 @@ function quickView(productId) {
         if (product.sale_price) {
             priceEl.innerHTML = '<span class="original-price">' + formatPriceDA(product.price) + '</span> <span class="sale-price">' + formatPriceDA(product.sale_price) + '</span>';
         } else {
-            priceEl.textContent = formatPriceDA(product.price);
+            priceEl.innerHTML = formatPriceDA(product.price);
         }
     }
 
