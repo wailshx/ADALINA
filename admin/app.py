@@ -1532,6 +1532,20 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
 
         if path == '/api/commune-delivery-prices':
             try:
+                cur.execute("""CREATE TABLE IF NOT EXISTS commune_delivery_prices (
+                    id SERIAL PRIMARY KEY,
+                    wilaya_id INTEGER NOT NULL,
+                    commune_name TEXT NOT NULL,
+                    domicile_price DOUBLE PRECISION NOT NULL DEFAULT 0,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE (wilaya_id, commune_name)
+                )""")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_wilaya ON commune_delivery_prices(wilaya_id)")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_lookup ON commune_delivery_prices(wilaya_id, commune_name)")
+                db.commit()
+            except Exception:
+                pass
+            try:
                 wilaya_id = int(data.get('wilaya_id', 0))
                 prices = data.get('prices', {})
                 if not isinstance(prices, dict):
