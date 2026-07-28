@@ -388,6 +388,8 @@ async def serve_product_by_slug(slug: str):
         content = content.replace('src="images/', 'src="/images/')
         content = content.replace('href="index.html"', 'href="/collection/"')
         content = content.replace('href="shop.html"', 'href="/collection/shop.html"')
+        content = content.replace('checkout.html', '/collection/checkout.html')
+        content = content.replace('wishlist.html', '/collection/wishlist.html')
         seo_meta = f'''
     <title>{_escape_html(product_name)} - ADALINA</title>
     <meta name="description" content="{_escape_html(product_desc)} - ADALINA">

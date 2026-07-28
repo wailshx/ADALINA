@@ -1387,7 +1387,7 @@ function qvBuyNow() {
     }
     addToCart(_qv.product.id, _qv.quantity, _qv.selectedSize, _qv.selectedColor);
     closeQuickView();
-    window.location.href = 'checkout.html';
+    window.location.href = '/collection/checkout.html';
 }
 
 function qvToggleWishlist() {
@@ -1511,7 +1511,7 @@ function updateResultsCount(count) {
 
 function proceedToCheckout() {
     toggleCart();
-    window.location.href = 'checkout.html';
+    window.location.href = '/collection/checkout.html';
 }
 
 /* ── Checkout ── */
@@ -2626,7 +2626,7 @@ function ppBuyNow() {
     } else if (variants.length === 0 && (product.stock || 0) === 0) {
         return;
     }
-    window.location.href = 'checkout.html';
+    window.location.href = '/collection/checkout.html';
 }
 
 
