@@ -670,6 +670,7 @@ function openAddProduct() {
     // Reset form
     document.getElementById('product-form').reset();
     document.getElementById('pm-id').value = '';
+    document.getElementById('pm-slug').value = '';
     productVariants = [];
     _lastCategorySizeSystem = 'standard';
     renderVariants();
@@ -681,6 +682,23 @@ function openAddProduct() {
     document.getElementById('product-modal').classList.add('active');
 }
 
+var _pmNameInput = document.getElementById('pm-name');
+if (_pmNameInput) {
+    _pmNameInput.addEventListener('input', function() {
+        var slugField = document.getElementById('pm-slug');
+        if (slugField && !slugField.dataset.userEdited) {
+            slugField.value = this.value.trim().toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+        }
+    });
+}
+var _pmSlugInput = document.getElementById('pm-slug');
+if (_pmSlugInput) {
+    _pmSlugInput.addEventListener('input', function() {
+        this.dataset.userEdited = '1';
+    });
+}
+
 window.editProduct = async function(id) {
     const p = await api('GET', `/products/${id}`);
     if (!p) return;
@@ -688,6 +706,7 @@ window.editProduct = async function(id) {
     document.getElementById('pm-modal-title').textContent = 'Modifier le produit';
     document.getElementById('pm-id').value = p.id;
     document.getElementById('pm-name').value = p.name || '';
+    document.getElementById('pm-slug').value = p.slug || '';
     document.getElementById('pm-price').value = p.price || 0;
     document.getElementById('pm-sale-price').value = p.sale_price || '';
     document.getElementById('pm-desc').value = p.description || '';
@@ -1420,6 +1439,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const data = {
                 name: document.getElementById('pm-name').value,
+                slug: document.getElementById('pm-slug').value.trim() || undefined,
                 price: parseFloat(document.getElementById('pm-price').value) || 0,
                 sale_price: parseFloat(document.getElementById('pm-sale-price').value) || null,
                 stock: 0,

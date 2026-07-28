@@ -53,11 +53,36 @@ DEFAULT_PASSWORD_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809
 
 PBKDF2_ITERATIONS = 600000
 
-ALLOWED_PRODUCT_COLUMNS = {'name', 'description', 'price', 'sale_price', 'category_id', 'image', 'images', 'badge', 'sizes', 'colors', 'stock', 'brand', 'rating', 'featured', 'new_arrival', 'status'}
+ALLOWED_PRODUCT_COLUMNS = {'name', 'description', 'price', 'sale_price', 'category_id', 'image', 'images', 'badge', 'sizes', 'colors', 'stock', 'brand', 'rating', 'featured', 'new_arrival', 'status', 'slug'}
 ALLOWED_CATEGORY_COLUMNS = {'name', 'slug', 'description', 'image', 'status', 'size_system'}
 ALLOWED_COLLECTION_COLUMNS = {'name', 'description', 'image', 'status'}
 ALLOWED_ORDER_COLUMNS = {'status', 'total', 'items', 'customer_name', 'customer_phone', 'wilaya', 'commune', 'shipping_address', 'payment_method', 'delivery_fee', 'delivery_mode', 'customer_id', 'is_read'}
 ALLOWED_CUSTOMER_COLUMNS = {'name', 'email', 'phone', 'address', 'status'}
+
+
+def _generate_product_slug(name):
+    import re as _re
+    s = name.lower().strip()
+    s = _re.sub(r'[^a-z0-9\s-]', '', s)
+    s = _re.sub(r'[\s]+', '-', s)
+    s = _re.sub(r'-+', '-', s)
+    return s.strip('-')
+
+
+def _ensure_unique_product_slug(cur, slug, exclude_id=None):
+    if not slug:
+        return slug
+    base = slug
+    counter = 2
+    while True:
+        if exclude_id:
+            cur.execute("SELECT id FROM products WHERE slug=%s AND id != %s", (slug, exclude_id))
+        else:
+            cur.execute("SELECT id FROM products WHERE slug=%s", (slug,))
+        if not cur.fetchone():
+            return slug
+        slug = f'{base}-{counter}'
+        counter += 1
 
 
 def _hash_password(password, salt='', iterations=PBKDF2_ITERATIONS):
@@ -1697,9 +1722,11 @@ def create_product(request: Request, data: dict = Body(...), session_token: str 
         colors = data.get('colors', [])
         sizes = data.get('sizes', [])
         total_stock = data.get('stock', 0)
-        cur.execute("""INSERT INTO products (name, description, price, sale_price, category_id, image, images, badge, sizes, colors, stock, brand, rating, featured, new_arrival, status, created_at)
-                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW()) RETURNING id""",
-                    (data.get('name', ''), data.get('description', ''), data.get('price', 0),
+        slug = data.get('slug', '').strip() or _generate_product_slug(data.get('name', ''))
+        slug = _ensure_unique_product_slug(cur, slug)
+        cur.execute("""INSERT INTO products (name, slug, description, price, sale_price, category_id, image, images, badge, sizes, colors, stock, brand, rating, featured, new_arrival, status, created_at)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW()) RETURNING id""",
+                    (data.get('name', ''), slug, data.get('description', ''), data.get('price', 0),
                      data.get('sale_price'), cat_id, data.get('image', ''),
                      json.dumps(data.get('images', [])), data.get('badge'),
                      json.dumps(sizes), json.dumps(colors),
@@ -2024,6 +2051,14 @@ def update_product(pid: str, request: Request, data: dict = Body(...), session_t
                 data['image'] = parsed[0]
 
         data = _filter_columns(data, ALLOWED_PRODUCT_COLUMNS)
+        if 'slug' in data and data['slug']:
+            data['slug'] = _ensure_unique_product_slug(cur, data['slug'], exclude_id=pid)
+        elif 'name' in data and 'slug' not in data:
+            cur.execute("SELECT slug FROM products WHERE id=%s", (pid,))
+            existing = cur.fetchone()
+            if not existing or not existing['slug']:
+                auto_slug = _generate_product_slug(data['name'])
+                data['slug'] = _ensure_unique_product_slug(cur, auto_slug, exclude_id=pid)
         if data:
             sets = ', '.join(f"{k}=%s" for k in data)
             vals = list(data.values()) + [pid]

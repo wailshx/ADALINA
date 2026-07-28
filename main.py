@@ -343,9 +343,81 @@ app.include_router(_admin_pages_module.router)
 # Root + website routes
 # ---------------------------------------------------------------------------
 
+SITE_URL = 'https://adalina-v2.onrender.com'
+
 @app.get('/')
 async def root_redirect():
     return RedirectResponse(url='/collection/', status_code=302)
+
+
+@app.get('/p/{slug}')
+async def serve_product_by_slug(slug: str):
+    db = None
+    try:
+        db = get_public_db()
+        cur = db.cursor()
+        cur.execute("""
+            SELECT p.id, p.name, p.slug, p.description, p.price, p.sale_price,
+                   p.image, p.images, p.badge, p.stock, p.featured, p.new_arrival,
+                   c.name AS category_name
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE p.slug=%s AND p.status='active'
+        """, (slug,))
+        row = cur.fetchone()
+        if not row:
+            return HTMLResponse(content='Product not found', status_code=404)
+        product = dict(row)
+        if product.get('images'):
+            import json as _json
+            imgs = _json.loads(product['images']) if isinstance(product['images'], str) else product['images']
+        else:
+            imgs = [product['image']] if product.get('image') else []
+        og_image = imgs[0] if imgs else ''
+        product_name = product['name'] or ''
+        product_desc = product.get('description') or product_name
+        product_price = product.get('sale_price') or product.get('price') or 0
+        canonical_url = f'{SITE_URL}/p/{slug}'
+        file_path = BASE_DIR / 'product.html'
+        if not file_path.exists():
+            return HTMLResponse(content='Not found', status_code=404)
+        content = file_path.read_bytes().decode('utf-8')
+        content = content.replace('?v=__BUILD__', '?v=' + BUILD_VERSION)
+        seo_meta = f'''
+    <title>{_escape_html(product_name)} - ADALINA</title>
+    <meta name="description" content="{_escape_html(product_desc)} - ADALINA">
+    <meta property="og:type" content="product">
+    <meta property="og:title" content="{_escape_html(product_name)} - ADALINA">
+    <meta property="og:description" content="{_escape_html(product_desc)}">
+    <meta property="og:image" content="{_escape_html(og_image)}">
+    <meta property="og:url" content="{_escape_html(canonical_url)}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{_escape_html(product_name)} - ADALINA">
+    <meta name="twitter:description" content="{_escape_html(product_desc)}">
+    <meta name="twitter:image" content="{_escape_html(og_image)}">
+    <link rel="canonical" href="{_escape_html(canonical_url)}">
+    <script type="application/ld+json">{"{"}"@context":"https://schema.org","@type":"Product","name":"{_escape_json(product_name)}","description":"{_escape_json(product_desc)}","image":"{_escape_html(og_image)}","url":"{_escape_html(canonical_url)}","offers":{{"@type":"Offer","price":"{product_price}","priceCurrency":"DZD","availability":"https://schema.org/InStock"}}{"}"}</script>
+    <script>window.__PRODUCT_SLUG="{slug}";window.__PRODUCT_ID={product['id']};</script>'''
+        content = content.replace('<head>', '<head>' + seo_meta, 1)
+        return HTMLResponse(content=content, media_type='text/html', headers={
+            'Cache-Control': 'public, max-age=60',
+        })
+    except Exception as e:
+        logger.exception('Error serving product page for slug=%s', slug)
+        return HTMLResponse(content='Server error', status_code=500)
+    finally:
+        if db:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+
+def _escape_html(s):
+    return str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&#39;')
+
+def _escape_json(s):
+    return str(s).replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
 
 @app.get('/collection/')
 async def serve_website_index():
@@ -393,7 +465,7 @@ async def serve_products_json():
         db = get_public_db()
         cur = db.cursor()
         cur.execute("""
-            SELECT p.id, p.name, p.description, p.price, p.sale_price, p.category_id,
+            SELECT p.id, p.name, p.slug, p.description, p.price, p.sale_price, p.category_id,
                    p.image, p.images, p.badge, p.sizes, p.colors, p.stock, p.brand,
                    p.rating, p.status, p.featured, p.new_arrival, p.created_at,
                    c.name AS category_name, c.size_system AS category_size_system

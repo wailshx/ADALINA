@@ -285,10 +285,14 @@ function renderProductCard(product) {
     var priceHtml = product.sale_price
         ? '<span class="original-price">' + formatPriceDA(product.price) + '</span><span class="sale-price">' + formatPriceDA(product.sale_price) + '</span>'
         : '<span class="current-price">' + formatPriceDA(product.price) + '</span>';
-    return '<div class="' + cardClasses + '" data-product-id="' + pid + '">' +
+    var slug = product.slug || '';
+    var productUrl = slug ? '/p/' + slug : 'product.html?id=' + pid;
+    return '<div class="' + cardClasses + '" data-product-id="' + pid + '" data-product-slug="' + esc(slug) + '">' +
         '<div class="product-image">' +
+            '<a href="' + productUrl + '" style="text-decoration:none;color:inherit;display:block">' +
             '<img src="' + cloudinaryThumb(imgs[0], 400) + '" alt="' + esc(product.name) + '" class="img-primary" loading="lazy" decoding="async" width="400" height="533" onerror="onImgError(this)">' +
             (second ? '<img src="' + cloudinaryThumb(second, 400) + '" alt="' + esc(product.name) + '" class="img-secondary" loading="lazy" decoding="async" width="400" height="533" onerror="onImgError(this)">' : '') +
+            '</a>' +
             ribbon +
             '<button class="product-wishlist' + (inW ? ' active' : '') + '" onclick="toggleWishlistItem(this,' + pid + ')" aria-label="Wishlist">' +
                 '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
@@ -301,10 +305,11 @@ function renderProductCard(product) {
                     ? '<button class="btn-overlay btn-overlay-disabled" disabled>' + i18n.t('product.unavailable') + '</button>'
                     : '<button class="btn-overlay btn-overlay-primary" onclick="addToCartOrQuickView(' + pid + ')">' + i18n.t('product.addCart') + '</button>'
                 ) +
+                '<button class="btn-overlay btn-overlay-share" onclick="openShareMenu(' + pid + ', \'' + esc(slug) + '\', \'' + esc(product.name).replace(/'/g, "\\'") + '\')" aria-label="Partager">Partager</button>' +
             '</div>' +
         '</div>' +
         '<div class="product-info">' +
-            '<h3 class="product-title"><a href="product.html?id=' + pid + '">' + esc(product.name) + '</a></h3>' +
+            '<h3 class="product-title"><a href="' + productUrl + '">' + esc(product.name) + '</a></h3>' +
             sizesHtml +
             stockBadgeHtml + '<div class="product-price">' + priceHtml + '</div>' +
         '</div>' +
@@ -2087,17 +2092,62 @@ function loadProductPage() {
     if (!container) return;
 
     const urlParams = new URLSearchParams(window.location.search);
-    const productId = parseInt(urlParams.get('id'));
-    if (!productId) {
+    var productId = null;
+    var productSlug = null;
+
+    var pathSlug = window.__PRODUCT_SLUG || null;
+    if (pathSlug) {
+        productSlug = pathSlug;
+    } else if (window.location.pathname.startsWith('/p/')) {
+        productSlug = window.location.pathname.substring(3).replace(/\/$/, '');
+    }
+    if (!productSlug) {
+        productId = parseInt(urlParams.get('id'));
+        productSlug = urlParams.get('slug') || null;
+    }
+
+    if (!productId && !productSlug) {
         container.innerHTML = '<div class="breadcrumb"><a href="index.html">' + i18n.t('breadcrumb.home') + '</a><span>/</span><a href="shop.html">' + i18n.t('breadcrumb.shop') + '</a></div><div style="text-align:center;padding:4rem 0"><h2>' + i18n.t('product.notFound') + '</h2><p style="color:var(--text-light);margin:1rem 0">' + i18n.t('product.notFoundDesc') + '</p><a href="shop.html" class="btn btn-primary" style="display:inline-block;text-decoration:none">' + i18n.t('product.backToShop') + '</a></div>';
         return;
     }
 
-    const product = products.find(p => p.id === productId);
-    if (!product) {
-        container.innerHTML = '<div class="breadcrumb"><a href="index.html">' + i18n.t('breadcrumb.home') + '</a><span>/</span><a href="shop.html">' + i18n.t('breadcrumb.shop') + '</a></div><div style="text-align:center;padding:4rem 0"><h2>' + i18n.t('product.notFound') + '</h2><p style="color:var(--text-light);margin:1rem 0">' + i18n.t('product.notFoundDesc') + '</p><a href="shop.html" class="btn btn-primary" style="display:inline-block;text-decoration:none">' + i18n.t('product.backToShop') + '</a></div>';
+    var product = null;
+    if (productSlug) {
+        product = products.find(function(p) { return p.slug === productSlug; });
+    }
+    if (!product && productId) {
+        product = products.find(function(p) { return p.id === productId; });
+    }
+    if (!product && productSlug) {
+        fetch('/api/public/products/' + productSlug).then(function(r) {
+            if (!r.ok) throw new Error('Not found');
+            return r.json();
+        }).then(function(data) {
+            if (data && !data.error) {
+                products.push(data);
+                product = data;
+                renderProductPageData(product, urlParams);
+            } else {
+                showProductNotFound(container);
+            }
+        }).catch(function() {
+            showProductNotFound(container);
+        });
         return;
     }
+    if (!product) {
+        showProductNotFound(container);
+        return;
+    }
+
+    renderProductPageData(product, urlParams);
+}
+
+function showProductNotFound(container) {
+    container.innerHTML = '<div class="breadcrumb"><a href="index.html">' + i18n.t('breadcrumb.home') + '</a><span>/</span><a href="shop.html">' + i18n.t('breadcrumb.shop') + '</a></div><div style="text-align:center;padding:4rem 0"><h2>' + i18n.t('product.notFound') + '</h2><p style="color:var(--text-light);margin:1rem 0">' + i18n.t('product.notFoundDesc') + '</p><a href="shop.html" class="btn btn-primary" style="display:inline-block;text-decoration:none">' + i18n.t('product.backToShop') + '</a></div>';
+}
+
+function renderProductPageData(product, urlParams) {
 
     var variants = product.variants || [];
     var firstAvailColor = null;
@@ -2238,6 +2288,8 @@ function displayProduct(product) {
 
                 <button class="pp-btn pp-btn-outline" onclick="addCurrentToWishlist()"><svg width="18" height="18" viewBox="0 0 24 24" fill="${isInWishlist ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg><span id="pp-wishlist-text">${isInWishlist ? i18n.t('product.wishlistIn') : i18n.t('qv.wishlist')}</span></button>
 
+                <button class="pp-btn pp-btn-outline" onclick="openShareMenu(${product.id}, '${esc(product.slug || '')}', '${esc(product.name).replace(/'/g, "\\'")}')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Partager</button>
+
                 <a href="shop.html" class="pp-continue">${i18n.t('qv.continueShopping')}</a>
             </div>
 
@@ -2272,6 +2324,26 @@ function displayProduct(product) {
     if (productImages.length > 0) {
         var ogImage = document.querySelector('meta[property="og:image"]');
         if (ogImage) ogImage.setAttribute('content', productImages[0]);
+    }
+    var shareSlug = product.slug || '';
+    var shareUrl = shareSlug ? (window.location.origin + '/p/' + shareSlug) : window.location.href;
+    var ogUrl = document.querySelector('meta[property="og:url"]');
+    if (ogUrl) ogUrl.setAttribute('content', shareUrl);
+    var canonicalLink = document.querySelector('link[rel="canonical"]');
+    if (canonicalLink) canonicalLink.setAttribute('href', shareUrl);
+    else { var cl = document.createElement('link'); cl.rel = 'canonical'; cl.href = shareUrl; document.head.appendChild(cl); }
+    var twCard = document.querySelector('meta[name="twitter:card"]');
+    if (twCard) twCard.setAttribute('content', 'summary_large_image');
+    var twTitle = document.querySelector('meta[name="twitter:title"]');
+    if (twTitle) twTitle.setAttribute('content', product.name + ' - ADALINA');
+    var twDesc = document.querySelector('meta[name="twitter:description"]');
+    if (twDesc) twDesc.setAttribute('content', product.description || product.name);
+    if (productImages.length > 0) {
+        var twImg = document.querySelector('meta[name="twitter:image"]');
+        if (twImg) twImg.setAttribute('content', productImages[0]);
+    }
+    if (shareSlug && window.history && window.history.replaceState) {
+        window.history.replaceState({}, product.name + ' - ADALINA', '/p/' + shareSlug);
     }
 
     renderRelatedProducts(product);
@@ -3081,6 +3153,11 @@ async function init() {
             sessionStorage.removeItem('shopScrollPos');
             setTimeout(function() { window.scrollTo(0, parseInt(savedScroll, 10)); }, 100);
         }
+        var qvSlug = new URLSearchParams(window.location.search).get('quickview');
+        if (qvSlug) {
+            var qvProduct = products.find(function(p) { return p.slug === qvSlug || String(p.id) === qvSlug; });
+            if (qvProduct) setTimeout(function() { quickView(qvProduct.id); }, 300);
+        }
         grid.addEventListener('click', function(e) {
             var link = e.target.closest('a[href*="product.html"]');
             if (link) {
@@ -3286,4 +3363,59 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function getProductShareUrl(slug, id) {
+    if (slug) return window.location.origin + '/p/' + slug;
+    return window.location.origin + '/collection/product.html?id=' + id;
+}
+
+function openShareMenu(pid, slug, name) {
+    closeShareMenu();
+    var url = getProductShareUrl(slug, pid);
+    var text = name ? name + ' - ADALINA' : 'Produit ADALINA';
+    var menu = document.createElement('div');
+    menu.id = 'share-menu-overlay';
+    menu.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10001;display:flex;align-items:center;justify-content:center;';
+    menu.onclick = function(e) { if (e.target === menu) closeShareMenu(); };
+    var inner = document.createElement('div');
+    inner.style.cssText = 'background:#fff;border-radius:16px;padding:24px;max-width:340px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+    inner.innerHTML = '<h3 style="margin:0 0 16px;font-size:1.1rem;font-weight:600;text-align:center;">Partager ce produit</h3>' +
+        '<div style="display:flex;flex-direction:column;gap:10px;">' +
+        '<a href="https://wa.me/?text=' + encodeURIComponent(text + ' ' + url) + '" target="_blank" rel="noopener" onclick="trackShare(\'whatsapp\')" style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;background:#25d366;color:#fff;text-decoration:none;font-weight:500;font-size:0.95rem;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492a.5.5 0 00.627.616l4.584-1.202A11.952 11.952 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-2.09 0-4.031-.636-5.643-1.718l-.405-.282-2.694.706.718-2.626-.293-.42A9.965 9.965 0 012 12C2 6.486 6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/></svg>WhatsApp</a>' +
+        '<a href="https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url) + '" target="_blank" rel="noopener" onclick="trackShare(\'facebook\')" style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;background:#1877f2;color:#fff;text-decoration:none;font-weight:500;font-size:0.95rem;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>Facebook</a>' +
+        '<a href="https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text) + '" target="_blank" rel="noopener" onclick="trackShare(\'telegram\')" style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;background:#0088cc;color:#fff;text-decoration:none;font-weight:500;font-size:0.95rem;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0h-.056zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>Telegram</a>' +
+        '<a href="https://www.instagram.com/" target="_blank" rel="noopener" onclick="trackShare(\'instagram\')" style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;font-weight:500;font-size:0.95rem;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>Instagram</a>' +
+        '<button onclick="copyShareLink(\'' + url.replace(/'/g, "\\'") + '\')" style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;background:#f3f4f6;color:#333;border:none;cursor:pointer;font-weight:500;font-size:0.95rem;text-align:left;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copier le lien</button>' +
+        '</div>' +
+        '<button onclick="closeShareMenu()" style="margin-top:12px;width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;background:#fff;cursor:pointer;font-size:0.9rem;color:#666;">Fermer</button>';
+    menu.appendChild(inner);
+    document.body.appendChild(menu);
+}
+
+function closeShareMenu() {
+    var overlay = document.getElementById('share-menu-overlay');
+    if (overlay) overlay.remove();
+}
+
+function copyShareLink(url) {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(function() {
+            var btn = document.querySelector('#share-menu-overlay button[onclick^="copyShareLink"]');
+            if (btn) { btn.textContent = 'Copie!'; setTimeout(function() { btn.textContent = 'Copier le lien'; }, 2000); }
+        });
+    } else {
+        var ta = document.createElement('textarea');
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+    }
+}
+
+function trackShare(platform) {
+    if (typeof logEvent === 'function') {
+        logEvent('share_click', { platform: platform, url: window.location.href });
+    }
+}
 

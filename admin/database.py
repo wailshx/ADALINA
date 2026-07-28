@@ -207,6 +207,11 @@ def _run_migrations(conn):
             "ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS max_days INTEGER DEFAULT 5",
         ]
         _safe_exec_group(conn, cur, delivery_prices_col_migrations)
+        product_slug_migrations = [
+            "ALTER TABLE products ADD COLUMN IF NOT EXISTS slug TEXT",
+        ]
+        _safe_exec_group(conn, cur, product_slug_migrations)
+        _backfill_product_slugs(conn, cur)
         data_migrations = [
             "UPDATE delivery_prices SET wilaya_code = wilaya_id, wilaya_name = wilaya WHERE wilaya_code IS NULL",
             "UPDATE delivery_prices SET active = true WHERE active IS NULL",
@@ -268,6 +273,40 @@ def _run_migrations(conn):
         conn.commit()
     finally:
         cur.close()
+
+
+def _backfill_product_slugs(conn, cur):
+    import re as _re
+    def _make_slug(name):
+        s = name.lower().strip()
+        s = _re.sub(r'[^a-z0-9\s-]', '', s)
+        s = _re.sub(r'[\s]+', '-', s)
+        s = _re.sub(r'-+', '-', s)
+        return s.strip('-')
+    try:
+        cur.execute("SELECT id, name FROM products WHERE slug IS NULL OR slug = ''")
+        rows = cur.fetchall()
+        if not rows:
+            return
+        cur.execute("SELECT slug FROM products WHERE slug IS NOT NULL AND slug != ''")
+        existing = {r['slug'] for r in cur.fetchall()}
+        for row in rows:
+            base = _make_slug(row['name'] or str(row['id']))
+            if not base:
+                base = f'produit-{row["id"]}'
+            slug = base
+            counter = 2
+            while slug in existing:
+                slug = f'{base}-{counter}'
+                counter += 1
+            existing.add(slug)
+            cur.execute("UPDATE products SET slug=%s WHERE id=%s", (slug, row['id']))
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
 
 def _safe_exec_group(conn, cur, statements):
@@ -422,6 +461,7 @@ def init_db():
     cur.execute("""CREATE TABLE IF NOT EXISTS products (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
+        slug TEXT UNIQUE,
         description TEXT,
         price DOUBLE PRECISION NOT NULL,
         sale_price DOUBLE PRECISION DEFAULT NULL,

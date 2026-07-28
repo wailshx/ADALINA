@@ -167,7 +167,7 @@ def list_products(
         if limit > 0:
             offset = (page - 1) * limit
             cur.execute("""
-                SELECT DISTINCT p.id, p.name, p.description, p.price, p.sale_price,
+                SELECT DISTINCT p.id, p.name, p.slug, p.description, p.price, p.sale_price,
                        p.category_id, p.image, p.images, p.badge, p.sizes, p.colors,
                        p.stock, p.brand, p.rating, p.status, p.featured, p.new_arrival,
                        p.created_at,
@@ -201,7 +201,7 @@ def list_products(
                 if cached is not None:
                     return _json_response(cached, max_age=60)
             cur.execute("""
-                SELECT DISTINCT p.id, p.name, p.description, p.price, p.sale_price,
+                SELECT DISTINCT p.id, p.name, p.slug, p.description, p.price, p.sale_price,
                        p.category_id, p.image, p.images, p.badge, p.sizes, p.colors,
                        p.stock, p.brand, p.rating, p.status, p.featured, p.new_arrival,
                        p.created_at,
@@ -237,7 +237,7 @@ def get_featured_products():
         db = get_public_db()
         cur = db.cursor()
         cur.execute("""
-            SELECT p.id, p.name, p.description, p.price, p.sale_price, p.category_id,
+            SELECT p.id, p.name, p.slug, p.description, p.price, p.sale_price, p.category_id,
                    p.image, p.images, p.badge, p.sizes, p.colors, p.stock, p.brand,
                    p.rating, p.status, p.featured, p.new_arrival, p.created_at,
                    c.name AS category_name, c.size_system AS category_size_system
@@ -329,7 +329,7 @@ def get_recommendations(pid: str):
             cur.execute("""
                 SELECT p.id, p.name, p.description, p.price, p.sale_price, p.category_id,
                        p.image, p.images, p.badge, p.sizes, p.colors, p.stock, p.brand,
-                       p.rating, p.status, p.featured, p.new_arrival, p.created_at,
+                       p.rating, p.status, p.featured, p.new_arrival, p.created_at, p.slug,
                        c.name AS category_name, c.size_system AS category_size_system
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.id
@@ -341,7 +341,7 @@ def get_recommendations(pid: str):
             cur.execute("""
                 SELECT p.id, p.name, p.description, p.price, p.sale_price, p.category_id,
                        p.image, p.images, p.badge, p.sizes, p.colors, p.stock, p.brand,
-                       p.rating, p.status, p.featured, p.new_arrival, p.created_at,
+                       p.rating, p.status, p.featured, p.new_arrival, p.created_at, p.slug,
                        c.name AS category_name, c.size_system AS category_size_system
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.id
@@ -371,15 +371,26 @@ def get_product(pid: str):
     try:
         db = get_public_db()
         cur = db.cursor()
-        cur.execute("""
-            SELECT p.id, p.name, p.description, p.price, p.sale_price, p.category_id,
-                   p.image, p.images, p.badge, p.sizes, p.colors, p.stock, p.brand,
-                   p.rating, p.status, p.featured, p.new_arrival, p.created_at,
-                   c.name AS category_name, c.size_system AS category_size_system
-            FROM products p
-            LEFT JOIN categories c ON p.category_id = c.id
-            WHERE p.id=%s AND p.status='active'
-        """, (pid,))
+        if pid.isdigit():
+            cur.execute("""
+                SELECT p.id, p.name, p.slug, p.description, p.price, p.sale_price, p.category_id,
+                       p.image, p.images, p.badge, p.sizes, p.colors, p.stock, p.brand,
+                       p.rating, p.status, p.featured, p.new_arrival, p.created_at,
+                       c.name AS category_name, c.size_system AS category_size_system
+                FROM products p
+                LEFT JOIN categories c ON p.category_id = c.id
+                WHERE p.id=%s AND p.status='active'
+            """, (pid,))
+        else:
+            cur.execute("""
+                SELECT p.id, p.name, p.slug, p.description, p.price, p.sale_price, p.category_id,
+                       p.image, p.images, p.badge, p.sizes, p.colors, p.stock, p.brand,
+                       p.rating, p.status, p.featured, p.new_arrival, p.created_at,
+                       c.name AS category_name, c.size_system AS category_size_system
+                FROM products p
+                LEFT JOIN categories c ON p.category_id = c.id
+                WHERE p.slug=%s AND p.status='active'
+            """, (pid,))
         row = cur.fetchone()
         if not row:
             return _json_response({'error': 'Not found'}, status=404)
