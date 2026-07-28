@@ -291,6 +291,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             response.headers['Content-Security-Policy'] = ADMIN_CSP
         else:
             response.headers['Content-Security-Policy'] = PUBLIC_CSP
+        if path.startswith('/api/'):
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)

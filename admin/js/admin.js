@@ -26,11 +26,16 @@ async function api(method, url, data) {
             window.location.href = '/gestion/login';
             return null;
         }
-        return await safeJson(res);
+        const body = await safeJson(res);
+        if (!res.ok) {
+            var msg = (body && body.error) ? body.error : ('HTTP ' + res.status);
+            throw new Error(msg);
+        }
+        return body;
     } catch (err) {
         console.error('[api]', method, url, err);
         if (typeof showAdminError === 'function') {
-            showAdminError('Erreur réseau: ' + method + ' ' + url + ' — ' + (err.message || err));
+            showAdminError('Erreur: ' + method + ' ' + url + ' — ' + (err.message || err));
         }
         return null;
     }

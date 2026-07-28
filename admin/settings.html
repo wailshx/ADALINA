@@ -273,6 +273,10 @@
             transition: opacity 0.3s ease;
         }
 
+        .save-msg.error-msg {
+            color: #ef4444;
+        }
+
         .save-msg.hidden {
             opacity: 0;
             pointer-events: none;
@@ -841,7 +845,10 @@ function loadWilayaPrices() {
         }
         renderWilayaTable();
     }).catch(function() {
-        fetch('/api/delivery-prices', {credentials:'same-origin'}).then(function(r){return r.json()}).then(function(data){
+        fetch('/api/delivery-prices', {credentials:'same-origin'}).then(function(r){
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        }).then(function(data){
             _wilayaPrices = {};
             if (Array.isArray(data)) {
                 data.forEach(function(r) {
@@ -849,6 +856,10 @@ function loadWilayaPrices() {
                 });
             }
             renderWilayaTable();
+        }).catch(function() {
+            if (typeof showAdminError === 'function') {
+                showAdminError('Impossible de charger les prix de livraison');
+            }
         });
     });
 }
@@ -909,6 +920,16 @@ function saveWilayaPrices() {
     var btn = document.querySelector('.wilaya-save-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wilaya-spinner"></span> Enregistrement...'; }
     api('PUT', '/delivery-prices', payload).then(function(res) {
+        if (!res || res.error) {
+            var msg = document.getElementById('delivery-saveMsg');
+            if (msg) {
+                msg.textContent = res && res.error ? 'Erreur: ' + res.error : 'Erreur inconnue';
+                msg.className = 'save-msg error-msg';
+                msg.classList.remove('hidden');
+                setTimeout(function(){msg.classList.add('hidden');}, 5000);
+            }
+            return;
+        }
         var msg = document.getElementById('delivery-saveMsg');
         if (msg) {
             msg.textContent = 'Tarifs de livraison enregistrés avec succès.';
@@ -917,14 +938,13 @@ function saveWilayaPrices() {
             setTimeout(function(){msg.classList.add('hidden');}, 4000);
         }
     }).catch(function() {
-        fetch('/api/delivery-prices', {
-            method:'PUT', credentials:'same-origin',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify(payload)
-        }).then(function(r){return r.json()}).then(function(){
-            var msg = document.getElementById('delivery-saveMsg');
-            if (msg) { msg.textContent = 'Tarifs enregistrés.'; msg.className = 'save-msg'; msg.classList.remove('hidden'); setTimeout(function(){msg.classList.add('hidden');}, 4000); }
-        });
+        var msg = document.getElementById('delivery-saveMsg');
+        if (msg) {
+            msg.textContent = 'Erreur réseau. Réessayez.';
+            msg.className = 'save-msg error-msg';
+            msg.classList.remove('hidden');
+            setTimeout(function(){msg.classList.add('hidden');}, 5000);
+        }
     }).finally(function() {
         if (btn) { btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px;margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Enregistrer'; }
     });
