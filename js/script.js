@@ -1962,6 +1962,10 @@ function updateCheckoutSummary() {
 
 function placeOrder(e) {
     if (e) e.preventDefault();
+    var submitBtn = document.querySelector('.checkout-submit');
+    if (submitBtn && submitBtn.disabled) return;
+    var isAr = i18n.getLang() === 'ar';
+    var btnHtml = '<span>' + (isAr ? 'تأكيد الطلب' : 'Confirmer la commande') + '</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
     try {
     var name = document.getElementById('co-full-name').value.trim();
     var phone = document.getElementById('co-phone').value.trim();
@@ -1972,15 +1976,18 @@ function placeOrder(e) {
     var deliveryModeSel = document.getElementById('co-delivery-mode');
     var deliveryMode = deliveryModeSel ? deliveryModeSel.value : '';
 
-    if (!name || !phone || !wilayaSel.value || !muniSel.value) {
-        var fillReqMsg = (i18n.getLang() === 'ar') ? 'يرجى ملء جميع الحقول المطلوبة' : i18n.t('checkout.fillRequired');
-        alert(fillReqMsg);
-        return;
-    }
+    document.querySelectorAll('.checkout-section.is-collapsed').forEach(function(s) {
+        s.classList.remove('is-collapsed');
+    });
 
-    if (!deliveryMode) {
-        var deliveryModeMsg = (i18n.getLang() === 'ar') ? 'يرجى اختيار طريقة التوصيل' : i18n.t('checkout.deliveryModeRequired');
-        alert(deliveryModeMsg);
+    if (!name || !phone || !wilayaSel.value || !muniSel.value || !deliveryMode) {
+        if (!name) { var nm = document.getElementById('co-full-name'); if (nm) nm.classList.add('error'); }
+        if (!phone) { var ph = document.getElementById('co-phone'); if (ph) ph.classList.add('error'); }
+        if (!wilayaSel.value) wilayaSel.classList.add('error');
+        if (!muniSel.value) muniSel.classList.add('error');
+        if (!deliveryMode) deliveryModeSel.classList.add('error');
+        var fillReqMsg = isAr ? 'يرجى ملء جميع الحقول المطلوبة' : i18n.t('checkout.fillRequired');
+        showToast(fillReqMsg);
         return;
     }
 
@@ -1990,8 +1997,8 @@ function placeOrder(e) {
     }
 
     if (cart.length === 0) {
-        var emptyMsg = (i18n.getLang() === 'ar') ? 'سلتك فارغة' : i18n.t('checkout.emptyCart');
-        alert(emptyMsg);
+        var emptyMsg = isAr ? 'سلتك فارغة' : i18n.t('checkout.emptyCart');
+        showToast(emptyMsg);
         return;
     }
 
@@ -2003,9 +2010,9 @@ function placeOrder(e) {
         var variants = p.variants || [];
         if (variants.length > 0 && color && size) {
             var vs = getVariantStock(p, color, size);
-            if (vs < item.quantity) { alert('\U0001f6ab ' + i18n.t('stock.out') + ': ' + item.name + ' (' + color + '/' + size + ')'); return true; }
+            if (vs < item.quantity) { showToast(i18n.t('stock.out') + ': ' + item.name + ' (' + color + '/' + size + ')'); return true; }
         } else if (variants.length === 0 && (p.stock || 0) < item.quantity) {
-            alert('\U0001f6ab ' + i18n.t('stock.out') + ': ' + item.name); return true;
+            showToast(i18n.t('stock.out') + ': ' + item.name); return true;
         }
         return false;
     });
@@ -2036,6 +2043,11 @@ function placeOrder(e) {
         total: total,
         delivery_fee: deliveryFee
     };
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="btn-spinner"></span><span>' + (isAr ? 'جاري الإرسال...' : 'Envoi en cours...') + '</span>';
+    }
 
     fetch('/api/orders', {
         method: 'POST',
@@ -2070,11 +2082,13 @@ function placeOrder(e) {
         updateCheckoutSummary();
     }).catch(function (err) {
         console.error('Order error:', err);
-        alert(err.message || i18n.t('checkout.orderError'));
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = btnHtml; }
+        showToast(err.message || i18n.t('checkout.orderError'));
     });
     } catch (domErr) {
         console.error('Order error:', domErr);
-        alert(i18n.t('checkout.generalError'));
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = btnHtml; }
+        showToast(i18n.t('checkout.generalError'));
     }
 }
 

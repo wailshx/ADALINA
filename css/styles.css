@@ -3500,7 +3500,7 @@ input[type="checkbox"] {
     }
 
     .pp-main-wrap img {
-        height: 280px;
+        height: 360px;
         object-fit: contain;
     }
 
@@ -3524,6 +3524,16 @@ input[type="checkbox"] {
 
     .sz-taille-info {
         font-size: 0.72rem;
+    }
+
+    .checkout-submit {
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+        border-radius: 0;
+        padding: 1rem;
+        margin: 0 -1.5rem;
+        width: calc(100% + 3rem);
     }
 
     .btn {
@@ -3988,6 +3998,27 @@ input[type="checkbox"] {
 
 .checkout-submit:hover svg {
     transform: translateX(4px);
+}
+
+.btn-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+    margin-right: 6px;
+}
+
+.checkout-submit:disabled {
+    opacity: 0.7;
+    cursor: wait;
+    pointer-events: none;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 /* ── Order Confirmation Modal ── */
