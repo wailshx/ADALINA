@@ -2458,6 +2458,11 @@ function refreshProductSizes() {
 function selectProductSize(size, el) {
     productPageState.selectedSize = size;
     document.querySelectorAll('.size-btn, .pp-size-btn').forEach(function (b) { b.classList.remove('selected'); });
+    document.querySelectorAll('.sz-taille-box.selected').forEach(function (b) {
+        b.classList.remove('selected');
+        var st = b.querySelector('.sz-taille-status');
+        if (st) st.remove();
+    });
     if (el) el.classList.add('selected');
     var images = getCurrentProductImages();
     updateProductGallery(images);

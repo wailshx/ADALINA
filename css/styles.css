@@ -3394,10 +3394,12 @@ input[type="checkbox"] {
 
     .pp-gallery {
         position: static;
+        order: -1;
     }
 
     .pp-main-wrap img {
         height: 360px;
+        object-fit: contain;
     }
 
     .pp-name {
@@ -3499,6 +3501,7 @@ input[type="checkbox"] {
 
     .pp-main-wrap img {
         height: 280px;
+        object-fit: contain;
     }
 
     .pp-name {
@@ -3508,6 +3511,19 @@ input[type="checkbox"] {
     .pp-thumb {
         width: 56px;
         height: 56px;
+    }
+
+    .sz-taille-box {
+        padding: 14px 16px;
+        min-height: 52px;
+    }
+
+    .sz-taille-label {
+        font-size: 0.9rem;
+    }
+
+    .sz-taille-info {
+        font-size: 0.72rem;
     }
 
     .btn {
