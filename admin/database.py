@@ -187,22 +187,14 @@ def _run_migrations(conn):
                 expires_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL '30 days')
             )""",
         ]
-        for sql in migrations:
-            try:
-                cur.execute(sql)
-            except Exception:
-                pass
+        _safe_exec_group(conn, cur, migrations)
         variant_stock_history_migrations = [
             "ALTER TABLE stock_history ADD COLUMN IF NOT EXISTS variant_id INTEGER",
             "ALTER TABLE stock_history ADD COLUMN IF NOT EXISTS color_name TEXT",
             "ALTER TABLE stock_history ADD COLUMN IF NOT EXISTS size_name TEXT",
             "CREATE INDEX IF NOT EXISTS idx_stock_history_variant ON stock_history(variant_id)",
         ]
-        for sql in variant_stock_history_migrations:
-            try:
-                cur.execute(sql)
-            except Exception:
-                pass
+        _safe_exec_group(conn, cur, variant_stock_history_migrations)
         delivery_prices_col_migrations = [
             "ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS wilaya_code INTEGER",
             "ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS wilaya_name TEXT",
@@ -210,19 +202,18 @@ def _run_migrations(conn):
             "ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS office_price DOUBLE PRECISION DEFAULT 0",
             "ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true",
             "ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            "ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS wilaya TEXT DEFAULT ''",
+            "ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS min_days INTEGER DEFAULT 2",
+            "ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS max_days INTEGER DEFAULT 5",
         ]
-        for sql in delivery_prices_col_migrations:
-            try:
-                cur.execute(sql)
-            except Exception:
-                pass
-        try:
-            cur.execute("UPDATE delivery_prices SET wilaya_code = wilaya_id, wilaya_name = wilaya WHERE wilaya_code IS NULL")
-            cur.execute("UPDATE delivery_prices SET active = true WHERE active IS NULL")
-            cur.execute("UPDATE delivery_prices SET office_price = price WHERE office_price = 0 AND price > 0")
-            cur.execute("UPDATE delivery_prices SET home_price = ROUND((office_price * 1.5 / 50.0)) * 50 WHERE home_price = 0 AND office_price > 0")
-        except Exception:
-            pass
+        _safe_exec_group(conn, cur, delivery_prices_col_migrations)
+        data_migrations = [
+            "UPDATE delivery_prices SET wilaya_code = wilaya_id, wilaya_name = wilaya WHERE wilaya_code IS NULL",
+            "UPDATE delivery_prices SET active = true WHERE active IS NULL",
+            "UPDATE delivery_prices SET office_price = price WHERE office_price = 0 AND price > 0",
+            "UPDATE delivery_prices SET home_price = ROUND((office_price * 1.5 / 50.0)) * 50 WHERE home_price = 0 AND office_price > 0",
+        ]
+        _safe_exec_group(conn, cur, data_migrations)
         idx_migrations = [
             "CREATE INDEX IF NOT EXISTS idx_products_category_status ON products(category_id, status)",
             "CREATE INDEX IF NOT EXISTS idx_products_status_created ON products(status, created_at DESC)",
@@ -250,76 +241,45 @@ def _run_migrations(conn):
             "CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email)",
             "CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC)",
         ]
-        for idx_sql in idx_migrations:
-            try:
-                cur.execute(idx_sql)
-            except Exception:
-                pass
+        _safe_exec_group(conn, cur, idx_migrations)
         rls_tables = [
             'users', 'categories', 'products', 'product_sizes', 'product_colors',
             'product_variants', 'collections', 'collection_products', 'customers',
             'orders', 'inventory', 'stock_history', 'variant_images', 'variant_sizes',
             'delivery_prices', 'settings', 'audit_logs', 'status_history', 'search_events',
         ]
+        rls_stmts = []
         for tbl in rls_tables:
-            try:
-                cur.execute(f"ALTER TABLE {tbl} ENABLE ROW LEVEL SECURITY")
-            except Exception:
-                pass
+            rls_stmts.append(f"ALTER TABLE {tbl} ENABLE ROW LEVEL SECURITY")
         for tbl in rls_tables:
-            try:
-                cur.execute(f"GRANT ALL ON TABLE {tbl} TO service_role")
-            except Exception:
-                pass
+            rls_stmts.append(f"GRANT ALL ON TABLE {tbl} TO service_role")
         for tbl in rls_tables:
-            try:
-                cur.execute(f"""CREATE POLICY IF NOT EXISTS "allow_all_{tbl}" ON {tbl}
-                    FOR ALL USING (true) WITH CHECK (true)""")
-            except Exception:
-                pass
-        try:
-            cur.execute("ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS wilaya TEXT DEFAULT ''")
-        except Exception:
-            pass
-        try:
-            cur.execute("ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS min_days INTEGER DEFAULT 2")
-        except Exception:
-            pass
-        try:
-            cur.execute("ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS max_days INTEGER DEFAULT 5")
-        except Exception:
-            pass
-        try:
-            cur.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role")
-        except Exception:
-            pass
-        try:
-            cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_mode TEXT DEFAULT ''")
-        except Exception:
-            pass
-        status_history_col_migrations = [
+            rls_stmts.append(f"""CREATE POLICY IF NOT EXISTS "allow_all_{tbl}" ON {tbl} FOR ALL USING (true) WITH CHECK (true)""")
+        _safe_exec_group(conn, cur, rls_stmts)
+        misc_migrations = [
+            "ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_mode TEXT DEFAULT ''",
             "ALTER TABLE status_history ADD COLUMN IF NOT EXISTS changed_by TEXT DEFAULT 'admin'",
             "ALTER TABLE status_history ADD COLUMN IF NOT EXISTS previous_status TEXT DEFAULT ''",
+            "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO service_role",
         ]
-        for sql in status_history_col_migrations:
-            try:
-                cur.execute(sql)
-            except Exception:
-                pass
-        status_history_col_migrations = [
-            "ALTER TABLE status_history ADD COLUMN IF NOT EXISTS changed_by TEXT DEFAULT 'admin'",
-            "ALTER TABLE status_history ADD COLUMN IF NOT EXISTS previous_status TEXT DEFAULT ''",
-        ]
-        for sql in status_history_col_migrations:
-            try:
-                cur.execute(sql)
-            except Exception:
-                pass
+        _safe_exec_group(conn, cur, misc_migrations)
         _seed_delivery_times(cur)
         _seed_delivery_prices(cur)
         conn.commit()
     finally:
         cur.close()
+
+
+def _safe_exec_group(conn, cur, statements):
+    for sql in statements:
+        try:
+            cur.execute(sql)
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
 
 def _seed_delivery_times(cur):
     wilaya_times = {
@@ -355,17 +315,26 @@ def _seed_delivery_times(cur):
         53: 'In Salah', 54: 'In Guezzam', 55: 'Touggourt', 56: 'Djanet',
         57: "El M'Ghair", 58: 'El Meniaa',
     }
+    conn = cur.connection
     for wid in range(1, 59):
         name = wilaya_names.get(wid, '')
         mn, mx = wilaya_times.get(name, (3, 5))
         try:
             cur.execute("UPDATE delivery_prices SET wilaya=%s, min_days=%s, max_days=%s WHERE wilaya_id=%s AND (min_days IS NULL OR min_days = 2 AND max_days = 5)", (name, mn, mx, wid))
+            conn.commit()
         except Exception:
-            pass
+            try:
+                conn.rollback()
+            except Exception:
+                pass
         try:
             cur.execute("INSERT INTO delivery_prices (wilaya_id, wilaya, price, min_days, max_days) VALUES (%s, %s, 0, %s, %s) ON CONFLICT (wilaya_id) DO NOTHING", (wid, name, mn, mx))
+            conn.commit()
         except Exception:
-            pass
+            try:
+                conn.rollback()
+            except Exception:
+                pass
 
 
 def _seed_delivery_prices(cur):
@@ -401,6 +370,7 @@ def _seed_delivery_prices(cur):
         50: (900, 700), 49: (850, 650), 52: (800, 600), 53: (900, 700),
         54: (950, 750), 56: (950, 750),
     }
+    conn = cur.connection
     for wid in range(1, 59):
         name = wilaya_names.get(wid, '')
         home_p, office_p = wilaya_prices.get(wid, (700, 500))
@@ -415,8 +385,12 @@ def _seed_delivery_prices(cur):
                     office_price = CASE WHEN delivery_prices.office_price = 0 THEN EXCLUDED.office_price ELSE delivery_prices.office_price END,
                     updated_at = CURRENT_TIMESTAMP""",
                 (wid, name, wid, name, office_p, home_p, office_p))
+            conn.commit()
         except Exception:
-            pass
+            try:
+                conn.rollback()
+            except Exception:
+                pass
 
 
 def init_db():
