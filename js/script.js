@@ -1613,6 +1613,7 @@ function getDeliveryPrice(wilayaId, mode) {
     if (!wilayaId) return 0;
     var entry = _deliveryPrices[String(wilayaId)];
     if (!entry) return 0;
+    if (typeof entry === 'number') return entry;
     if (mode === 'domicile') return Number(entry.home || 0);
     return Number(entry.office || 0);
 }

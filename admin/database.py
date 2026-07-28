@@ -218,6 +218,7 @@ def _run_migrations(conn):
                 pass
         try:
             cur.execute("UPDATE delivery_prices SET wilaya_code = wilaya_id, wilaya_name = wilaya WHERE wilaya_code IS NULL")
+            cur.execute("UPDATE delivery_prices SET active = true WHERE active IS NULL")
             cur.execute("UPDATE delivery_prices SET office_price = price WHERE office_price = 0 AND price > 0")
             cur.execute("UPDATE delivery_prices SET home_price = ROUND((office_price * 1.5 / 50.0)) * 50 WHERE home_price = 0 AND office_price > 0")
         except Exception:

@@ -473,11 +473,11 @@ def get_delivery_prices():
         db = get_public_db()
         cur = db.cursor()
         try:
-            cur.execute("SELECT wilaya_code, wilaya_name, home_price, office_price FROM delivery_prices WHERE active = true ORDER BY wilaya_code")
+            cur.execute("SELECT COALESCE(wilaya_code, wilaya_id) AS code, COALESCE(wilaya_name, wilaya) AS name, home_price, office_price FROM delivery_prices WHERE active IS NULL OR active = true ORDER BY code")
             rows = cur.fetchall()
             result = {}
             for r in rows:
-                result[str(r['wilaya_code'])] = {"home": r['home_price'], "office": r['office_price'], "name": r['wilaya_name']}
+                result[str(r['code'])] = {"home": r['home_price'] or 0, "office": r['office_price'] or 0, "name": r['name'] or ''}
         except Exception:
             cur.execute("SELECT wilaya_id, price FROM delivery_prices ORDER BY wilaya_id")
             rows = cur.fetchall()
