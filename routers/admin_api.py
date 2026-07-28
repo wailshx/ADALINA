@@ -1,4 +1,6 @@
 import os
+import io
+import csv
 import json
 import secrets
 import hashlib
@@ -11,7 +13,7 @@ import subprocess
 from typing import Optional, List, Any
 
 from fastapi import APIRouter, Request, HTTPException, Depends, Body, Query, File, UploadFile, Form
-from starlette.responses import JSONResponse as _StarletteJSONResponse
+from starlette.responses import JSONResponse as _StarletteJSONResponse, StreamingResponse
 
 import sys as _sys
 _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -54,7 +56,7 @@ PBKDF2_ITERATIONS = 600000
 ALLOWED_PRODUCT_COLUMNS = {'name', 'description', 'price', 'sale_price', 'category_id', 'image', 'images', 'badge', 'sizes', 'colors', 'stock', 'brand', 'rating', 'featured', 'new_arrival', 'status'}
 ALLOWED_CATEGORY_COLUMNS = {'name', 'slug', 'description', 'image', 'status', 'size_system'}
 ALLOWED_COLLECTION_COLUMNS = {'name', 'description', 'image', 'status'}
-ALLOWED_ORDER_COLUMNS = {'status', 'total', 'items', 'customer_name', 'customer_phone', 'wilaya', 'commune', 'shipping_address', 'payment_method', 'delivery_fee', 'customer_id', 'is_read'}
+ALLOWED_ORDER_COLUMNS = {'status', 'total', 'items', 'customer_name', 'customer_phone', 'wilaya', 'commune', 'shipping_address', 'payment_method', 'delivery_fee', 'delivery_mode', 'customer_id', 'is_read'}
 ALLOWED_CUSTOMER_COLUMNS = {'name', 'email', 'phone', 'address', 'status'}
 
 
@@ -865,14 +867,38 @@ def get_collection(cid: str, session_token: str = Depends(require_admin_auth)):
 
 
 @router.get('/orders')
-def list_orders(session_token: str = Depends(require_admin_auth)):
+def list_orders(status: str = Query(''), search: str = Query(''), date_from: str = Query(''), date_to: str = Query(''), wilaya: str = Query(''), session_token: str = Depends(require_admin_auth)):
     db = get_db()
     cur = db.cursor()
     try:
-        cur.execute("""
-            SELECT o.*, COALESCE(c.name, o.customer_name) AS customer_name, c.email AS customer_email
-            FROM orders o LEFT JOIN customers c ON o.customer_id = c.id ORDER BY o.id DESC
-        """)
+        where = []
+        params = []
+        if status:
+            where.append("o.status = %s")
+            params.append(status)
+        if search:
+            where.append("(o.order_number ILIKE %s OR o.customer_name ILIKE %s OR o.customer_phone ILIKE %s OR o.wilaya ILIKE %s)")
+            s = '%' + search.strip() + '%'
+            params.extend([s, s, s, s])
+        if date_from:
+            where.append("o.created_at >= %s::timestamp")
+            params.append(date_from)
+        if date_to:
+            where.append("o.created_at <= (%s || ' 23:59:59')::timestamp")
+            params.append(date_to)
+        if wilaya:
+            where.append("o.wilaya = %s")
+            params.append(wilaya)
+        where_clause = " WHERE " + " AND ".join(where) if where else ""
+        cur.execute(f"""
+            SELECT o.id, o.order_number, o.customer_name, o.customer_phone, o.wilaya, o.commune,
+                   o.delivery_mode, o.delivery_fee, o.total, o.payment_method, o.status, o.created_at,
+                   o.is_read, o.shipping_address,
+                   (o.total - COALESCE(o.delivery_fee, 0)) AS subtotal
+            FROM orders o
+            {where_clause}
+            ORDER BY o.created_at DESC
+        """, params)
         rows = cur.fetchall()
         orders_list = rows_to_list(rows)
         for o in orders_list:
@@ -896,9 +922,15 @@ def order_history(oid: str, session_token: str = Depends(require_admin_auth)):
     db = get_db()
     cur = db.cursor()
     try:
-        cur.execute("SELECT status, note, created_at FROM status_history WHERE order_id=%s ORDER BY created_at ASC", (oid,))
+        cur.execute("""SELECT status, note, created_at,
+                       COALESCE(changed_by, 'admin') AS changed_by,
+                       COALESCE(previous_status, '') AS previous_status
+                       FROM status_history WHERE order_id=%s ORDER BY created_at ASC""", (oid,))
         rows = cur.fetchall()
-        result = [{'status': r['status'], 'note': r['note'], 'created_at': r['created_at'].isoformat() if r['created_at'] else None} for r in rows]
+        result = [{'status': r['status'], 'note': r['note'],
+                   'created_at': r['created_at'].isoformat() if r['created_at'] else None,
+                   'changed_by': r['changed_by'],
+                   'previous_status': r['previous_status']} for r in rows]
         return result
     finally:
         try:
@@ -911,10 +943,8 @@ def order_history(oid: str, session_token: str = Depends(require_admin_auth)):
             pass
 
 
-@router.get('/orders/export/csv')
-def export_orders_csv(request: Request, session_token: str = Depends(require_admin_auth)):
-    from starlette.responses import StreamingResponse
-    import io
+@router.get('/orders/export/excel')
+def export_orders_excel(session_token: str = Depends(require_admin_auth)):
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     db = get_db()
@@ -924,7 +954,7 @@ def export_orders_csv(request: Request, session_token: str = Depends(require_adm
             SELECT o.id, o.order_number, COALESCE(c.name, o.customer_name) AS customer_name,
                    o.customer_phone, o.wilaya, o.commune, o.total, o.status,
                    o.delivery_mode, o.delivery_fee, o.payment_method, o.items,
-                   o.created_at
+                   o.created_at, (o.total - COALESCE(o.delivery_fee, 0)) AS subtotal
             FROM orders o LEFT JOIN customers c ON o.customer_id = c.id
             ORDER BY o.created_at DESC
         """)
@@ -933,8 +963,8 @@ def export_orders_csv(request: Request, session_token: str = Depends(require_adm
         ws = wb.active
         ws.title = 'Commandes'
         headers = ['Numéro', 'Client', 'Téléphone', 'Wilaya', 'Commune',
-                   'Total (DA)', 'Statut', 'Livraison', 'Frais livraison',
-                   'Paiement', 'Articles', 'Date']
+                   'Mode livraison', 'Frais livraison', 'Sous-total', 'Total (DA)',
+                   'Paiement', 'Statut', 'Date']
         header_font = Font(bold=True, color='FFFFFF', size=11)
         header_fill = PatternFill(start_color='1B4D3E', end_color='1B4D3E', fill_type='solid')
         thin_border = Border(
@@ -951,23 +981,12 @@ def export_orders_csv(request: Request, session_token: str = Depends(require_adm
             cell.border = thin_border
         for ri, r in enumerate(rows, 2):
             rd = dict(r)
-            items_str = ''
-            try:
-                items = json.loads(rd['items']) if rd['items'] else []
-                parts = []
-                for it in items:
-                    name = it.get('name') or it.get('product_name', '')
-                    sz = it.get('size') or it.get('selectedSize', '')
-                    qty = it.get('quantity') or it.get('qty', 1)
-                    parts.append(f"{name} ({sz}) x{qty}")
-                items_str = '; '.join(parts)
-            except Exception:
-                items_str = str(rd.get('items', ''))
             created = rd['created_at'].strftime('%Y-%m-%d %H:%M') if rd['created_at'] else ''
             vals = [rd.get('order_number', ''), rd.get('customer_name', ''),
                     rd.get('customer_phone', ''), rd.get('wilaya', ''), rd.get('commune', ''),
-                    rd.get('total', 0), rd.get('status', ''), rd.get('delivery_mode', ''),
-                    rd.get('delivery_fee', 0), rd.get('payment_method', ''), items_str, created]
+                    rd.get('delivery_mode', ''), rd.get('delivery_fee', 0),
+                    rd.get('subtotal', 0), rd.get('total', 0),
+                    rd.get('payment_method', ''), rd.get('status', ''), created]
             for col, v in enumerate(vals, 1):
                 cell = ws.cell(row=ri, column=col, value=v)
                 cell.border = thin_border
@@ -982,6 +1001,110 @@ def export_orders_csv(request: Request, session_token: str = Depends(require_adm
             media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             headers={'Content-Disposition': 'attachment; filename="commandes_adalina.xlsx"'}
         )
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+@router.get('/orders/export/csv')
+def export_orders_csv(session_token: str = Depends(require_admin_auth)):
+    db = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            SELECT o.id, o.order_number, COALESCE(c.name, o.customer_name) AS customer_name,
+                   o.customer_phone, o.wilaya, o.commune, o.total, o.status,
+                   o.delivery_mode, o.delivery_fee, o.payment_method,
+                   o.created_at, (o.total - COALESCE(o.delivery_fee, 0)) AS subtotal
+            FROM orders o LEFT JOIN customers c ON o.customer_id = c.id
+            ORDER BY o.created_at DESC
+        """)
+        rows = cur.fetchall()
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(['Numéro', 'Client', 'Téléphone', 'Wilaya', 'Commune',
+                         'Mode livraison', 'Frais livraison', 'Sous-total', 'Total (DA)',
+                         'Paiement', 'Statut', 'Date'])
+        for r in rows:
+            rd = dict(r)
+            created = rd['created_at'].strftime('%Y-%m-%d %H:%M') if rd['created_at'] else ''
+            writer.writerow([rd.get('order_number', ''), rd.get('customer_name', ''),
+                             rd.get('customer_phone', ''), rd.get('wilaya', ''), rd.get('commune', ''),
+                             rd.get('delivery_mode', ''), rd.get('delivery_fee', 0),
+                             rd.get('subtotal', 0), rd.get('total', 0),
+                             rd.get('payment_method', ''), rd.get('status', ''), created])
+        output = io.BytesIO(buf.getvalue().encode('utf-8-sig'))
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type='text/csv; charset=utf-8',
+            headers={'Content-Disposition': 'attachment; filename="commandes_adalina.csv"'}
+        )
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+@router.get('/orders/export/pdf')
+def export_orders_pdf(session_token: str = Depends(require_admin_auth)):
+    from starlette.responses import HTMLResponse
+    db = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            SELECT o.order_number, o.customer_name, o.customer_phone, o.wilaya, o.commune,
+                   o.delivery_mode, o.delivery_fee, o.total, o.payment_method, o.status,
+                   o.created_at, (o.total - COALESCE(o.delivery_fee, 0)) AS subtotal
+            FROM orders o ORDER BY o.created_at DESC
+        """)
+        rows = cur.fetchall()
+        html_rows = ''
+        for r in rows_to_list(rows):
+            created = r['created_at'].strftime('%Y-%m-%d %H:%M') if r.get('created_at') else ''
+            html_rows += f"""<tr>
+                <td>{escape_html(str(r.get('order_number','')))}</td>
+                <td>{escape_html(str(r.get('customer_name','')))}</td>
+                <td>{escape_html(str(r.get('customer_phone','')))}</td>
+                <td>{escape_html(str(r.get('wilaya','')))}</td>
+                <td>{escape_html(str(r.get('commune','')))}</td>
+                <td>{escape_html(str(r.get('delivery_mode','')))}</td>
+                <td>{r.get('delivery_fee',0)}</td>
+                <td>{r.get('subtotal',0)}</td>
+                <td>{r.get('total',0)}</td>
+                <td>{escape_html(str(r.get('payment_method','')))}</td>
+                <td>{escape_html(str(r.get('status','')))}</td>
+                <td>{created}</td>
+            </tr>"""
+        html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Commandes ADALINA</title>
+<style>
+body {{ font-family: Arial, sans-serif; margin: 20px; }}
+h1 {{ text-align: center; color: #1B4D3E; }}
+table {{ width: 100%; border-collapse: collapse; font-size: 11px; }}
+th {{ background: #1B4D3E; color: white; padding: 8px 4px; text-align: left; }}
+td {{ padding: 6px 4px; border-bottom: 1px solid #ddd; }}
+tr:nth-child(even) {{ background: #f9f9f9; }}
+@media print {{ body {{ margin: 0; }} }}
+</style></head>
+<body><h1>ADALINA — Commandes</h1>
+<table><thead><tr>
+<th>Numéro</th><th>Client</th><th>Téléphone</th><th>Wilaya</th><th>Commune</th>
+<th>Mode livraison</th><th>Frais</th><th>Sous-total</th><th>Total</th>
+<th>Paiement</th><th>Statut</th><th>Date</th>
+</tr></thead><tbody>{html_rows}</tbody></table>
+<script>window.print()</script></body></html>"""
+        return HTMLResponse(html)
     finally:
         try:
             cur.close()
@@ -1083,7 +1206,8 @@ def get_order(oid: str, session_token: str = Depends(require_admin_auth)):
     cur = db.cursor()
     try:
         cur.execute("""
-            SELECT o.*, COALESCE(c.name, o.customer_name) AS customer_name, c.email AS customer_email
+            SELECT o.*, COALESCE(c.name, o.customer_name) AS customer_name, c.email AS customer_email,
+                   (o.total - COALESCE(o.delivery_fee, 0)) AS subtotal
             FROM orders o LEFT JOIN customers c ON o.customer_id = c.id WHERE o.id=%s
         """, (oid,))
         row = cur.fetchone()
@@ -1202,6 +1326,46 @@ def list_notifications(session_token: str = Depends(require_admin_auth)):
                     'product_name': ls['product_name'],
                     'quantity': ls['quantity'],
                     'message': f"Stock faible ({ls['quantity']}) pour {ls['product_name']}"
+                })
+        except Exception:
+            pass
+        try:
+            cur.execute("""
+                SELECT i.product_id, i.quantity, p.name AS product_name
+                FROM inventory i
+                JOIN products p ON i.product_id = p.id
+                WHERE p.status = 'active' AND i.quantity = 0
+                ORDER BY i.quantity ASC LIMIT 5
+            """)
+            out_of_stock = cur.fetchall()
+            for oos in out_of_stock:
+                notifs.append({
+                    'id': 'out_of_stock_' + str(oos['product_id']),
+                    'type': 'out_of_stock',
+                    'product_id': oos['product_id'],
+                    'product_name': oos['product_name'],
+                    'quantity': 0,
+                    'message': f"Rupture de stock: {oos['product_name']}"
+                })
+        except Exception:
+            pass
+        try:
+            cur.execute("""
+                SELECT id, order_number, customer_name, total, created_at
+                FROM orders
+                WHERE status = 'cancelled' AND (is_read IS NULL OR is_read = 0)
+                ORDER BY created_at DESC LIMIT 5
+            """)
+            cancelled = cur.fetchall()
+            for c in cancelled:
+                notifs.append({
+                    'id': 'cancelled_' + str(c['id']),
+                    'type': 'cancelled_order',
+                    'order_id': c['id'],
+                    'order_number': c['order_number'],
+                    'customer_name': c['customer_name'] or '',
+                    'total': float(c.get('total', 0)),
+                    'message': f"Commande annulée: {c['order_number']}"
                 })
         except Exception:
             pass
@@ -2244,8 +2408,10 @@ def update_order(oid: str, request: Request, data: dict = Body(...), session_tok
 
         if new_status and old_status and new_status != old_status:
             try:
-                cur.execute("INSERT INTO status_history (order_id, status, note) VALUES (%s, %s, %s)",
-                            (oid, new_status, ''))
+                note = data.get('note', '') if isinstance(data, dict) else ''
+                cur.execute("""INSERT INTO status_history (order_id, status, note, changed_by, previous_status)
+                               VALUES (%s, %s, %s, %s, %s)""",
+                            (oid, new_status, note or '', 'admin', old_status))
             except Exception:
                 pass
         db.commit()

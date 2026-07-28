@@ -88,19 +88,19 @@ function avatarUrl(name, bg = '6366f1') {
 var statusLabels = {
     'new': 'En attente',
     'confirmed': 'Confirmée',
-    'in_delivery': 'En cours de livraison',
-    'arrived': 'Arrivé',
     'preparing': 'En préparation',
+    'ready_for_pickup': 'Prêt ramassage',
     'shipped': 'Expédiée',
     'delivered': 'Livrée',
     'cancelled': 'Annulée',
+    'returned': 'Retournée',
 };
 
 function badge(status) {
     const m = {
-        arrived: 'badge-success', delivered: 'badge-success', active: 'badge-success', 'in stock': 'badge-success', published: 'badge-success',
-        processing: 'badge-warning', pending: 'badge-warning', draft: 'badge-warning', low: 'badge-warning',
-        in_delivery: 'badge-info', shipped: 'badge-info',
+        delivered: 'badge-success', active: 'badge-success', 'in stock': 'badge-success', published: 'badge-success',
+        processing: 'badge-warning', pending: 'badge-warning', draft: 'badge-warning', low: 'badge-warning', returned: 'badge-warning',
+        ready_for_pickup: 'badge-info', in_delivery: 'badge-info', shipped: 'badge-info',
         new: 'badge-info', confirmed: 'badge-info', preparing: 'badge-warning',
         cancelled: 'badge-danger', banned: 'badge-danger', 'out of stock': 'badge-danger', hidden: 'badge-danger',
     };
@@ -457,6 +457,88 @@ window.printOrder = function (order) {
     printContainer.innerHTML = '';
 };
 
+window.printShippingLabel = function() {
+    var o = currentOrder;
+    if (!o) return;
+    var s = window.__adminSettings || {};
+    var storeName = s.store_name || 'ADALINA';
+    var cod = o.total || 0;
+    var orderNum = o.order_number || '#' + o.id;
+    var barcode = orderNum.replace(/[^A-Z0-9]/gi, '');
+
+    var html = '<div class="shipping-label" style="width:100mm;height:100mm;padding:5mm;box-sizing:border-box;font-family:Arial,sans-serif;font-size:11px;border:2px solid #000;overflow:hidden;">' +
+        '<div style="text-align:center;border-bottom:2px solid #000;padding-bottom:3mm;margin-bottom:3mm;">' +
+            '<div style="font-size:16px;font-weight:700;letter-spacing:2px;">' + esc(storeName) + '</div>' +
+        '</div>' +
+        '<div style="margin-bottom:2mm;">' +
+            '<div style="font-size:9px;color:#666;">COMMANDE</div>' +
+            '<div style="font-size:14px;font-weight:700;">' + esc(orderNum) + '</div>' +
+        '</div>' +
+        '<div style="border-top:1px solid #ccc;padding-top:2mm;margin-bottom:2mm;">' +
+            '<div style="font-size:9px;color:#666;">DESTINATAIRE</div>' +
+            '<div style="font-size:13px;font-weight:600;">' + esc(o.customer_name || '') + '</div>' +
+            '<div style="font-size:11px;">' + esc(o.customer_phone || '') + '</div>' +
+        '</div>' +
+        '<div style="margin-bottom:2mm;">' +
+            '<div style="font-size:9px;color:#666;">ADRESSE</div>' +
+            '<div style="font-size:11px;">' + esc(o.commune || '') + ', ' + esc(o.wilaya || '') + '</div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:2mm;">' +
+            '<div><div style="font-size:9px;color:#666;">MODE</div><div style="font-weight:600;">' + esc(o.delivery_mode === 'bureau' ? 'BUREAU' : 'DOMICILE') + '</div></div>' +
+            '<div style="text-align:right;"><div style="font-size:9px;color:#666;">COD</div><div style="font-size:14px;font-weight:700;">' + cod + ' DA</div></div>' +
+        '</div>' +
+        '<div style="border-top:1px solid #ccc;padding-top:2mm;text-align:center;">' +
+            '<div style="font-family:monospace;font-size:10px;letter-spacing:3px;">||||| ' + esc(barcode) + ' |||||</div>' +
+        '</div>' +
+    '</div>';
+
+    var w = window.open('', '_blank', 'width=400,height=400');
+    w.document.write('<html><head><title>Étiquette ' + orderNum + '</title><style>@media print{body{margin:0;}@page{size:100mm 100mm;margin:0;}}</style></head><body>' + html + '</body></html>');
+    w.document.close();
+    setTimeout(function() { w.print(); }, 300);
+};
+
+window.printInvoice = function() {
+    if (!currentOrder) return;
+    printOrder(currentOrder);
+};
+
+window.printPackingSlip = function() {
+    var o = currentOrder;
+    if (!o) return;
+    var s = window.__adminSettings || {};
+    var storeName = s.store_name || 'ADALINA';
+    var items = [];
+    try { items = o.items || JSON.parse(o.items || '[]'); } catch (e) {}
+
+    var itemsHTML = items.map(function(item) {
+        var name = item.name || item.product_name || 'Produit';
+        var color = item.color || item.selectedColor || '';
+        var size = item.size || item.selectedSize || '';
+        var qty = item.quantity || item.qty || 1;
+        return '<tr><td>' + esc(name) + '</td><td>' + esc(color) + '</td><td>' + esc(size) + '</td><td style="text-align:center;">' + qty + '</td><td style="text-align:center;">☐</td></tr>';
+    }).join('');
+
+    var html = '<html><head><title>Bordereau ' + (o.order_number || '') + '</title>' +
+        '<style>body{font-family:Arial,sans-serif;font-size:12px;margin:20px;}table{width:100%;border-collapse:collapse;margin:16px 0;}th,td{border:1px solid #ddd;padding:8px;text-align:left;}th{background:#f5f5f5;}.header{border-bottom:2px solid #000;padding-bottom:12px;margin-bottom:16px;}.check-col{width:50px;text-align:center;}@media print{@page{size:A4;margin:15mm;}}</style></head><body>' +
+        '<div class="header"><h1 style="margin:0;font-size:22px;">' + esc(storeName) + '</h1><p style="margin:4px 0 0;color:#666;">Bordereau d\'emballage</p></div>' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:20px;">' +
+            '<div><strong>Commande:</strong> ' + esc(o.order_number || '') + '<br><strong>Date:</strong> ' + (o.created_at || '').substring(0, 10) + '</div>' +
+            '<div><strong>Client:</strong> ' + esc(o.customer_name || '') + '<br><strong>Tél:</strong> ' + esc(o.customer_phone || '') + '<br><strong>Adresse:</strong> ' + esc(o.commune || '') + ', ' + esc(o.wilaya || '') + '</div>' +
+        '</div>' +
+        '<table><thead><tr><th>Produit</th><th>Couleur</th><th>Taille</th><th class="check-col">Qté</th><th class="check-col">Vérifié</th></tr></thead><tbody>' + itemsHTML + '</tbody></table>' +
+        '<div style="margin-top:40px;border-top:1px solid #ccc;padding-top:16px;display:flex;justify-content:space-between;">' +
+            '<div>Signature préparateur: ________________</div>' +
+            '<div>Date: ________________</div>' +
+        '</div>' +
+    '</body></html>';
+
+    var w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    setTimeout(function() { w.print(); }, 300);
+};
+
 window.deleteOrder = async function(id) {
     if (!confirm('Supprimer cette commande ? Cette action est irréversible.')) return;
     var result = await api('DELETE', '/orders/' + id);
@@ -474,6 +556,43 @@ window.exportOrderToSheet = function(id) {
 
 window.exportAllOrdersToSheet = function() {
     window.open(API + '/orders/export/csv', '_blank');
+};
+
+window.exportOrdersCSV = function() {
+    var headers = ['Commande','Client','Téléphone','Wilaya','Commune','Mode Livraison','Livraison','Sous-total','Total','Paiement','Statut','Date'];
+    var rows = ordersData.map(function(o) {
+        var subtotal = (o.total || 0) - (o.delivery_fee || 0);
+        return [
+            o.order_number || '', o.customer_name || '', o.customer_phone || '',
+            o.wilaya || '', o.commune || '', o.delivery_mode || '',
+            o.delivery_fee || 0, subtotal, o.total || 0,
+            o.payment_method || '', o.status || '', (o.created_at || '').substring(0, 10)
+        ].map(function(v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(',');
+    });
+    var csv = [headers.join(',')].concat(rows).join('\n');
+    var blob = new Blob(['\ufeff' + csv], {type: 'text/csv;charset=utf-8;'});
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'commandes_adalina_' + new Date().toISOString().substring(0, 10) + '.csv';
+    link.click();
+};
+
+window.exportOrdersPDF = function() {
+    var s = window.__adminSettings || {};
+    var storeName = s.store_name || 'ADALINA';
+    var dateStr = new Date().toLocaleDateString('fr-FR');
+    var html = '<html><head><title>Commandes - ' + storeName + '</title>' +
+        '<style>body{font-family:Arial,sans-serif;font-size:11px;margin:20px;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;}th{background:#f5f5f5;font-weight:600;}h1{font-size:18px;margin-bottom:4px;}p{color:#666;margin:0 0 16px;}</style></head><body>' +
+        '<h1>' + storeName + ' — Commandes</h1><p>Exporté le ' + dateStr + ' — ' + ordersData.length + ' commande(s)</p>' +
+        '<table><thead><tr><th>N°</th><th>Client</th><th>Tél</th><th>Wilaya</th><th>Mode</th><th>Total</th><th>Statut</th><th>Date</th></tr></thead><tbody>';
+    ordersData.forEach(function(o) {
+        html += '<tr><td>' + esc(o.order_number || '') + '</td><td>' + esc(o.customer_name || '') + '</td><td>' + esc(o.customer_phone || '') + '</td><td>' + esc(o.wilaya || '') + '</td><td>' + esc(o.delivery_mode || '') + '</td><td>' + (o.total || 0) + ' DA</td><td>' + esc(o.status || '') + '</td><td>' + (o.created_at || '').substring(0, 10) + '</td></tr>';
+    });
+    html += '</tbody></table></body></html>';
+    var w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    w.print();
 };
 
 window.toggleSelectAllOrders = function(cb) {
@@ -1746,6 +1865,19 @@ function renderOrdersTable() {
         });
     }
 
+    var dateFrom = (document.getElementById('order-date-from')?.value || '');
+    var dateTo = (document.getElementById('order-date-to')?.value || '');
+    if (dateFrom) {
+        filtered = filtered.filter(function(o) {
+            return (o.created_at || '').substring(0, 10) >= dateFrom;
+        });
+    }
+    if (dateTo) {
+        filtered = filtered.filter(function(o) {
+            return (o.created_at || '').substring(0, 10) <= dateTo;
+        });
+    }
+
     if (filtered.length === 0) {
         tbody.innerHTML = '';
         if (emptyEl) emptyEl.style.display = 'block';
@@ -1760,19 +1892,26 @@ function renderOrdersTable() {
         try { items = o.items || JSON.parse(o.items || '[]'); } catch (e) {}
         var isUnread = o.is_read === 0 || o.is_read === null;
         var rowClass = isUnread ? ' class="order-row-unread"' : '';
+        var subtotal = (o.total || 0) - (o.delivery_fee || 0);
+        var modeLabel = o.delivery_mode === 'bureau' ? '📦 Bureau' : (o.delivery_mode === 'domicile' ? '🏠 Domicile' : '—');
+        var paymentLabel = (o.payment_method || '').indexOf('Cash') !== -1 ? '💵 Cash' : (o.payment_method || '—');
         return '<tr' + rowClass + '>' +
             '<td style="text-align:center;"><input type="checkbox" class="order-select-cb" value="' + o.id + '" onchange="updateBulkDeleteOrdersUI()"></td>' +
             '<td class="td-order-num"><span class="order-num">' + esc(o.order_number || '#' + o.id) + '</span></td>' +
-            '<td><div class="customer-cell"><div class="basket-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div><div class="name">' + esc(o.customer_name || '—') + '</div></div></td>' +
+            '<td><div class="customer-cell"><div class="name">' + esc(o.customer_name || '—') + '</div></div></td>' +
             '<td class="td-phone">' + esc(o.customer_phone || '—') + '</td>' +
-            '<td class="td-wilaya">' + esc(o.wilaya || '—') + (o.delivery_mode ? '<br><span style="font-size:0.68rem;color:var(--text-secondary,#888);">' + esc(o.delivery_mode === 'bureau' ? '📦 Bureau' : '🏠 Domicile') + '</span>' : '') + '</td>' +
+            '<td class="td-wilaya">' + esc(o.wilaya || '—') + '</td>' +
+            '<td>' + esc(o.commune || '—') + '</td>' +
+            '<td style="font-size:0.78rem;">' + modeLabel + '</td>' +
+            '<td>' + (o.delivery_fee > 0 ? formatPriceDA(o.delivery_fee) : '—') + '</td>' +
+            '<td>' + formatPriceDA(subtotal) + '</td>' +
             '<td class="td-total">' + formatPriceDA(o.total) + '</td>' +
+            '<td style="font-size:0.78rem;">' + paymentLabel + '</td>' +
             '<td class="td-status">' + badge(o.status) + ((o.risk_score || 0) > 70 ? ' <span style="display:inline-flex;align-items:center;gap:3px;background:#fef2f2;color:#dc2626;padding:2px 6px;border-radius:4px;font-size:0.68rem;font-weight:600;" title="Score de risque: ' + o.risk_score + ' - ' + (o.risk_reasons || []).join(', ') + '"><i class="fas fa-exclamation-triangle"></i> Risque ' + o.risk_score + '</span>' : '') + '</td>' +
             '<td class="td-date" data-sort-val="' + (o.created_at || '') + '">' + timeAgo(o.created_at) + '</td>' +
             '<td class="td-actions">' +
-                '<button class="btn btn-outline btn-sm" onclick="viewOrder(' + o.id + ')" title="Voir la commande"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Voir</button>' +
-                '<button class="btn btn-outline btn-sm" onclick="exportOrderToSheet(' + o.id + ')" title="Exporter Excel"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Excel</button>' +
-                '<button class="btn btn-danger btn-sm" onclick="deleteOrder(' + o.id + ')" title="Supprimer la commande"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>' +
+                '<button class="btn btn-outline btn-sm" onclick="viewOrder(' + o.id + ')" title="Voir"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>' +
+                '<button class="btn btn-danger btn-sm" onclick="deleteOrder(' + o.id + ')" title="Supprimer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>' +
             '</td>' +
             '</tr>';
     }).join('');
@@ -1824,7 +1963,7 @@ window.viewOrder = async function (id) {
 
     var itemsHTML = '';
     if (items.length === 0) {
-        itemsHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">Aucun article dans cette commande.</td></tr>';
+        itemsHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">Aucun article dans cette commande.</td></tr>';
     } else {
         itemsHTML = items.map(function (item) {
             var name = item.name || item.product_name || 'Produit #' + (item.product_id || item.id || '?');
@@ -1836,8 +1975,10 @@ window.viewOrder = async function (id) {
             var qty = item.quantity || item.qty || 1;
             var price = Number(item.price || 0);
             var sub = price * qty;
+            var sku = item.sku || '';
             var colorSwatch = colorHex ? '<span class="color-swatch" style="background:' + esc(colorHex) + '"></span> ' : '';
             return '<tr>' +
+                '<td>' + esc(sku || '—') + '</td>' +
                 '<td class="td-product">' + esc(name) + '</td>' +
                 '<td class="td-color">' + colorSwatch + esc(color) + '</td>' +
                 '<td class="td-size">' + sizeDisplay + '</td>' +
@@ -1859,11 +2000,13 @@ window.viewOrder = async function (id) {
         '<div class="detail-card">' +
             '<div class="detail-card-header"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Client</div>' +
             '<div class="detail-card-body">' +
-                '<div class="detail-row"><span class="detail-label">Nom</span><span class="detail-value">' + esc(o.customer_name || '—') + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Nom complet</span><span class="detail-value">' + esc(o.customer_name || '—') + '</span></div>' +
                 '<div class="detail-row"><span class="detail-label">Téléphone</span><span class="detail-value"><a href="tel:' + esc(o.customer_phone) + '">' + esc(o.customer_phone || '—') + '</a></span></div>' +
                 '<div class="detail-row"><span class="detail-label">Wilaya</span><span class="detail-value">' + esc(o.wilaya || '—') + '</span></div>' +
                 '<div class="detail-row"><span class="detail-label">Commune</span><span class="detail-value">' + esc(o.commune || '—') + '</span></div>' +
-                '<div class="detail-row"><span class="detail-label">Adresse</span><span class="detail-value">' + esc(o.shipping_address || 'Non spécifiée') + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Mode livraison</span><span class="detail-value">' + esc(o.delivery_mode === 'bureau' ? 'AU BUREAU' : (o.delivery_mode === 'domicile' ? 'A DOMICILE' : '—')) + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Prix livraison</span><span class="detail-value">' + (o.delivery_fee > 0 ? formatPriceDA(o.delivery_fee) : 'Gratuite') + '</span></div>' +
+                '<div class="detail-row"><span class="detail-label">Adresse</span><span class="detail-value">' + esc(o.shipping_address || '—') + '</span></div>' +
             '</div>' +
         '</div>' +
 
@@ -1889,6 +2032,7 @@ window.viewOrder = async function (id) {
             '<div class="table-container">' +
                 '<table class="od-items-table">' +
                     '<thead><tr>' +
+                        '<th>SKU</th>' +
                         '<th>Produit</th>' +
                         '<th>Couleur</th>' +
                         '<th>Taille</th>' +
@@ -1905,7 +2049,7 @@ window.viewOrder = async function (id) {
             '<span>' + formatPriceDA(o.total - (o.delivery_fee || 0)) + '</span>' +
         '</div>' +
         '<div class="od-total-bar" style="border-top:none;padding:4px 16px;">' +
-            '<span style="font-weight:400;">Livraison</span>' +
+            '<span style="font-weight:400;">Livraison (' + esc(o.delivery_mode || '') + ')</span>' +
             '<span>' + (o.delivery_fee > 0 ? formatPriceDA(o.delivery_fee) : 'Gratuite') + '</span>' +
         '</div>' +
         '<div class="od-total-bar">' +
@@ -1922,12 +2066,12 @@ window.viewOrder = async function (id) {
                 '<select id="od-status-select" class="form-control">' +
                     '<option value="new"' + (o.status === 'new' ? ' selected' : '') + '>En attente</option>' +
                     '<option value="confirmed"' + (o.status === 'confirmed' ? ' selected' : '') + '>Confirmée</option>' +
-                    '<option value="in_delivery"' + (o.status === 'in_delivery' ? ' selected' : '') + '>En cours de livraison</option>' +
-                    '<option value="arrived"' + (o.status === 'arrived' ? ' selected' : '') + '>Arrivé</option>' +
                     '<option value="preparing"' + (o.status === 'preparing' ? ' selected' : '') + '>En préparation</option>' +
+                    '<option value="ready_for_pickup"' + (o.status === 'ready_for_pickup' ? ' selected' : '') + '>Prêt pour ramassage</option>' +
                     '<option value="shipped"' + (o.status === 'shipped' ? ' selected' : '') + '>Expédiée</option>' +
                     '<option value="delivered"' + (o.status === 'delivered' ? ' selected' : '') + '>Livrée</option>' +
                     '<option value="cancelled"' + (o.status === 'cancelled' ? ' selected' : '') + '>Annulée</option>' +
+                    '<option value="returned"' + (o.status === 'returned' ? ' selected' : '') + '>Retournée</option>' +
                 '</select>' +
                 '<button class="btn btn-primary" id="od-save-status"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Sauvegarder</button>' +
             '</div>' +
@@ -1948,16 +2092,24 @@ window.viewOrder = async function (id) {
     (history.length > 0 ?
     '<div class="detail-card" style="grid-column:1/-1;">' +
         '<div class="detail-card-header"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Historique des statuts</div>' +
-        '<div class="detail-card-body" style="padding:0;">' +
-            '<table class="od-items-table">' +
-                '<thead><tr><th>Statut</th><th>Note</th><th>Date</th></tr></thead>' +
-                '<tbody>' + history.map(function(h) {
-                    var hd = h.created_at ? new Date(h.created_at).toLocaleString('fr-DZ', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
-                    return '<tr><td>' + (statusLabels[h.status] || h.status) + '</td><td>' + esc(h.note || '—') + '</td><td>' + hd + '</td></tr>';
-                }).join('') + '</tbody>' +
-            '</table>' +
+        '<div class="detail-card-body">' +
+            history.map(function(h) {
+                var prevLabel = h.previous_status ? ('<span style="color:var(--text-muted);">' + esc(h.previous_status) + '</span> → ') : '';
+                return '<div class="timeline-entry" style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);">' +
+                    '<div style="width:8px;height:8px;border-radius:50%;background:var(--primary);margin-top:5px;flex-shrink:0;"></div>' +
+                    '<div>' +
+                        '<div style="font-size:0.82rem;font-weight:500;">' + prevLabel + '<strong>' + esc(h.status) + '</strong></div>' +
+                        '<div style="font-size:0.75rem;color:var(--text-muted);">' + (h.note || '') + '</div>' +
+                        '<div style="font-size:0.72rem;color:var(--text-muted);">' + (h.created_at || '') + (h.changed_by ? ' — ' + esc(h.changed_by) : '') + '</div>' +
+                    '</div>' +
+                '</div>';
+            }).join('') +
         '</div>' +
-    '</div>' : '');
+    '</div>' :
+    '<div class="detail-card" style="grid-column:1/-1;">' +
+        '<div class="detail-card-header"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Historique des statuts</div>' +
+        '<div class="detail-card-body"><p style="color:var(--text-muted);font-size:0.82rem;">Aucun historique de statut.</p></div>' +
+    '</div>');
 
     document.getElementById('order-detail-content').innerHTML = content;
 
@@ -1997,9 +2149,6 @@ window.viewOrder = async function (id) {
             }
         });
     });
-
-    /* Re-bind print button */
-    document.getElementById('od-print-btn').onclick = function () { printOrder(o); };
 };
 
 function closeOrderDetail() {
@@ -2823,6 +2972,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 updateSearchClear();
             }
+            /* Date range filters */
+            var dateFromEl = document.getElementById('order-date-from');
+            var dateToEl = document.getElementById('order-date-to');
+            if (dateFromEl) dateFromEl.addEventListener('change', renderOrdersTable);
+            if (dateToEl) dateToEl.addEventListener('change', renderOrdersTable);
             break;
         case 'customers.html': initCustomers(); break;
         case 'inventory.html': initInventory(); break;

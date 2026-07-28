@@ -160,6 +160,8 @@ def _run_migrations(conn):
                 order_id INTEGER NOT NULL,
                 status TEXT NOT NULL,
                 note TEXT DEFAULT '',
+                changed_by TEXT DEFAULT 'admin',
+                previous_status TEXT DEFAULT '',
                 created_at TIMESTAMP DEFAULT NOW(),
                 FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
             )""",
@@ -294,6 +296,24 @@ def _run_migrations(conn):
             cur.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_mode TEXT DEFAULT ''")
         except Exception:
             pass
+        status_history_col_migrations = [
+            "ALTER TABLE status_history ADD COLUMN IF NOT EXISTS changed_by TEXT DEFAULT 'admin'",
+            "ALTER TABLE status_history ADD COLUMN IF NOT EXISTS previous_status TEXT DEFAULT ''",
+        ]
+        for sql in status_history_col_migrations:
+            try:
+                cur.execute(sql)
+            except Exception:
+                pass
+        status_history_col_migrations = [
+            "ALTER TABLE status_history ADD COLUMN IF NOT EXISTS changed_by TEXT DEFAULT 'admin'",
+            "ALTER TABLE status_history ADD COLUMN IF NOT EXISTS previous_status TEXT DEFAULT ''",
+        ]
+        for sql in status_history_col_migrations:
+            try:
+                cur.execute(sql)
+            except Exception:
+                pass
         _seed_delivery_times(cur)
         _seed_delivery_prices(cur)
         conn.commit()
@@ -604,6 +624,8 @@ def init_db():
             order_id INTEGER NOT NULL,
             status TEXT NOT NULL,
             note TEXT DEFAULT '',
+            changed_by TEXT DEFAULT 'admin',
+            previous_status TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT NOW(),
             FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
         )
