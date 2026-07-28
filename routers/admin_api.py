@@ -2178,14 +2178,18 @@ def update_delivery_prices(request: Request, data: Any = Body(...), session_toke
     try:
         if isinstance(data, list):
             for row in data:
-                wc = str(row.get('wilaya_code', ''))
+                wc = int(row.get('wilaya_code', 0) or 0)
                 wn = row.get('wilaya_name', '')
                 hp = float(row.get('home_price', 0) or 0)
                 op = float(row.get('office_price', 0) or 0)
-                active = bool(row.get('active', True))
+                active = row.get('active', True)
+                if isinstance(active, str):
+                    active = active.lower() not in ('false', '0', 'no', 'non')
+                else:
+                    active = bool(active)
                 cur.execute(
-                    "INSERT INTO delivery_prices (wilaya_id, wilaya_code, wilaya_name, home_price, office_price, active, updated_at) VALUES (%s,%s,%s,%s,%s,%s,CURRENT_TIMESTAMP) ON CONFLICT (wilaya_id) DO UPDATE SET wilaya_code=%s, wilaya_name=%s, home_price=%s, office_price=%s, active=%s, updated_at=CURRENT_TIMESTAMP",
-                    (wc, wc, wn, hp, op, active, wc, wn, hp, op, active)
+                    "INSERT INTO delivery_prices (wilaya_id, wilaya, wilaya_code, wilaya_name, home_price, office_price, active, updated_at) VALUES (%s,%s,%s,%s,%s,%s,%s,CURRENT_TIMESTAMP) ON CONFLICT (wilaya_id) DO UPDATE SET wilaya=%s, wilaya_code=%s, wilaya_name=%s, home_price=%s, office_price=%s, active=%s, updated_at=CURRENT_TIMESTAMP",
+                    (wc, wn, wc, wn, hp, op, active, wn, wc, wn, hp, op, active)
                 )
         else:
             for wilaya_id_str, price in data.items():
@@ -2218,13 +2222,13 @@ def import_delivery_prices(request: Request, data: list = Body(...), session_tok
     try:
         count = 0
         for row in data:
-            wc = str(row.get('wilaya_code', ''))
+            wc = int(row.get('wilaya_code', 0) or 0)
             wn = row.get('wilaya_name', '')
             hp = float(row.get('home_price', 0) or 0)
             op = float(row.get('office_price', 0) or 0)
             cur.execute(
-                "INSERT INTO delivery_prices (wilaya_id, wilaya_code, wilaya_name, home_price, office_price, active, updated_at) VALUES (%s,%s,%s,%s,%s,%s,CURRENT_TIMESTAMP) ON CONFLICT (wilaya_id) DO UPDATE SET wilaya_code=%s, wilaya_name=%s, home_price=%s, office_price=%s, active=%s, updated_at=CURRENT_TIMESTAMP",
-                (wc, wc, wn, hp, op, True, wc, wn, hp, op, True)
+                "INSERT INTO delivery_prices (wilaya_id, wilaya, wilaya_code, wilaya_name, home_price, office_price, active, updated_at) VALUES (%s,%s,%s,%s,%s,%s,%s,CURRENT_TIMESTAMP) ON CONFLICT (wilaya_id) DO UPDATE SET wilaya=%s, wilaya_code=%s, wilaya_name=%s, home_price=%s, office_price=%s, active=%s, updated_at=CURRENT_TIMESTAMP",
+                (wc, wn, wc, wn, hp, op, True, wn, wc, wn, hp, op, True)
             )
             count += 1
         db.commit()
