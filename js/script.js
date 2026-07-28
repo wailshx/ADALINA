@@ -286,7 +286,7 @@ function renderProductCard(product) {
         ? '<span class="original-price">' + formatPriceDA(product.price) + '</span><span class="sale-price">' + formatPriceDA(product.sale_price) + '</span>'
         : '<span class="current-price">' + formatPriceDA(product.price) + '</span>';
     var slug = product.slug || '';
-    var productUrl = slug ? '/p/' + slug : 'product.html?id=' + pid;
+    var productUrl = slug ? '/p/' + slug : '/collection/product.html?id=' + pid;
     return '<div class="' + cardClasses + '" data-product-id="' + pid + '" data-product-slug="' + esc(slug) + '">' +
         '<div class="product-image">' +
             '<a href="' + productUrl + '" style="text-decoration:none;color:inherit;display:block">' +
@@ -341,7 +341,7 @@ function searchProducts(query) {
     }
     container.innerHTML = results.slice(0, 8).map(p => {
         var thumb = (p.images && p.images.length > 0) ? p.images[0] : PLACEHOLDER_IMG;
-        return `<div class="search-suggestion" onclick="closeSearchModal(); window.location.href='product.html?id=${p.id}'">
+        return `<div class="search-suggestion" onclick="closeSearchModal(); window.location.href='/collection/product.html?id=${p.id}'">
             <img src="${thumb}" alt="${esc(p.name)}" class="search-suggestion-img" loading="lazy" onerror="onImgError(this)">
             <div class="search-suggestion-info">
                 <div class="search-suggestion-name">${esc(p.name)}</div>
@@ -413,11 +413,11 @@ function updateWishlistDisplay() {
             var wImg = (p.images && p.images.length > 0) ? p.images[0] : PLACEHOLDER_IMG;
             fragments.push(`
                 <div class="wishlist-item">
-                    <a href="product.html?id=${p.id}">
+                    <a href="/collection/product.html?id=${p.id}">
                         <img src="${wImg}" alt="${esc(p.name)}" class="cart-item-image" onerror="onImgError(this)">
                     </a>
                     <div class="cart-item-details">
-                        <a href="product.html?id=${p.id}" style="text-decoration:none;color:inherit">
+                        <a href="/collection/product.html?id=${p.id}" style="text-decoration:none;color:inherit">
                             <h3 class="cart-item-title">${esc(p.name)}</h3>
                         </a>
                         <p class="cart-item-price">${formatPriceDA(p.price)}</p>
@@ -464,11 +464,11 @@ function renderWishlistPage() {
             ? '<span class="original-price">' + formatPriceDA(p.price) + '</span> <span class="sale-price">' + formatPriceDA(p.sale_price) + '</span>'
             : '<span class="current-price">' + formatPriceDA(p.price) + '</span>';
         html += '<div class="wishlist-page-item">' +
-            '<a href="product.html?id=' + p.id + '" class="wpi-img-wrap">' +
+            '<a href="/collection/product.html?id=' + p.id + '" class="wpi-img-wrap">' +
                 '<img src="' + cloudinaryThumb(wImg, 200) + '" alt="' + esc(p.name) + '" loading="lazy" onerror="onImgError(this)">' +
             '</a>' +
             '<div class="wpi-info">' +
-                '<a href="product.html?id=' + p.id + '" class="wpi-name">' + esc(p.name) + '</a>' +
+                '<a href="/collection/product.html?id=' + p.id + '" class="wpi-name">' + esc(p.name) + '</a>' +
                 '<div class="wpi-price">' + priceHtml + '</div>' +
                 '<div class="wpi-actions">' +
                     '<button class="btn btn-sm btn-primary" onclick="addToCartFromWishlist(' + p.id + ')" style="margin-right:6px;">' + i18n.t('qv.addToCart') + '</button>' +
@@ -816,7 +816,7 @@ function renderCartPage() {
     var container = document.getElementById('cart-page-items');
     if (!container) return;
     if (cart.length === 0) {
-        container.innerHTML = '<div class="cart-empty"><p>' + i18n.t('cartPage.empty') + '.</p><a href="shop.html" class="btn btn-primary" style="display:inline-block;text-decoration:none;margin-top:1rem">' + i18n.t('wishlistPage.shop') + '</a></div>';
+        container.innerHTML = '<div class="cart-empty"><p>' + i18n.t('cartPage.empty') + '.</p><a href="/collection/shop.html" class="btn btn-primary" style="display:inline-block;text-decoration:none;margin-top:1rem">' + i18n.t('wishlistPage.shop') + '</a></div>';
         return;
     }
     var subtotal = 0;
@@ -2107,7 +2107,7 @@ function loadProductPage() {
     }
 
     if (!productId && !productSlug) {
-        container.innerHTML = '<div class="breadcrumb"><a href="index.html">' + i18n.t('breadcrumb.home') + '</a><span>/</span><a href="shop.html">' + i18n.t('breadcrumb.shop') + '</a></div><div style="text-align:center;padding:4rem 0"><h2>' + i18n.t('product.notFound') + '</h2><p style="color:var(--text-light);margin:1rem 0">' + i18n.t('product.notFoundDesc') + '</p><a href="shop.html" class="btn btn-primary" style="display:inline-block;text-decoration:none">' + i18n.t('product.backToShop') + '</a></div>';
+        container.innerHTML = '<div class="breadcrumb"><a href="/collection/">' + i18n.t('breadcrumb.home') + '</a><span>/</span><a href="/collection/shop.html">' + i18n.t('breadcrumb.shop') + '</a></div><div style="text-align:center;padding:4rem 0"><h2>' + i18n.t('product.notFound') + '</h2><p style="color:var(--text-light);margin:1rem 0">' + i18n.t('product.notFoundDesc') + '</p><a href="/collection/shop.html" class="btn btn-primary" style="display:inline-block;text-decoration:none">' + i18n.t('product.backToShop') + '</a></div>';
         return;
     }
 
@@ -2144,7 +2144,7 @@ function loadProductPage() {
 }
 
 function showProductNotFound(container) {
-    container.innerHTML = '<div class="breadcrumb"><a href="index.html">' + i18n.t('breadcrumb.home') + '</a><span>/</span><a href="shop.html">' + i18n.t('breadcrumb.shop') + '</a></div><div style="text-align:center;padding:4rem 0"><h2>' + i18n.t('product.notFound') + '</h2><p style="color:var(--text-light);margin:1rem 0">' + i18n.t('product.notFoundDesc') + '</p><a href="shop.html" class="btn btn-primary" style="display:inline-block;text-decoration:none">' + i18n.t('product.backToShop') + '</a></div>';
+    container.innerHTML = '<div class="breadcrumb"><a href="/collection/">' + i18n.t('breadcrumb.home') + '</a><span>/</span><a href="/collection/shop.html">' + i18n.t('breadcrumb.shop') + '</a></div><div style="text-align:center;padding:4rem 0"><h2>' + i18n.t('product.notFound') + '</h2><p style="color:var(--text-light);margin:1rem 0">' + i18n.t('product.notFoundDesc') + '</p><a href="/collection/shop.html" class="btn btn-primary" style="display:inline-block;text-decoration:none">' + i18n.t('product.backToShop') + '</a></div>';
 }
 
 function renderProductPageData(product, urlParams) {
@@ -2290,7 +2290,7 @@ function displayProduct(product) {
 
                 <button class="pp-btn pp-btn-outline" onclick="openShareMenu(${product.id}, '${esc(product.slug || '')}', '${esc(product.name).replace(/'/g, "\\'")}')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Partager</button>
 
-                <a href="shop.html" class="pp-continue">${i18n.t('qv.continueShopping')}</a>
+                <a href="/collection/shop.html" class="pp-continue">${i18n.t('qv.continueShopping')}</a>
             </div>
 
             <div class="pp-gallery">

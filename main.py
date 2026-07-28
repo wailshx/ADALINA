@@ -383,6 +383,11 @@ async def serve_product_by_slug(slug: str):
             return HTMLResponse(content='Not found', status_code=404)
         content = file_path.read_bytes().decode('utf-8')
         content = content.replace('?v=__BUILD__', '?v=' + BUILD_VERSION)
+        content = content.replace('href="css/', 'href="/css/')
+        content = content.replace('src="js/', 'src="/js/')
+        content = content.replace('src="images/', 'src="/images/')
+        content = content.replace('href="index.html"', 'href="/collection/"')
+        content = content.replace('href="shop.html"', 'href="/collection/shop.html"')
         seo_meta = f'''
     <title>{_escape_html(product_name)} - ADALINA</title>
     <meta name="description" content="{_escape_html(product_desc)} - ADALINA">
