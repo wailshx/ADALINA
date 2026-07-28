@@ -1543,7 +1543,7 @@ class AdminHandler(http.server.BaseHTTPRequestHandler):
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_wilaya ON commune_delivery_prices(wilaya_id)")
                 cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_lookup ON commune_delivery_prices(wilaya_id, commune_name)")
                 try:
-                    cur.execute("ALTER TABLE commune_delivery_prices DISABLE ROW LEVEL SECURITY")
+                    cur.execute("ALTER TABLE commune_delivery_prices ENABLE ROW LEVEL SECURITY")
                 except Exception:
                     pass
                 try:
