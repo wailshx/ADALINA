@@ -52,7 +52,7 @@ PUBLIC_CSP = "; ".join([
     "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https://res.cloudinary.com https://*.supabase.co",
+    "img-src 'self' data: blob: https://res.cloudinary.com https://*.supabase.co https://ui-avatars.com",
     "connect-src 'self'",
     "frame-ancestors 'none'",
 ])
@@ -62,7 +62,7 @@ ADMIN_CSP = "; ".join([
     "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
     "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com",
-    "img-src 'self' data: blob: https://res.cloudinary.com https://*.supabase.co",
+    "img-src 'self' data: blob: https://res.cloudinary.com https://*.supabase.co https://ui-avatars.com",
     "connect-src 'self'",
     "frame-ancestors 'none'",
 ])

@@ -1262,9 +1262,11 @@ def list_settings(session_token: str = Depends(require_admin_auth)):
 
 @router.get('/delivery-prices')
 def list_delivery_prices(session_token: str = Depends(require_admin_auth)):
-    db = get_db()
-    cur = db.cursor()
+    db = None
+    cur = None
     try:
+        db = get_db()
+        cur = db.cursor()
         try:
             cur.execute("SELECT wilaya_code, wilaya_name, home_price, office_price, active, updated_at FROM delivery_prices ORDER BY wilaya_code")
             rows = cur.fetchall()
@@ -1278,11 +1280,13 @@ def list_delivery_prices(session_token: str = Depends(require_admin_auth)):
             return result
     finally:
         try:
-            cur.close()
+            if cur:
+                cur.close()
         except Exception:
             pass
         try:
-            db.close()
+            if db:
+                db.close()
         except Exception:
             pass
 
