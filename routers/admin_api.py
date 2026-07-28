@@ -2173,13 +2173,17 @@ def update_collection(cid: str, request: Request, data: dict = Body(...), sessio
 @router.put('/delivery-prices')
 def update_delivery_prices(request: Request, data: Any = Body(...), session_token: str = Depends(require_admin_auth)):
     validate_admin_csrf(request)
-    db = get_db()
-    cur = db.cursor()
+    db = None
+    cur = None
     try:
+        db = get_db()
+        cur = db.cursor()
         if isinstance(data, list):
             for row in data:
                 wc = int(row.get('wilaya_code', 0) or 0)
-                wn = row.get('wilaya_name', '')
+                if wc < 1 or wc > 58:
+                    continue
+                wn = str(row.get('wilaya_name', ''))
                 hp = float(row.get('home_price', 0) or 0)
                 op = float(row.get('office_price', 0) or 0)
                 active = row.get('active', True)
@@ -2203,13 +2207,21 @@ def update_delivery_prices(request: Request, data: Any = Body(...), session_toke
         db.commit()
         _signal_cache_invalidate()
         return {'message': 'Delivery prices saved'}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import logging
+        logging.error('[delivery-prices] PUT error: %s', e, exc_info=True)
+        return _StarletteJSONResponse(status_code=500, content={'error': str(e)})
     finally:
         try:
-            cur.close()
+            if cur:
+                cur.close()
         except Exception:
             pass
         try:
-            db.close()
+            if db:
+                db.close()
         except Exception:
             pass
 
