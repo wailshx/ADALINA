@@ -472,11 +472,18 @@ def get_delivery_prices():
     try:
         db = get_public_db()
         cur = db.cursor()
-        cur.execute("SELECT wilaya_id, price FROM delivery_prices ORDER BY wilaya_id")
-        rows = cur.fetchall()
-        result = {}
-        for r in rows:
-            result[str(r['wilaya_id'])] = r['price']
+        try:
+            cur.execute("SELECT wilaya_code, wilaya_name, home_price, office_price FROM delivery_prices WHERE active = true ORDER BY wilaya_code")
+            rows = cur.fetchall()
+            result = {}
+            for r in rows:
+                result[str(r['wilaya_code'])] = {"home": r['home_price'], "office": r['office_price'], "name": r['wilaya_name']}
+        except Exception:
+            cur.execute("SELECT wilaya_id, price FROM delivery_prices ORDER BY wilaya_id")
+            rows = cur.fetchall()
+            result = {}
+            for r in rows:
+                result[str(r['wilaya_id'])] = r['price']
         _cache.set('delivery', result)
         return _json_response(result, max_age=300)
     except Exception as e:
@@ -557,56 +564,6 @@ def get_delivery_times():
         return _json_response(result, max_age=3600)
     except Exception as e:
         logger.exception('[Storefront] Error loading delivery times')
-        return _json_response({}, status=500)
-    finally:
-        if db:
-            try:
-                db.close()
-            except Exception:
-                pass
-
-
-@router.get('/api/public/commune-delivery-prices')
-def get_commune_delivery_prices(wilaya_id: int = Query(0)):
-    db = None
-    try:
-        db = get_db()
-        cur = db.cursor()
-        cur.execute("""SELECT to_regclass('public.commune_delivery_prices')""")
-        exists_row = cur.fetchone()
-        table_oid = exists_row.get('to_regclass') if hasattr(exists_row, 'get') else (exists_row[0] if exists_row else None)
-        if table_oid is None:
-            logger.warning('[Storefront] commune_delivery_prices table missing, attempting self-healing create')
-            try:
-                cur.execute("""CREATE TABLE IF NOT EXISTS commune_delivery_prices (
-                    id SERIAL PRIMARY KEY,
-                    wilaya_id INTEGER NOT NULL,
-                    commune_name TEXT NOT NULL,
-                    domicile_price DOUBLE PRECISION NOT NULL DEFAULT 0,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE (wilaya_id, commune_name)
-                )""")
-                cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_wilaya ON commune_delivery_prices(wilaya_id)")
-                cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_lookup ON commune_delivery_prices(wilaya_id, commune_name)")
-                db.commit()
-                logger.info('[Storefront] commune_delivery_prices self-healed')
-            except Exception as create_err:
-                logger.error('[Storefront] self-healing create failed: %s', create_err)
-        _ensure_rls_policy(cur, db, 'commune_delivery_prices', 'commune_prices_all_access')
-        if wilaya_id > 0:
-            cur.execute("SELECT wilaya_id, commune_name, domicile_price FROM commune_delivery_prices WHERE wilaya_id=%s", (wilaya_id,))
-        else:
-            cur.execute("SELECT wilaya_id, commune_name, domicile_price FROM commune_delivery_prices")
-        rows = cur.fetchall()
-        result = {}
-        for r in rows:
-            wid = str(r['wilaya_id'])
-            if wid not in result:
-                result[wid] = {}
-            result[wid][r['commune_name']] = float(r['domicile_price'] or 0)
-        return _json_response(result, max_age=300)
-    except Exception as e:
-        logger.exception('[Storefront] Error loading commune delivery prices')
         return _json_response({}, status=500)
     finally:
         if db:

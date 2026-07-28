@@ -319,10 +319,16 @@ def _process_order_background(order_number, items, customer_name, customer_phone
         if wid is not None:
             try:
                 wid = int(wid)
-                cur.execute("SELECT price FROM delivery_prices WHERE wilaya_id=%s", (wid,))
+                try:
+                    if delivery_mode == 'domicile':
+                        cur.execute("SELECT home_price FROM delivery_prices WHERE wilaya_code=%s", (wid,))
+                    else:
+                        cur.execute("SELECT office_price FROM delivery_prices WHERE wilaya_code=%s", (wid,))
+                except Exception:
+                    cur.execute("SELECT price FROM delivery_prices WHERE wilaya_id=%s", (wid,))
                 dp = cur.fetchone()
                 if dp:
-                    delivery_fee = dp['price']
+                    delivery_fee = dp.get('home_price') or dp.get('office_price') or dp.get('price') or 0
             except (ValueError, TypeError):
                 pass
 

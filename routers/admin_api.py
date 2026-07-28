@@ -1141,12 +1141,17 @@ def list_delivery_prices(session_token: str = Depends(require_admin_auth)):
     db = get_db()
     cur = db.cursor()
     try:
-        cur.execute("SELECT wilaya_id, price FROM delivery_prices ORDER BY wilaya_id")
-        rows = cur.fetchall()
-        result = {}
-        for r in rows:
-            result[str(r['wilaya_id'])] = r['price']
-        return result
+        try:
+            cur.execute("SELECT wilaya_code, wilaya_name, home_price, office_price, active, updated_at FROM delivery_prices ORDER BY wilaya_code")
+            rows = cur.fetchall()
+            return [dict(r) for r in rows]
+        except Exception:
+            cur.execute("SELECT wilaya_id, price FROM delivery_prices ORDER BY wilaya_id")
+            rows = cur.fetchall()
+            result = {}
+            for r in rows:
+                result[str(r['wilaya_id'])] = r['price']
+            return result
     finally:
         try:
             cur.close()
@@ -2002,19 +2007,31 @@ def update_collection(cid: str, request: Request, data: dict = Body(...), sessio
 
 
 @router.put('/delivery-prices')
-def update_delivery_prices(request: Request, data: dict = Body(...), session_token: str = Depends(require_admin_auth)):
+def update_delivery_prices(request: Request, data: Any = Body(...), session_token: str = Depends(require_admin_auth)):
     validate_admin_csrf(request)
     db = get_db()
     cur = db.cursor()
     try:
-        for wilaya_id_str, price in data.items():
-            wid = int(wilaya_id_str)
-            p = float(price) if price else 0
-            cur.execute("SELECT 1 FROM delivery_prices WHERE wilaya_id=%s", (wid,))
-            if cur.fetchone():
-                cur.execute("UPDATE delivery_prices SET price=%s WHERE wilaya_id=%s", (p, wid))
-            else:
-                cur.execute("INSERT INTO delivery_prices (wilaya_id, price) VALUES (%s, %s)", (wid, p))
+        if isinstance(data, list):
+            for row in data:
+                wc = str(row.get('wilaya_code', ''))
+                wn = row.get('wilaya_name', '')
+                hp = float(row.get('home_price', 0) or 0)
+                op = float(row.get('office_price', 0) or 0)
+                active = bool(row.get('active', True))
+                cur.execute(
+                    "INSERT INTO delivery_prices (wilaya_id, wilaya_code, wilaya_name, home_price, office_price, active, updated_at) VALUES (%s,%s,%s,%s,%s,%s,CURRENT_TIMESTAMP) ON CONFLICT (wilaya_id) DO UPDATE SET wilaya_code=%s, wilaya_name=%s, home_price=%s, office_price=%s, active=%s, updated_at=CURRENT_TIMESTAMP",
+                    (wc, wc, wn, hp, op, active, wc, wn, hp, op, active)
+                )
+        else:
+            for wilaya_id_str, price in data.items():
+                wid = int(wilaya_id_str)
+                p = float(price) if price else 0
+                cur.execute("SELECT 1 FROM delivery_prices WHERE wilaya_id=%s", (wid,))
+                if cur.fetchone():
+                    cur.execute("UPDATE delivery_prices SET price=%s WHERE wilaya_id=%s", (p, wid))
+                else:
+                    cur.execute("INSERT INTO delivery_prices (wilaya_id, price) VALUES (%s, %s)", (wid, p))
         db.commit()
         _signal_cache_invalidate()
         return {'message': 'Delivery prices saved'}
@@ -2029,17 +2046,26 @@ def update_delivery_prices(request: Request, data: dict = Body(...), session_tok
             pass
 
 
-@router.get('/commune-delivery-prices')
-def list_commune_delivery_prices(wilaya_id: int = Query(0), session_token: str = Depends(require_admin_auth)):
+@router.post('/delivery-prices/import')
+def import_delivery_prices(request: Request, data: list = Body(...), session_token: str = Depends(require_admin_auth)):
+    validate_admin_csrf(request)
     db = get_db()
     cur = db.cursor()
     try:
-        if wilaya_id > 0:
-            cur.execute("SELECT wilaya_id, commune_name, domicile_price FROM commune_delivery_prices WHERE wilaya_id=%s ORDER BY commune_name", (wilaya_id,))
-        else:
-            cur.execute("SELECT wilaya_id, commune_name, domicile_price FROM commune_delivery_prices ORDER BY wilaya_id, commune_name")
-        rows = cur.fetchall()
-        return rows_to_list(rows)
+        count = 0
+        for row in data:
+            wc = str(row.get('wilaya_code', ''))
+            wn = row.get('wilaya_name', '')
+            hp = float(row.get('home_price', 0) or 0)
+            op = float(row.get('office_price', 0) or 0)
+            cur.execute(
+                "INSERT INTO delivery_prices (wilaya_id, wilaya_code, wilaya_name, home_price, office_price, active, updated_at) VALUES (%s,%s,%s,%s,%s,%s,CURRENT_TIMESTAMP) ON CONFLICT (wilaya_id) DO UPDATE SET wilaya_code=%s, wilaya_name=%s, home_price=%s, office_price=%s, active=%s, updated_at=CURRENT_TIMESTAMP",
+                (wc, wc, wn, hp, op, True, wc, wn, hp, op, True)
+            )
+            count += 1
+        db.commit()
+        _signal_cache_invalidate()
+        return {'message': 'Import complete', 'imported': count}
     finally:
         try:
             cur.close()
@@ -2051,30 +2077,17 @@ def list_commune_delivery_prices(wilaya_id: int = Query(0), session_token: str =
             pass
 
 
-@router.put('/commune-delivery-prices')
-def update_commune_delivery_prices(request: Request, data: dict = Body(...), session_token: str = Depends(require_admin_auth)):
-    validate_admin_csrf(request)
+@router.get('/delivery-prices/export')
+def export_delivery_prices(session_token: str = Depends(require_admin_auth)):
     db = get_db()
     cur = db.cursor()
     try:
-        wilaya_id = int(data.get('wilaya_id', 0))
-        prices = data.get('prices', {})
-        if not isinstance(prices, dict):
-            return _json_response({'error': 'prices must be an object {commune_name: price}'}, 400)
-        saved = 0
-        for commune_name, price in prices.items():
-            if not isinstance(commune_name, str) or not commune_name.strip():
-                continue
-            p = float(price) if price else 0
-            cur.execute("""INSERT INTO commune_delivery_prices (wilaya_id, commune_name, domicile_price, updated_at)
-                           VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
-                           ON CONFLICT (wilaya_id, commune_name)
-                           DO UPDATE SET domicile_price = EXCLUDED.domicile_price, updated_at = CURRENT_TIMESTAMP""",
-                        (wilaya_id, commune_name.strip(), p))
-            saved += 1
-        db.commit()
-        _signal_cache_invalidate()
-        return {'message': 'Commune delivery prices saved', 'saved': saved}
+        try:
+            cur.execute("SELECT wilaya_code, wilaya_name, home_price, office_price, active, updated_at FROM delivery_prices ORDER BY wilaya_code")
+        except Exception:
+            cur.execute("SELECT wilaya_id, price FROM delivery_prices ORDER BY wilaya_id")
+        rows = cur.fetchall()
+        return [dict(r) for r in rows]
     finally:
         try:
             cur.close()

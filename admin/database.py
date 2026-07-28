@@ -201,17 +201,23 @@ def _run_migrations(conn):
                 cur.execute(sql)
             except Exception:
                 pass
+        delivery_prices_col_migrations = [
+            "ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS wilaya_code INTEGER",
+            "ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS wilaya_name TEXT",
+            "ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS home_price DOUBLE PRECISION DEFAULT 0",
+            "ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS office_price DOUBLE PRECISION DEFAULT 0",
+            "ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true",
+            "ALTER TABLE delivery_prices ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        ]
+        for sql in delivery_prices_col_migrations:
+            try:
+                cur.execute(sql)
+            except Exception:
+                pass
         try:
-            cur.execute("""CREATE TABLE IF NOT EXISTS commune_delivery_prices (
-                id SERIAL PRIMARY KEY,
-                wilaya_id INTEGER NOT NULL,
-                commune_name TEXT NOT NULL,
-                domicile_price DOUBLE PRECISION NOT NULL DEFAULT 0,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE (wilaya_id, commune_name)
-            )""")
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_wilaya ON commune_delivery_prices(wilaya_id)")
-            cur.execute("CREATE INDEX IF NOT EXISTS idx_commune_delivery_lookup ON commune_delivery_prices(wilaya_id, commune_name)")
+            cur.execute("UPDATE delivery_prices SET wilaya_code = wilaya_id, wilaya_name = wilaya WHERE wilaya_code IS NULL")
+            cur.execute("UPDATE delivery_prices SET office_price = price WHERE office_price = 0 AND price > 0")
+            cur.execute("UPDATE delivery_prices SET home_price = ROUND((office_price * 1.5 / 50.0)) * 50 WHERE home_price = 0 AND office_price > 0")
         except Exception:
             pass
         idx_migrations = [
@@ -289,6 +295,7 @@ def _run_migrations(conn):
         except Exception:
             pass
         _seed_delivery_times(cur)
+        _seed_delivery_prices(cur)
         conn.commit()
     finally:
         cur.close()
@@ -336,6 +343,57 @@ def _seed_delivery_times(cur):
             pass
         try:
             cur.execute("INSERT INTO delivery_prices (wilaya_id, wilaya, price, min_days, max_days) VALUES (%s, %s, 0, %s, %s) ON CONFLICT (wilaya_id) DO NOTHING", (wid, name, mn, mx))
+        except Exception:
+            pass
+
+
+def _seed_delivery_prices(cur):
+    wilaya_names = {
+        1: 'Adrar', 2: 'Chlef', 3: 'Laghouat', 4: 'Oum El Bouaghi', 5: 'Batna',
+        6: 'Béjaïa', 7: 'Biskra', 8: 'Béchar', 9: 'Blida', 10: 'Bouira',
+        11: 'Tamanrasset', 12: 'Tébessa', 13: 'Tlemcen', 14: 'Tiaret', 15: 'Tizi Ouzou',
+        16: 'Alger', 17: 'Djelfa', 18: 'Jijel', 19: 'Sétif', 20: 'Saïda',
+        21: 'Skikda', 22: 'Sidi Bel Abbès', 23: 'Annaba', 24: 'Guelma', 25: 'Constantine',
+        26: 'Médéa', 27: 'Mostaganem', 28: "M'sila", 29: 'Mascara', 30: 'Ouargla',
+        31: 'Oran', 32: 'El Bayadh', 33: 'Illizi', 34: 'Bordj Bou Arreridj',
+        35: 'Boumerdès', 36: 'El Tarf', 37: 'Tindouf', 38: 'Tissemsilt', 39: 'El Oued',
+        40: 'Khenchela', 41: 'Souk Ahras', 42: 'Tipaza', 43: 'Mila', 44: 'Aïn Defla',
+        45: 'Naâma', 46: 'Aïn Témouchent', 47: 'Ghardaïa', 48: 'Relizane', 49: 'Timimoun',
+        50: 'Bordj Badji Mokhtar', 51: 'Ouled Djellal', 52: 'Béni Abbès',
+        53: 'In Salah', 54: 'In Guezzam', 55: 'Touggourt', 56: 'Djanet',
+        57: "El M'Ghair", 58: 'El Meniaa',
+    }
+    wilaya_prices = {
+        16: (600, 400), 31: (600, 400), 25: (600, 400), 23: (650, 450),
+        9: (550, 350), 35: (550, 350), 42: (550, 350), 19: (600, 400),
+        5: (600, 400), 13: (600, 400), 6: (600, 400), 15: (600, 400),
+        2: (500, 250), 10: (550, 350), 26: (550, 350), 44: (550, 350),
+        43: (550, 350), 18: (600, 400), 21: (600, 400), 24: (600, 400),
+        36: (650, 450), 41: (650, 450), 12: (650, 450), 4: (600, 400),
+        40: (650, 450), 7: (650, 450), 28: (600, 400), 34: (600, 400),
+        27: (600, 400), 29: (600, 400), 22: (600, 400), 20: (600, 400),
+        14: (600, 400), 48: (600, 400), 46: (600, 400), 45: (700, 500),
+        32: (700, 500), 38: (600, 400), 17: (650, 450), 3: (700, 500),
+        47: (700, 500), 30: (750, 550), 39: (750, 550), 55: (750, 550),
+        51: (700, 500), 57: (750, 550), 58: (800, 600), 8: (800, 600),
+        1: (850, 650), 11: (900, 700), 33: (900, 700), 37: (900, 700),
+        50: (900, 700), 49: (850, 650), 52: (800, 600), 53: (900, 700),
+        54: (950, 750), 56: (950, 750),
+    }
+    for wid in range(1, 59):
+        name = wilaya_names.get(wid, '')
+        home_p, office_p = wilaya_prices.get(wid, (700, 500))
+        try:
+            cur.execute("""INSERT INTO delivery_prices (wilaya_id, wilaya, wilaya_code, wilaya_name, price, home_price, office_price, min_days, max_days)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, 2, 5)
+                ON CONFLICT (wilaya_id) DO UPDATE SET
+                    wilaya = EXCLUDED.wilaya,
+                    wilaya_code = EXCLUDED.wilaya_code,
+                    wilaya_name = EXCLUDED.wilaya_name,
+                    home_price = CASE WHEN delivery_prices.home_price = 0 THEN EXCLUDED.home_price ELSE delivery_prices.home_price END,
+                    office_price = CASE WHEN delivery_prices.office_price = 0 THEN EXCLUDED.office_price ELSE delivery_prices.office_price END,
+                    updated_at = CURRENT_TIMESTAMP""",
+                (wid, name, wid, name, office_p, home_p, office_p))
         except Exception:
             pass
 
@@ -509,7 +567,13 @@ def init_db():
         wilaya TEXT DEFAULT '',
         price DOUBLE PRECISION NOT NULL DEFAULT 0,
         min_days INTEGER DEFAULT 2,
-        max_days INTEGER DEFAULT 5
+        max_days INTEGER DEFAULT 5,
+        wilaya_code INTEGER,
+        wilaya_name TEXT,
+        home_price DOUBLE PRECISION DEFAULT 0,
+        office_price DOUBLE PRECISION DEFAULT 0,
+        active BOOLEAN DEFAULT true,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )""")
 
     cur.execute("""CREATE TABLE IF NOT EXISTS settings (
@@ -564,6 +628,7 @@ def init_db():
         cur.execute("INSERT INTO delivery_prices (wilaya_id, price) VALUES (%s, 0) ON CONFLICT (wilaya_id) DO NOTHING", (wid,))
 
     _seed_delivery_times(cur)
+    _seed_delivery_prices(cur)
 
     # Performance indexes
     for idx_sql in [
@@ -724,6 +789,7 @@ def seed_db():
     conn2 = get_db()
     cur2 = conn2.cursor()
     _seed_delivery_times(cur2)
+    _seed_delivery_prices(cur2)
     conn2.commit()
     conn2.close()
 

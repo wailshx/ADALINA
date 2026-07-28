@@ -231,7 +231,7 @@ async def lifespan(app: FastAPI):
     try:
         db = get_db()
         cur = db.cursor()
-        for tbl in ('commune_delivery_prices', 'wishlists'):
+        for tbl in ('wishlists',):
             try:
                 cur.execute(f"ALTER TABLE {tbl} DISABLE ROW LEVEL SECURITY")
             except Exception:
@@ -246,7 +246,7 @@ async def lifespan(app: FastAPI):
         db.commit()
         cur.close()
         db.close()
-        print('✓ RLS disabled / permissive policies added for commune_delivery_prices, wishlists')
+        print('✓ RLS disabled / permissive policies added for wishlists')
     except Exception as e:
         print(f'! RLS disable warning: {e}')
 

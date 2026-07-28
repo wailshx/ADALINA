@@ -413,10 +413,6 @@
             <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
             Livraison
         </button>
-        <button type="button" class="settings-tab" data-tab="communes">
-            <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            Prix par commune
-        </button>
         <button type="button" class="settings-tab" data-tab="seo">
             <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             SEO
@@ -552,26 +548,41 @@
 
         <div class="tab-pane" id="tab-delivery">
             <div class="settings-card">
-                <div class="card-header"><h2>Prix par Wilaya</h2></div>
+                <div class="card-header">
+                    <h2>Tarifs de Livraison — 58 Wilayas</h2>
+                </div>
                 <div class="card-body">
                     <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
-                        <input type="text" id="wilaya-filter" class="form-control" placeholder="Filtrer les wilayas..." style="max-width:250px;font-size:0.85rem;">
+                        <input type="text" id="wilaya-filter" class="form-control" placeholder="Rechercher une wilaya..." style="max-width:250px;font-size:0.85rem;">
                         <span style="font-size:0.8rem;color:var(--text-muted);" id="wilaya-count">58 wilayas</span>
-                        <button type="button" class="btn btn-primary btn-sm wilaya-save-btn" onclick="saveWilayaPrices()" style="margin-left:auto;"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Enregistrer les prix</button>
+                        <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+                            <button type="button" class="btn btn-sm" onclick="exportDeliveryCSV()" style="font-size:0.82rem;padding:6px 12px;background:var(--bg-secondary,#f4f6fb);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;">
+                                <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;vertical-align:-2px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export CSV
+                            </button>
+                            <label class="btn btn-sm" style="font-size:0.82rem;padding:6px 12px;background:var(--bg-secondary,#f4f6fb);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;margin:0;">
+                                <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;vertical-align:-2px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Import CSV
+                                <input type="file" accept=".csv,.xlsx,.xls" onchange="importDeliveryCSV(this)" style="display:none;">
+                            </label>
+                            <button type="button" class="btn btn-primary btn-sm wilaya-save-btn" onclick="saveWilayaPrices()">
+                                <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;vertical-align:-2px;margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Enregistrer
+                            </button>
+                        </div>
                     </div>
-                    <div style="max-height:400px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;">
+                    <div style="max-height:500px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;">
                         <table class="dp-table" style="width:100%;border-collapse:collapse;font-size:0.82rem;">
                             <thead style="position:sticky;top:0;background:var(--card-bg,#fff);z-index:1;">
                                 <tr>
-                                    <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);width:50px;">N°</th>
+                                    <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);width:50px;">Code</th>
                                     <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">Wilaya</th>
-                                    <th style="padding:8px 12px;text-align:right;border-bottom:1px solid var(--border);width:140px;">Frais livraison (DA)</th>
+                                    <th style="padding:8px 12px;text-align:right;border-bottom:1px solid var(--border);width:150px;">À domicile (DA)</th>
+                                    <th style="padding:8px 12px;text-align:right;border-bottom:1px solid var(--border);width:150px;">Au bureau (DA)</th>
+                                    <th style="padding:8px 12px;text-align:center;border-bottom:1px solid var(--border);width:70px;">Statut</th>
                                 </tr>
                             </thead>
                             <tbody id="wilaya-prices-tbody"></tbody>
                         </table>
                     </div>
-                    <p style="font-size:0.78rem;color:var(--text-muted);margin-top:8px;">Laissez 0 DA pour une livraison gratuite vers cette wilaya.</p>
+                    <div id="delivery-saveMsg" class="hidden save-msg" style="margin-top:12px;"></div>
                 </div>
             </div>
             <div class="settings-card">
@@ -586,54 +597,7 @@
                             <label>Seuil livraison gratuite</label>
                             <input type="number" class="form-control" data-setting="free_shipping_threshold" step="0.01">
                         </div>
-                        <div class="form-group">
-                            <label>Frais de livraison</label>
-                            <input type="number" class="form-control" data-setting="delivery_fee" step="0.01">
-                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="tab-pane" id="tab-communes">
-            <div class="settings-card">
-                <div class="card-header">
-                    <h2>Prix de livraison à domicile — par commune</h2>
-                </div>
-                <div class="card-body">
-                    <div id="commune-stats" style="display:none;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:18px;">
-                    </div>
-                    <div style="background:#f4f6fb;border:1px solid #e3e6ee;border-radius:8px;padding:14px 16px;margin-bottom:16px;font-size:0.85rem;color:var(--text-secondary);">
-                        <strong>Comment ça marche :</strong>
-                        <ol style="margin:6px 0 0 18px;padding:0;line-height:1.55;">
-                            <li>Choisissez une wilaya dans la liste ci-dessous (ex.&nbsp;: Chlef).</li>
-                            <li>Toutes les communes de cette wilaya s'affichent dans le tableau.</li>
-                            <li>Saisissez le supplément de livraison à domicile (en DA) pour chaque commune, ou laissez 0 DA pour ne facturer que le prix de la wilaya.</li>
-                            <li>Cliquez sur <strong>« Enregistrer les prix »</strong> pour sauvegarder toutes les modifications de cette wilaya.</li>
-                            <li>Répétez l'opération pour chaque autre wilaya si nécessaire.</li>
-                        </ol>
-                    </div>
-                    <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap;padding:12px;background:var(--bg-secondary,#f9fafb);border-radius:8px;">
-                        <label style="font-weight:600;font-size:0.88rem;min-width:auto;margin:0;">Wilaya :</label>
-                        <select id="commune-wilaya-select" class="form-control" style="max-width:300px;font-size:0.88rem;padding:8px 12px;"></select>
-                        <input type="text" id="commune-filter" class="form-control" placeholder="Filtrer les communes..." style="max-width:220px;font-size:0.85rem;padding:8px 12px;">
-                        <span style="font-size:0.8rem;color:var(--text-muted);" id="commune-count"></span>
-                        <button type="button" class="btn btn-primary" id="commune-save-btn" onclick="saveCommunePrices()" style="margin-left:auto;"><svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px;margin-right:6px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Enregistrer les prix</button>
-                        <button type="button" class="btn" onclick="printCommuneReport()" style="margin-left:6px;padding:8px 14px;font-size:0.82rem;background:var(--bg-secondary,#f4f6fb);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;display:inline-flex;align-items:center;gap:6px;"><svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Imprimer</button>
-                    </div>
-                    <div style="max-height:480px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
-                        <table class="dp-table" style="width:100%;border-collapse:collapse;font-size:0.85rem;">
-                            <thead style="position:sticky;top:0;background:var(--card-bg,#fff);z-index:1;box-shadow:0 1px 0 var(--border);">
-                                <tr>
-                                    <th style="padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);width:60px;">N°</th>
-                                    <th style="padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);">Commune</th>
-                                    <th style="padding:10px 14px;text-align:right;border-bottom:1px solid var(--border);width:180px;">Supplément à domicile (DA)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="commune-prices-tbody"></tbody>
-                        </table>
-                    </div>
-                    <div id="commune-saveMsg" class="hidden save-msg" style="margin-top:12px;padding:10px 14px;background:#d4edda;color:#155724;border-radius:6px;font-size:0.85rem;"></div>
                 </div>
             </div>
         </div>
@@ -855,18 +819,37 @@ var _wilayaPrices = {};
 
 function loadWilayaPrices() {
     api('GET', '/delivery-prices').then(function(data) {
-        if (!data) return;
         _wilayaPrices = {};
-        for (var k in data) {
-            _wilayaPrices[k] = data[k].value !== undefined ? data[k].value : data[k];
+        if (Array.isArray(data)) {
+            data.forEach(function(r) {
+                _wilayaPrices[String(r.wilaya_code)] = {
+                    home: r.home_price || 0,
+                    office: r.office_price || 0,
+                    name: r.wilaya_name || '',
+                    active: r.active !== false
+                };
+            });
+        } else {
+            for (var k in data) {
+                var v = data[k];
+                if (v && typeof v === 'object' && v.home !== undefined) {
+                    _wilayaPrices[k] = v;
+                } else {
+                    _wilayaPrices[k] = {home: 0, office: v || 0, name: '', active: true};
+                }
+            }
         }
         renderWilayaTable();
     }).catch(function() {
-        /* fallback: try flat endpoint */
         fetch('/api/delivery-prices', {credentials:'same-origin'}).then(function(r){return r.json()}).then(function(data){
-            _wilayaPrices = data;
+            _wilayaPrices = {};
+            if (Array.isArray(data)) {
+                data.forEach(function(r) {
+                    _wilayaPrices[String(r.wilaya_code)] = {home: r.home_price||0, office: r.office_price||0, name: r.wilaya_name||'', active: r.active!==false};
+                });
+            }
             renderWilayaTable();
-        }).catch(function(e){console.error('Failed to load delivery prices',e);});
+        });
     });
 }
 
@@ -879,93 +862,118 @@ function renderWilayaTable() {
     algerianWilayas.forEach(function(w) {
         if (filter && w.name.toLowerCase().indexOf(filter) === -1) return;
         count++;
-        var price = _wilayaPrices[String(w.id)];
-        if (price === undefined) price = 0;
-        html += '<tr class="dp-row">' +
+        var entry = _wilayaPrices[String(w.id)] || {home:0, office:0, active:true};
+        var homePrice = entry.home || 0;
+        var officePrice = entry.office || 0;
+        var isActive = entry.active !== false;
+        html += '<tr class="dp-row" data-wid="' + w.id + '">' +
             '<td style="padding:6px 12px;border-bottom:1px solid var(--border);color:var(--text-muted);">' + w.id + '</td>' +
-            '<td style="padding:6px 12px;border-bottom:1px solid var(--border);">' + w.name + '</td>' +
+            '<td style="padding:6px 12px;border-bottom:1px solid var(--border);font-weight:500;">' + w.name + '</td>' +
             '<td style="padding:6px 12px;border-bottom:1px solid var(--border);text-align:right;">' +
-                '<input type="number" class="form-control dp-price-input" data-wid="' + w.id + '" value="' + price + '" min="0" step="10" style="width:110px;text-align:right;font-size:0.82rem;padding:4px 8px;">' +
+                '<input type="number" class="form-control dp-home-input" data-wid="' + w.id + '" value="' + homePrice + '" min="0" step="10" style="width:120px;text-align:right;font-size:0.82rem;padding:4px 8px;">' +
+            '</td>' +
+            '<td style="padding:6px 12px;border-bottom:1px solid var(--border);text-align:right;">' +
+                '<input type="number" class="form-control dp-office-input" data-wid="' + w.id + '" value="' + officePrice + '" min="0" step="10" style="width:120px;text-align:right;font-size:0.82rem;padding:4px 8px;">' +
+            '</td>' +
+            '<td style="padding:6px 12px;border-bottom:1px solid var(--border);text-align:center;">' +
+                '<label class="toggle-switch" style="display:inline-block;width:36px;height:20px;"><input type="checkbox" class="dp-active-toggle" data-wid="' + w.id + '"' + (isActive ? ' checked' : '') + ' style="opacity:0;width:0;height:0;"><span class="toggle-slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:' + (isActive ? 'var(--primary)' : '#ccc') + ';border-radius:20px;transition:0.3s;"></span></label>' +
             '</td>' +
         '</tr>';
     });
     tbody.innerHTML = html;
     document.getElementById('wilaya-count').textContent = count + ' wilaya' + (count > 1 ? 's' : '');
+    tbody.querySelectorAll('.dp-active-toggle').forEach(function(toggle) {
+        toggle.addEventListener('change', function() {
+            var slider = this.nextElementSibling;
+            if (slider) slider.style.background = this.checked ? 'var(--primary)' : '#ccc';
+        });
+    });
 }
 
 function saveWilayaPrices() {
-    var payload = {};
-    document.querySelectorAll('.dp-price-input').forEach(function(inp) {
-        var wid = inp.getAttribute('data-wid');
-        var val = parseFloat(inp.value) || 0;
-        payload[wid] = val;
+    var payload = [];
+    document.querySelectorAll('.dp-row').forEach(function(row) {
+        var wid = row.getAttribute('data-wid');
+        var w = algerianWilayas.find(function(x) { return String(x.id) === String(wid); });
+        var homeInput = row.querySelector('.dp-home-input');
+        var officeInput = row.querySelector('.dp-office-input');
+        var activeToggle = row.querySelector('.dp-active-toggle');
+        payload.push({
+            wilaya_code: parseInt(wid),
+            wilaya_name: w ? w.name : '',
+            home_price: parseFloat(homeInput.value) || 0,
+            office_price: parseFloat(officeInput.value) || 0,
+            active: activeToggle ? activeToggle.checked : true
+        });
     });
-    var btn = document.querySelector('.card-header button');
+    var btn = document.querySelector('.wilaya-save-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wilaya-spinner"></span> Enregistrement...'; }
     api('PUT', '/delivery-prices', payload).then(function(res) {
-        _wilayaPrices = payload;
-        if (res) {
-            var msg = document.getElementById('saveMsg');
-            if (msg) {
-                msg.textContent = 'Prix de livraison enregistrés.';
-                msg.className = 'save-msg';
-                msg.classList.remove('hidden');
-                setTimeout(function(){msg.classList.add('hidden');}, 4000);
-            }
+        var msg = document.getElementById('delivery-saveMsg');
+        if (msg) {
+            msg.textContent = 'Tarifs de livraison enregistrés avec succès.';
+            msg.className = 'save-msg';
+            msg.classList.remove('hidden');
+            setTimeout(function(){msg.classList.add('hidden');}, 4000);
         }
     }).catch(function() {
-        /* fallback */
         fetch('/api/delivery-prices', {
             method:'PUT', credentials:'same-origin',
             headers:{'Content-Type':'application/json'},
             body:JSON.stringify(payload)
         }).then(function(r){return r.json()}).then(function(){
-            _wilayaPrices = payload;
-        }).catch(function(e){console.error('Save failed',e);});
+            var msg = document.getElementById('delivery-saveMsg');
+            if (msg) { msg.textContent = 'Tarifs enregistrés.'; msg.className = 'save-msg'; msg.classList.remove('hidden'); setTimeout(function(){msg.classList.add('hidden');}, 4000); }
+        });
     }).finally(function() {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px;margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Enregistrer les prix'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px;margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Enregistrer'; }
     });
 }
 
-/* Filter input */
-function initCommunePanel() {
-    var communeSel = document.getElementById('commune-wilaya-select');
-    if (!communeSel) return;
-    if (communeSel.dataset.bound !== '1') {
-        communeSel.dataset.bound = '1';
-        var onWilayaChange = function() {
-            _currentCommuneWilaya = parseInt(this.value) || 0;
-            loadCommunePrices();
-            renderCommuneStats();
-        };
-        communeSel.addEventListener('change', onWilayaChange);
-        communeSel.addEventListener('input', onWilayaChange);
-    }
-    var communeFilter = document.getElementById('commune-filter');
-    if (communeFilter && communeFilter.dataset.bound !== '1') {
-        communeFilter.dataset.bound = '1';
-        communeFilter.addEventListener('input', renderCommuneTable);
-    }
-    loadCommunesForWilayaSelect();
-    renderCommuneTable();
-    var dataReady = !!(window.algeriaCommunes && Object.keys(window.algeriaCommunes).length);
-    if (!dataReady) {
-        var retries = 0;
-        var retryTimer = setInterval(function() {
-            retries++;
-            if (window.algeriaCommunes && Object.keys(window.algeriaCommunes).length) {
-                clearInterval(retryTimer);
-                loadCommunesForWilayaSelect();
-                renderCommuneTable();
-                console.log('[communes] data ready after retry', retries);
-            } else if (retries > 20) {
-                clearInterval(retryTimer);
-                console.warn('[communes] data still not loaded after 20 retries');
-            }
-        }, 250);
-    }
-    console.log('[communes] panel ready — wilayas loaded:', window.algeriaWilayasList ? window.algeriaWilayasList.length : 0,
-                'communes dataset:', window.algeriaCommunes ? Object.keys(window.algeriaCommunes).length : 0);
+function exportDeliveryCSV() {
+    var rows = [['Code', 'Wilaya', 'Prix à domicile', 'Prix au bureau', 'Actif']];
+    algerianWilayas.forEach(function(w) {
+        var entry = _wilayaPrices[String(w.id)] || {home:0, office:0, active:true};
+        rows.push([w.id, w.name, entry.home || 0, entry.office || 0, entry.active !== false ? 'Oui' : 'Non']);
+    });
+    var csv = rows.map(function(r) { return r.join(','); }).join('\n');
+    var blob = new Blob(['\ufeff' + csv], {type: 'text/csv;charset=utf-8;'});
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'tarifs_livraison_adalina.csv';
+    link.click();
+}
+
+function importDeliveryCSV(input) {
+    var file = input.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var text = e.target.result;
+        var lines = text.split(/\r?\n/);
+        var imported = 0;
+        for (var i = 1; i < lines.length; i++) {
+            var cols = lines[i].split(',');
+            if (cols.length < 4) continue;
+            var code = parseInt(cols[0]);
+            if (!code || code < 1 || code > 58) continue;
+            var home = parseFloat(cols[2]) || 0;
+            var office = parseFloat(cols[3]) || 0;
+            var active = cols[4] ? (cols[4].trim().toLowerCase() !== 'non' && cols[4].trim() !== '0' && cols[4].trim().toLowerCase() !== 'no') : true;
+            _wilayaPrices[String(code)] = {home: home, office: office, name: cols[1] || '', active: active};
+            imported++;
+        }
+        renderWilayaTable();
+        var msg = document.getElementById('delivery-saveMsg');
+        if (msg) {
+            msg.textContent = imported + ' wilayas importées. Cliquez "Enregistrer" pour sauvegarder.';
+            msg.className = 'save-msg';
+            msg.classList.remove('hidden');
+            setTimeout(function(){msg.classList.add('hidden');}, 5000);
+        }
+    };
+    reader.readAsText(file);
+    input.value = '';
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -974,254 +982,7 @@ document.addEventListener('DOMContentLoaded', function() {
         filterInput.addEventListener('input', renderWilayaTable);
     }
     loadWilayaPrices();
-    initCommunePanel();
 });
-
-document.querySelectorAll('.settings-tab').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-        if (this.dataset.tab === 'communes') {
-            setTimeout(function(){ initCommunePanel(); renderCommuneStats(); }, 0);
-        }
-    });
-});
-
-window.addEventListener('load', function() {
-    setTimeout(function(){ initCommunePanel(); renderCommuneStats(); }, 50);
-});
-
-/* ── Commune delivery prices (per wilaya, for domicile mode) ── */
-var _communePrices = {};
-var _currentCommuneWilaya = 0;
-var _communesByWilaya = {};
-
-function loadCommunesForWilayaSelect() {
-    var data = window.algeriaCommunesFR || window.algeriaCommunes || {};
-    _communesByWilaya = {};
-    for (var id in data) {
-        var arr = data[id];
-        _communesByWilaya[id] = Array.isArray(arr) ? arr : Object.keys(arr).map(function(k){ return arr[k]; });
-    }
-    var sel = document.getElementById('commune-wilaya-select');
-    if (!sel) return;
-    var w = window.algeriaWilayasList || algerianWilayas;
-    var html = '<option value="">— Choisir une wilaya —</option>';
-    var wCount = 0;
-    w.forEach(function(item){
-        var name = item.name || item;
-        var id = item.id !== undefined ? item.id : (w.indexOf(item) + 1);
-        html += '<option value="' + id + '">' + name + '</option>';
-        wCount++;
-    });
-    sel.innerHTML = html;
-    var sample = _communesByWilaya['2'] || _communesByWilaya[2] || [];
-    console.log('[communes] dropdown populated with', wCount, 'options; dataset for', Object.keys(_communesByWilaya).length, 'wilayas; Chlef sample:', sample.slice(0, 3));
-}
-
-function loadCommunePrices() {
-    if (!_currentCommuneWilaya) {
-        _communePrices = {};
-        renderCommuneTable();
-        return;
-    }
-    fetch('/api/commune-delivery-prices?wilaya_id=' + _currentCommuneWilaya, {credentials:'same-origin'})
-        .then(function(r){ return r.json(); })
-        .then(function(rows){
-            _communePrices = {};
-            (rows || []).forEach(function(r){
-                _communePrices[r.commune_name] = r.domicile_price;
-            });
-            renderCommuneTable();
-        })
-        .catch(function(e){ console.error('Failed to load commune prices', e); renderCommuneTable(); });
-}
-
-function renderCommuneTable() {
-    var tbody = document.getElementById('commune-prices-tbody');
-    if (!tbody) return;
-    if (!_currentCommuneWilaya) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text-muted);">Sélectionnez une wilaya pour gérer ses communes.</td></tr>';
-        var countEl = document.getElementById('commune-count');
-        if (countEl) countEl.textContent = '';
-        return;
-    }
-    var key = String(_currentCommuneWilaya);
-    var list = _communesByWilaya[key] || _communesByWilaya[parseInt(key, 10)] || _communesByWilaya[_currentCommuneWilaya] || [];
-    console.log('[communes] rendering for wilaya', _currentCommuneWilaya, 'found', list.length, 'communes in', Object.keys(_communesByWilaya).length, 'wilayas');
-    var filter = (document.getElementById('commune-filter').value || '').toLowerCase();
-    var html = '';
-    var count = 0;
-    list.forEach(function(name, idx) {
-        if (filter && name.toLowerCase().indexOf(filter) === -1) return;
-        count++;
-        var price = _communePrices[name];
-        if (price === undefined) price = 0;
-        var safeName = name.replace(/"/g, '&quot;');
-        html += '<tr>' +
-            '<td style="padding:6px 12px;border-bottom:1px solid var(--border);color:var(--text-muted);">' + (idx + 1) + '</td>' +
-            '<td style="padding:6px 12px;border-bottom:1px solid var(--border);">' + safeName + '</td>' +
-            '<td style="padding:6px 12px;border-bottom:1px solid var(--border);text-align:right;">' +
-                '<input type="number" class="form-control cp-price-input" data-commune="' + safeName + '" value="' + price + '" min="0" step="10" style="width:120px;text-align:right;font-size:0.82rem;padding:4px 8px;">' +
-            '</td>' +
-        '</tr>';
-    });
-    if (count === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text-muted);">Aucune commune pour ce filtre.</td></tr>';
-    } else {
-        tbody.innerHTML = html;
-    }
-    var countEl = document.getElementById('commune-count');
-    if (countEl) countEl.textContent = count + ' commune' + (count !== 1 ? 's' : '');
-}
-
-function saveCommunePrices() {
-    if (!_currentCommuneWilaya) {
-        alert('Veuillez choisir une wilaya.');
-        return;
-    }
-    var prices = {};
-    var hadValue = false;
-    document.querySelectorAll('.cp-price-input').forEach(function(inp) {
-        var name = inp.getAttribute('data-commune');
-        var v = parseFloat(inp.value);
-        if (isNaN(v)) v = 0;
-        prices[name] = v;
-        if (v > 0) hadValue = true;
-    });
-    var btn = document.getElementById('commune-save-btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Enregistrement...'; }
-    fetch('/api/commune-delivery-prices', {
-        method:'PUT', credentials:'same-origin',
-        headers:{'Content-Type':'application/json', 'X-CSRF-Token': window.__csrf || ''},
-        body: JSON.stringify({ wilaya_id: _currentCommuneWilaya, prices: prices })
-    }).then(function(r){ return r.json(); }).then(function(res){
-        if (res && res.error) { alert('Erreur: ' + res.error); return; }
-        _communePrices = prices;
-        renderCommuneStats();
-        var msg = document.getElementById('commune-saveMsg');
-        if (msg) {
-            msg.textContent = 'Prix des communes enregistrés.';
-            msg.className = 'save-msg';
-            msg.classList.remove('hidden');
-            setTimeout(function(){msg.classList.add('hidden');}, 4000);
-        }
-    }).catch(function(e){
-        console.error('Save commune prices failed', e);
-        alert('Erreur réseau lors de l\'enregistrement.');
-    }).finally(function(){
-        if (btn) { btn.disabled = false; btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px;margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Enregistrer les communes'; }
-    });
-}
-
-/* ── Commune stats summary ── */
-function renderCommuneStats() {
-    var el = document.getElementById('commune-stats');
-    if (!el) return;
-    var data = window.algeriaCommunesFR || window.algeriaCommunes || {};
-    var totalCommunes = 0;
-    for (var wid in data) {
-        var arr = data[wid];
-        totalCommunes += Array.isArray(arr) ? arr.length : Object.keys(arr).length;
-    }
-    var configuredWilayas = 0;
-    var communesWithPrice = 0;
-    var totalDA = 0;
-    fetch('/api/commune-delivery-prices', {credentials:'same-origin'})
-        .then(function(r){ return r.json(); })
-        .then(function(obj){
-            if (!obj || typeof obj !== 'object') return;
-            var wilayaIds = Object.keys(obj);
-            configuredWilayas = wilayaIds.length;
-            wilayaIds.forEach(function(wid) {
-                var prices = obj[wid];
-                var names = Object.keys(prices || {});
-                names.forEach(function(n) {
-                    var p = prices[n];
-                    if (p > 0) { communesWithPrice++; totalDA += p; }
-                });
-            });
-            el.style.display = 'grid';
-            el.innerHTML =
-                _statCard(totalCommunes.toLocaleString('fr-FR'), 'Communes totales', '#4f6ef7') +
-                _statCard(configuredWilayas.toLocaleString('fr-FR'), 'Wilayas configurées', '#28a745') +
-                _statCard(communesWithPrice.toLocaleString('fr-FR'), 'Communes avec prix > 0', '#e67e22') +
-                _statCard(totalDA.toLocaleString('fr-FR') + ' DA', 'Supplément total', '#9b59b6');
-        })
-        .catch(function(){ el.style.display = 'none'; });
-}
-
-function _statCard(value, label, color) {
-    return '<div style="background:var(--card-bg,#fff);border:1px solid var(--border);border-radius:8px;padding:14px 16px;border-left:4px solid ' + color + ';">' +
-        '<div style="font-size:1.3rem;font-weight:700;color:' + color + ';line-height:1.2;">' + value + '</div>' +
-        '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:3px;text-transform:uppercase;letter-spacing:0.04em;">' + label + '</div></div>';
-}
-
-/* ── Print commune prices report ── */
-function printCommuneReport() {
-    var data = window.algeriaCommunesFR || window.algeriaCommunes || {};
-    var wList = window.algeriaWilayasList || algerianWilayas || [];
-    var wMap = {};
-    wList.forEach(function(w){ wMap[w.id !== undefined ? w.id : (wList.indexOf(w) + 1)] = w.name || w; });
-
-    fetch('/api/commune-delivery-prices', {credentials:'same-origin'})
-        .then(function(r){ return r.json(); })
-        .then(function(obj){
-            var prices = obj || {};
-            var wilayaIds = Object.keys(prices).filter(function(k){ return Object.keys(prices[k]||{}).some(function(n){ return prices[k][n] > 0; }); }).sort(function(a,b){ return Number(a)-Number(b); });
-
-            if (wilayaIds.length === 0) {
-                alert('Aucun prix de commune configuré.');
-                return;
-            }
-
-            var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rapport prix communes — ADALINA</title>';
-            html += '<style>';
-            html += 'body{font-family:Arial,Helvetica,sans-serif;margin:20px;color:#222;font-size:12px;}';
-            html += 'h1{font-size:16px;margin:0 0 4px;color:#1a1a1a;}';
-            html += '.meta{font-size:11px;color:#666;margin-bottom:18px;border-bottom:1px solid #ddd;padding-bottom:10px;}';
-            html += 'h2{font-size:13px;margin:18px 0 6px;color:#333;display:flex;align-items:center;gap:6px;}';
-            html += 'h2 .badge{background:#4f6ef7;color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;}';
-            html += 'table{width:100%;border-collapse:collapse;margin-bottom:6px;}';
-            html += 'th{background:#f5f6fa;text-align:left;padding:5px 10px;font-size:11px;border-bottom:2px solid #ccc;font-weight:600;}';
-            html += 'td{padding:4px 10px;border-bottom:1px solid #eee;font-size:11px;}';
-            html += 'td:last-child{text-align:right;font-weight:600;}';
-            html += 'tr:nth-child(even){background:#fafbfc;}';
-            html += '.summary{margin-top:24px;border-top:2px solid #333;padding-top:10px;font-size:11px;}';
-            html += '.summary strong{color:#333;}';
-            html += '@media print{body{margin:10px;font-size:11px;} h2{page-break-after:avoid;}}';
-            html += '</style></head><body>';
-            html += '<h1>ADALINA — Rapport des prix de livraison à domicile par commune</h1>';
-            html += '<div class="meta">Généré le ' + new Date().toLocaleDateString('fr-FR', {day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}) + '</div>';
-
-            var totalCommunes = 0;
-            var totalDA = 0;
-
-            wilayaIds.forEach(function(wid) {
-                var pMap = prices[wid] || {};
-                var wName = wMap[wid] || 'Wilaya ' + wid;
-                var communeNames = Object.keys(pMap).filter(function(n){ return pMap[n] > 0; }).sort();
-
-                html += '<h2>' + wName + ' <span class="badge">' + communeNames.length + '</span></h2>';
-                html += '<table><thead><tr><th style="width:40px;">N°</th><th>Commune</th><th style="width:140px;text-align:right;">Supplément (DA)</th></tr></thead><tbody>';
-                communeNames.forEach(function(name, i) {
-                    html += '<tr><td>' + (i+1) + '</td><td>' + name + '</td><td>' + Number(pMap[name]).toLocaleString('fr-FR') + ' DA</td></tr>';
-                    totalCommunes++;
-                    totalDA += pMap[name];
-                });
-                html += '</tbody></table>';
-            });
-
-            html += '<div class="summary">';
-            html += '<strong>Total :</strong> ' + totalCommunes + ' commune' + (totalCommunes > 1 ? 's' : '') + ' configurée' + (totalCommunes > 1 ? 's' : '') + ' dans ' + wilayaIds.length + ' wilaya' + (wilayaIds.length > 1 ? 's' : '') + ' — ';
-            html += 'Supplément total : <strong>' + totalDA.toLocaleString('fr-FR') + ' DA</strong>';
-            html += '</div></body></html>';
-
-            var w = window.open('', '_blank', 'width=800,height=600');
-            w.document.write(html);
-            w.document.close();
-            w.focus();
-            setTimeout(function(){ w.print(); }, 400);
-        });
-}
 </script>
 
 </body>
